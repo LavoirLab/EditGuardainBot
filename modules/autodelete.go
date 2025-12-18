@@ -26,7 +26,6 @@ func init() {
 			"• <code>1h</code> = 1 hour\n"+
 			"• <code>12h</code> = 12 hours\n\n"+
 			"<b>ℹ️ Note:</b> Applies to all text and media messages from regular users only.\n"+
-			"<b>🛡️ Admins are always exempt from auto-deletion.</b>\n"+
 			"👮 Only group admins can configure this setting.",
 	)
 }
@@ -132,5 +131,5 @@ func handleMsgAutoDelete(m *telegram.NewMessage) error {
 
 	ScheduleMessageDeletion(m.Client, m.ChatID(), int32(m.ID), settings.Delay)
 
-	return nil
+	return telegram.EndGroup
 }
