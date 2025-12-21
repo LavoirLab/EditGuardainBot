@@ -31,7 +31,7 @@ func OnMessageFnc(m *telegram.NewMessage) error {
 		deleteLongMessage,
 		deleteLinkMessage,
 		DeleteAbuseHandle,
-		handlePhoneNumber, // Phone number blocking
+		handlePhoneNumber,   // Phone number blocking
 		handleMediaDelete,   // Media auto-delete
 		handleMsgAutoDelete, // Message auto-delete
 

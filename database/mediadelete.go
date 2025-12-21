@@ -13,9 +13,9 @@ import (
 )
 
 type MediaDeleteSettings struct {
-	ChatID           int64         `bson:"chat_id"`
-	Enabled          bool          `bson:"enabled"`
-	Delay            time.Duration `bson:"delay"`
+	ChatID  int64         `bson:"chat_id"`
+	Enabled bool          `bson:"enabled"`
+	Delay   time.Duration `bson:"delay"`
 }
 
 func GetMediaDeleteSettings(chatID int64) (*MediaDeleteSettings, error) {
@@ -31,9 +31,9 @@ func GetMediaDeleteSettings(chatID int64) (*MediaDeleteSettings, error) {
 	err := mediaDeleteDB.FindOne(ctx, bson.M{"chat_id": chatID}).Decode(&settings)
 	if err == mongo.ErrNoDocuments {
 		settings = MediaDeleteSettings{
-			ChatID:           chatID,
-			Enabled:          false,
-			Delay:            6 * time.Hour,
+			ChatID:  chatID,
+			Enabled: false,
+			Delay:   6 * time.Hour,
 		}
 	} else if err != nil {
 		return nil, err
@@ -55,7 +55,7 @@ func SetMediaDeleteEnabled(chatID int64, enabled bool) error {
 				"enabled": enabled,
 			},
 			"$setOnInsert": bson.M{
-				"delay":              6 * time.Hour,
+				"delay": 6 * time.Hour,
 			},
 		},
 		options.UpdateOne().SetUpsert(true),

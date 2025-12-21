@@ -52,13 +52,13 @@ func MediaDeleteCmd(m *telegram.NewMessage) error {
 		if err != nil {
 			m.Respond("⚠️ Usage:\n<code>/mediadelete on</code> — Enable\n<code>/mediadelete off</code> — Disable")
 		} else {
-		  status := map[bool]string{true: "Enabled", false: "Disabled"}[settings.Enabled]
+			status := map[bool]string{true: "Enabled", false: "Disabled"}[settings.Enabled]
 
-m.Respond(fmt.Sprintf(
-	"📊 <b>MediaDelete Status:</b> %s\n⏱ <b>Delay:</b> %s\n🎯 <b>Scope:</b> All users & admins",
-	status,
-	formatDuration(settings.Delay),
-))
+			m.Respond(fmt.Sprintf(
+				"📊 <b>MediaDelete Status:</b> %s\n⏱ <b>Delay:</b> %s\n🎯 <b>Scope:</b> All users & admins",
+				status,
+				formatDuration(settings.Delay),
+			))
 
 		}
 		return telegram.EndGroup
