@@ -25,7 +25,7 @@ var (
 	SupportChat    string
 	SupportChannel string
 
-	WebAppUrl string // example http://t.me/vgithubbot/settings
+	BaseURL string 
 
 )
 
@@ -74,7 +74,7 @@ func init() {
 		PrintAndExit("MONGO_DB_URI variable is empty, fill it")
 	}
 
-	if WebAppUrl == "" {
+	if BaseURL == "" {
 		PrintAndExit("WEB_APP_URL is not filled please fll it")
 	}
 }
