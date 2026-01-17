@@ -54,7 +54,7 @@ func init() {
 	MongoUri = Getenv[string]("MONGO_DB_URI", "mongodb+srv://marin:marin69@cluster0.zxaf7uc.mongodb.net/?retryWrites=true&w=majority", nil)
 	SupportChannel = Getenv[string]("SUPPORT_CHANNEL", "https://t.me/Team_Dns_Network", nil)
 	SupportChat = Getenv[string]("SUPPORT_CHAT", "https://t.me/dns_support_group", nil)
-	WebAppUrl = Getenv[string]("WEB_APP_URL", "http://t.me/ViyomBot/settings", nil)
+	BaseURL = Getenv[string]("BASE_URL", "http://t.me/ViyomBot/settings", nil)
 
 	OwnerId = Getenv("OWNER_ID", "7706682472 5663483507", func(key string) []int64 {
 		id := strings.Split(key, " ")
@@ -74,7 +74,7 @@ func init() {
 	}
 
 	if BaseURL == "" {
-		PrintAndExit("WEB_APP_URL is not filled please fll it")
+		PrintAndExit("BASE_URL is not filled please fll it")
 	}
 }
 
