@@ -25,8 +25,7 @@ var (
 	SupportChat    string
 	SupportChannel string
 
-	BaseURL string 
-
+	BaseURL string
 )
 
 func init() {
