@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from PIL import Image
 import torch
 from transformers import AutoModelForImageClassification, ViTImageProcessor
-import io
+import io, os
 import uvicorn
 from typing import List, Dict, Any
 import time
@@ -244,7 +244,7 @@ if __name__ == "__main__":
     uvicorn.run(
         app,
         host="0.0.0.0",
-        port=8000,
+        port=int(os.getenv("PORT", "8000")),
         workers=1,  # Adjust based on your CPU cores and GPU memory
         log_level="info",
         access_log=True
