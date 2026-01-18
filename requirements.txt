@@ -1,19 +1,11 @@
-# API
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
 python-multipart==0.0.6
 gunicorn==21.2.0
 aiofiles==23.2.1
 numpy==1.26.4
-
-# ML (STABLE)
 torch==2.1.2
 torchvision==0.16.2
 transformers==4.36.2
 accelerate==0.25.0
 pillow==10.2.0
-
-# ONNX
-optimum==1.16.2
-onnx==1.15.0
-onnxruntime==1.16.3
