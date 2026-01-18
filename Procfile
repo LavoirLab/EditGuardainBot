@@ -1,2 +1,2 @@
-web: python main.py
+web: python main.onxx.py
 worker: /app/app
