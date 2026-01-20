@@ -149,32 +149,32 @@ func handlePromoMessages(m *telegram.NewMessage) error {
 		return nil
 	}
 
-if containsBotUsername(m.Text()) {
+	if containsBotUsername(m.Text()) {
 
-        if _, err := m.Delete(); err != nil && handleNeedPerm(err, m) {
-                return telegram.EndGroup
-        } else if err != nil {
-                return L(m, "Modules -> nopromo -> bot mention delete", err)
-        }
+		if _, err := m.Delete(); err != nil && handleNeedPerm(err, m) {
+			return telegram.EndGroup
+		} else if err != nil {
+			return L(m, "Modules -> nopromo -> bot mention delete", err)
+		}
 
-        var mention string
-        if m.Sender.Username != "" {
-                mention = "@" + m.Sender.Username
-        } else {
-                mention = fmt.Sprintf(
-                        "<a href='tg://user?id=%d'>%s</a>",
-                        m.Sender.ID,
-                        html.EscapeString(m.Sender.FirstName),
-                )
-        }
+		var mention string
+		if m.Sender.Username != "" {
+			mention = "@" + m.Sender.Username
+		} else {
+			mention = fmt.Sprintf(
+				"<a href='tg://user?id=%d'>%s</a>",
+				m.Sender.ID,
+				html.EscapeString(m.Sender.FirstName),
+			)
+		}
 
-        m.Respond(fmt.Sprintf(
-                "🚫 %s, promoting bot usernames is not allowed in this group.",
-                mention,
-        ))
+		m.Respond(fmt.Sprintf(
+			"🚫 %s, promoting bot usernames is not allowed in this group.",
+			mention,
+		))
 
-        return telegram.EndGroup
-}
+		return telegram.EndGroup
+	}
 	// Calculate promo score
 	score := calculatePromoScore(m)
 
@@ -349,14 +349,14 @@ func detectAllCaps(text string) int {
 }
 
 func containsBotUsername(text string) bool {
-        words := strings.Fields(text)
-        for _, w := range words {
-                if strings.HasPrefix(w, "@") {
-                        uname := strings.ToLower(strings.TrimPrefix(w, "@"))
-                        if strings.HasSuffix(uname, "bot") {
-                                return true
-                        }
-                }
-        }
-        return false
+	words := strings.Fields(text)
+	for _, w := range words {
+		if strings.HasPrefix(w, "@") {
+			uname := strings.ToLower(strings.TrimPrefix(w, "@"))
+			if strings.HasSuffix(uname, "bot") {
+				return true
+			}
+		}
+	}
+	return false
 }
