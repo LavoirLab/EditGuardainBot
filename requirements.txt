@@ -6,6 +6,6 @@ aiofiles==23.2.1
 numpy==1.26.4
 torch==2.1.2
 torchvision==0.16.2
-transformers==4.36.2
+transformers==4.53.0
 accelerate==0.25.0
 pillow==10.2.0
