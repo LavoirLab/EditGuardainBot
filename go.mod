@@ -5,7 +5,7 @@ go 1.24.2
 require (
 	github.com/amarnathcjd/gogram v1.6.2
 	github.com/joho/godotenv v1.5.1
-	github.com/shirou/gopsutil/v4 v4.25.12
+	github.com/shirou/gopsutil/v4 v4.26.1
 	go.mongodb.org/mongo-driver/v2 v2.4.2
 )
 
@@ -27,6 +27,6 @@ require (
 	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/sync v0.18.0 // indirect
-	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
 )
