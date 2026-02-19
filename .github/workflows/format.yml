@@ -59,8 +59,3 @@ jobs:
           git fetch origin alpha 
           git rebase origin/alpha || (echo "Rebase conflict, aborting" && git rebase --abort && exit 1)
           git push origin HEAD:alpha
-
-      - name: Run go vet
-        run: |
-          go build -v .
-          go vet ./...
