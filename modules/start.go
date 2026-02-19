@@ -146,7 +146,7 @@ Link: <a href="%s">Link 1</a> <a href="%s">Link 2</a>`,
 		)
 
 		database.AddServedUser(m.Sender.ID)
-		_, err := m.ReplyMedia(config.StartImage, telegram.MediaOptions{Caption: caption, ReplyMarkup: btn.Build()})
+		_, err := m.ReplyMedia(config.StartImage, &telegram.MediaOptions{Caption: caption, ReplyMarkup: btn.Build()})
 		return err
 	}
 

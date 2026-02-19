@@ -7,7 +7,6 @@ import (
 	"log"
 	"runtime/debug"
 	"sort"
-	"strconv"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
 
@@ -106,7 +105,7 @@ func LoadAllHandlers(client *tg.Client) {
 			}
 
 			if handle != nil {
-				handle.SetGroup(strconv.Itoa(group))
+				handle.SetGroup(group)
 			}
 		}
 
@@ -123,17 +122,17 @@ func safeCallbackHandler(
 		defer func() {
 			if r := recover(); r != nil {
 				handlePanic(r, cb, true)
-				err = tg.EndGroup
+				err = tg.ErrEndGroup
 			}
 		}()
 		err = handler(cb)
 		if err != nil {
-			if errors.Is(err, tg.EndGroup) {
+			if errors.Is(err, tg.ErrEndGroup) {
 				return err
 			}
 			handlePanic(err, cb, false)
 		}
-		return tg.EndGroup
+		return tg.ErrEndGroup
 	}
 }
 
@@ -155,7 +154,7 @@ func safeMessageHandler(
 		defer func() {
 			if r := recover(); r != nil {
 				handlePanic(r, m, true)
-				err = tg.EndGroup
+				err = tg.ErrEndGroup
 			}
 		}()
 
@@ -166,7 +165,7 @@ func safeMessageHandler(
 		err = handler(m)
 
 		if err != nil {
-			if errors.Is(err, tg.EndGroup) {
+			if errors.Is(err, tg.ErrEndGroup) {
 				return err
 			}
 			m.Client.Log.Error("Handler error: " + err.Error())
@@ -177,7 +176,7 @@ func safeMessageHandler(
 			}
 		}
 
-		return tg.EndGroup
+		return tg.ErrEndGroup
 	}
 }
 

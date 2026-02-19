@@ -59,7 +59,7 @@ func handleParticipantUpdate(pu *telegram.ParticipantUpdate) error {
 				self.ID,
 				pu.New,
 			)
-			return telegram.EndGroup
+			return telegram.ErrEndGroup
 		}
 
 		// bot demoted / removed
@@ -67,10 +67,10 @@ func handleParticipantUpdate(pu *telegram.ParticipantUpdate) error {
 			newStatus == "left" ||
 			newStatus == "kicked" {
 			utils.ClearChatAdminCache(chatID)
-			return telegram.EndGroup
+			return telegram.ErrEndGroup
 		}
 
-		return telegram.EndGroup
+		return telegram.ErrEndGroup
 	}
 
 	// ------------------------------------------------
@@ -96,7 +96,7 @@ func handleParticipantUpdate(pu *telegram.ParticipantUpdate) error {
 			userID,
 			pu.New,
 		)
-		return telegram.EndGroup
+		return telegram.ErrEndGroup
 	}
 
 	// demoted / left / kicked / restricted
@@ -105,10 +105,10 @@ func handleParticipantUpdate(pu *telegram.ParticipantUpdate) error {
 		newStatus == "left" ||
 		newStatus == "kicked" {
 		utils.RemoveAdmin(chatID, userID)
-		return telegram.EndGroup
+		return telegram.ErrEndGroup
 	}
 
-	return telegram.EndGroup
+	return telegram.ErrEndGroup
 }
 
 func getParticipantStatus(p telegram.ChannelParticipant) string {
@@ -136,7 +136,7 @@ func getParticipantStatus(p telegram.ChannelParticipant) string {
 func handleChatAction(m *telegram.NewMessage) error {
 	if !isValidChatType(m) {
 		warnAndLeave(m.Client, m.ChannelID())
-		return telegram.EndGroup
+		return telegram.ErrEndGroup
 	}
 
 	botID := m.Client.Me().ID
@@ -174,7 +174,7 @@ Thanks for adding me to <b>%s</b>! I'm %s, your group management assistant.
 
 Use /help to see what I can do!`, getTitle(m), m.Client.Me().FirstName)
 
-		_, err := m.Reply(welcomeText, telegram.SendOptions{ParseMode: "HTML"})
+		_, err := m.Reply(welcomeText, &telegram.SendOptions{ParseMode: "HTML"})
 		return err
 	}
 }

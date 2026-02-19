@@ -96,7 +96,7 @@ func EcoHandler(m *telegram.NewMessage) error {
 }
 
 func deleteLongMessage(m *telegram.NewMessage) error {
-	if !m.IsGroup() || m.Channel == nil || m.IsAnonmous() || m.IsChannelPost(){
+	if !m.IsGroup() || m.Channel == nil || m.IsAnonymous() || m.IsChannelPost(){
 		return nil
 	}
 
@@ -210,7 +210,7 @@ func sendEchoMessage(m *telegram.NewMessage, text string) error {
 		)
 	}
 
-	_, err = m.Reply(msg, opts)
+	_, err = m.Reply(msg, &opts)
 	return err
 }
 

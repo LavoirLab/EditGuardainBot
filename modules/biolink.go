@@ -86,7 +86,7 @@ func setBioMode(m *telegram.NewMessage) error {
 }
 
 func deleteUserMsgIfBio(m *telegram.NewMessage) error {
-	if !m.IsGroup() || m.Channel == nil || m.IsAnonmous() || m.IsChannelPost(){
+	if !m.IsGroup() || m.Channel == nil || m.IsAnonymous() || m.IsChannelPost(){
 		return nil
 	}
 

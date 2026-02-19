@@ -76,7 +76,7 @@ func extractHostname(input string) string {
 }
 
 func deleteLinkMessage(m *telegram.NewMessage) error {
-	if !m.IsGroup() || m.Channel == nil || m.IsAnonmous() || m.IsChannelPost() {
+	if !m.IsGroup() || m.Channel == nil || m.IsAnonymous() || m.IsChannelPost() {
 		return nil
 	}
 
@@ -123,7 +123,7 @@ func deleteLinkMessage(m *telegram.NewMessage) error {
 				return err
 			}
 			_, err := m.Reply(fmt.Sprintf("⚠️ Unapproved link detected. Only allowed domains are permitted.\nIf this is a mistake, please contact an admin.\n\nOr use <a href='%s'>Example formatted link</a>", config.SupportChannel),
-				telegram.SendOptions{
+				&telegram.SendOptions{
 					ParseMode:   "HTML",
 					LinkPreview: false,
 				},

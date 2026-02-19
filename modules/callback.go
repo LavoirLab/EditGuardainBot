@@ -19,5 +19,5 @@ func init() {
 func closeCB(cq *telegram.CallbackQuery) error {
 	cq.Answer("")
 	cq.Delete()
-	return telegram.EndGroup
+	return telegram.ErrEndGroup
 }

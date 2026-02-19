@@ -37,7 +37,7 @@ func handleHelp(m *telegram.NewMessage) error {
 		keyboard := telegram.NewKeyboard().AddRow(
 			telegram.Button.URL("🗒 Command", fmt.Sprintf("https://t.me/%s?start=help", m.Client.Me().Username)),
 		).Build()
-		_, err := m.Reply("Contact me in PM for help!", telegram.SendOptions{
+		_, err := m.Reply("Contact me in PM for help!", &telegram.SendOptions{
 			ReplyMarkup: keyboard,
 		})
 		return err

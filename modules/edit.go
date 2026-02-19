@@ -22,7 +22,7 @@ func init() {
 }
 
 func deleteEditedMessage(m *telegram.NewMessage) error {
-	if !m.IsGroup() || m.Channel == nil || m.Message.EditHide || m.IsAnonmous() || m.IsChannelPost() {
+	if !m.IsGroup() || m.Channel == nil || m.Message.EditHide || m.IsAnonymous() || m.IsChannelPost() {
 		return nil
 	}
 
