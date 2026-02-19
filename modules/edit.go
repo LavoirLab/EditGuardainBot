@@ -2,39 +2,40 @@ package modules
 
 import (
 	"fmt"
-	"html"
 
 	"github.com/amarnathcjd/gogram/telegram"
 
 	"main/utils"
 )
 
+func init() {
+	RegisterModule(&ModuleInfo{
+		Name:    "edit",
+		ModName: "Edit",
+		Handlers: []HandlerConfig{
+			{
+				Pattern: "edit",
+				Handler: deleteEditedMessage,
+			},
+		},
+	})
+}
+
 func deleteEditedMessage(m *telegram.NewMessage) error {
-	if !IsSupergroup(m) || m.Message.EditHide {
-		return nil
-	}
-	if ShouldIgnoreGroupAnonymous(m) {
-		return nil
-	}
-	if isadmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.Sender.ID); err != nil {
-		L(m, "Modules -> edit -> utils.IsChatAdmin()", err)
-		return nil
-	} else if isadmin {
+	if !m.IsGroup() || m.Channel == nil || m.Message.EditHide {
 		return nil
 	}
 
-	if _, err := m.Delete(); err != nil && handleNeedPerm(err, m) {
-		return telegram.EndGroup
-	} else if err != nil {
-		return L(m, "Modules -> edit -> m.Delete()", err)
+	isadmin, _ := utils.IsAdmin(m.Client, m.ChatID(), m.SenderID())
+	if isadmin {
+		return nil
 	}
 
-	var senderTag string
-	if m.Sender.Username != "" {
-		senderTag = "@" + m.Sender.Username
-	} else {
-		senderTag = fmt.Sprintf(`<a href="tg://user?id=%d">%s</a>`, m.Sender.ID, html.EscapeString(m.Sender.FirstName))
+	if _, err := m.Delete(); err != nil {
+		return err
 	}
+
+	senderTag := utils.MentionHTML(m.Sender)
 
 	reason := fmt.Sprintf(`<b>🚫 %s edited a message.</b> Editing messages is prohibited in this chat to maintain conversation integrity.`, senderTag)
 	p := fmt.Sprintf(`<b>📷 %s edited a photo caption.</b> Image edits are blocked to preserve context.`, senderTag)
@@ -70,6 +71,6 @@ func deleteEditedMessage(m *telegram.NewMessage) error {
 		reason = fmt.Sprintf(`<b>🎞️ %s edited a GIF or animation.</b> Keep animations unchanged for context.`, senderTag)
 	}
 
-	_, err := m.Respond(reason)
-	return L(m, "Modules -> edit -> respond", err)
+	_, err := m.Reply(reason)
+	return err
 }

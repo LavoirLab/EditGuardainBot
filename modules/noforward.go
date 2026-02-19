@@ -1,80 +1,78 @@
-// file: modules/noforward.go
 package modules
 
 import (
 	"fmt"
-	"html"
 	"strings"
 
 	"github.com/amarnathcjd/gogram/telegram"
 
-	"main/utils"
 	"main/database"
+	"main/utils"
 )
 
 func init() {
-	AddHelp(
-		"📤 NoForward",
-		"noforward_help",
-		"📤 <b>Forward Control</b> blocks forwarded messages in the group.\n\n"+
-			"<b>Commands:</b>\n"+
-			"• <code>/noforward on</code> — Block forwarded messages ✅\n"+
-			"• <code>/noforward off</code> — Allow forwarded messages ❌\n\n"+
-			"<b>ℹ️ Note:</b> Forwarded messages will be automatically deleted.\n"+
+	RegisterModule(&ModuleInfo{
+		Name:    "noforward",
+		ModName: "📤 NoForward",
+		Help: "📤 <b>Forward Control</b> blocks forwarded messages in the group.\n\n" +
+			"<b>Commands:</b>\n" +
+			"• <code>/noforward on</code> — Block forwarded messages ✅\n" +
+			"• <code>/noforward off</code> — Allow forwarded messages ❌\n\n" +
+			"<b>ℹ️ Note:</b> Forwarded messages will be automatically deleted.\n" +
 			"👮 Only group admins can configure this setting.",
-	)
+		Handlers: []HandlerConfig{
+			{
+				Pattern: "command:noforward",
+				Handler: RequirePermission("change_info", NoForwardCmd),
+			},
+			{
+				Pattern: "message",
+				Handler: handleForwardedMessage,
+			},
+		},
+	})
 }
 
 func NoForwardCmd(m *telegram.NewMessage) error {
-	args := strings.Fields(m.Text())
-	if isgroup := IsValidSupergroup(m); !isgroup {
-		return telegram.EndGroup
-	}
-	if _, err := m.Delete(); err != nil && handleNeedPerm(err, m) {
-		return telegram.EndGroup
-	} else if err != nil {
-		return L(m, "Modules -> noforward -> m.Delete()", err)
-	}
-	if isadmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
-		return L(m, "Modules -> noforward -> utils.IsChatAdmin()", err)
-	} else if !isadmin {
-		m.Respond("Access denied: Only group admins can use this command.")
-		return telegram.EndGroup
+	args := strings.Fields(m.Args())
+	if _, err := m.Delete(); err != nil {
+		return err
 	}
 
-	if len(args) < 2 {
+	if len(args) < 1 {
 		isEnabled, err := database.IsNoForwardEnabled(m.ChatID())
 		if err != nil {
-			m.Respond("⚠️ Usage:\n<code>/noforward on</code> — Enable\n<code>/noforward off</code> — Disable")
+			_, err := m.Reply("⚠️ Usage:\n<code>/noforward on</code> — Enable\n<code>/noforward off</code> — Disable")
+			return err
 		} else {
 			status := map[bool]string{true: "Enabled", false: "Disabled"}[isEnabled]
-			m.Respond(fmt.Sprintf("Currently NoForward is %s for your chat.", status))
+			_, err := m.Reply(fmt.Sprintf("Currently NoForward is %s for your chat.", status))
+			return err
 		}
-		return telegram.EndGroup
 	}
 
-	arg := strings.ToLower(args[1])
+	arg := strings.ToLower(args[0])
 	enable := arg == "on"
 	if arg != "on" && arg != "off" {
-		m.Respond("❌ Invalid option.\nUse <code>/noforward on</code> or <code>/noforward off</code>")
-		return telegram.EndGroup
+		_, err := m.Reply("❌ Invalid option.\nUse <code>/noforward on</code> or <code>/noforward off</code>")
+		return err
 	}
 
 	if err := database.SetNoForwardEnabled(m.ChatID(), enable); err != nil {
-		m.Respond("❌ Failed to update setting.")
-		return L(m, "Modules -> noforward -> SetNoForwardEnabled", err)
+		_, err := m.Reply("❌ Failed to update setting.")
+		return err
 	}
 
 	status := "📤 Forward blocking enabled ✅"
 	if !enable {
 		status = "✅ Forwarding allowed ❌"
 	}
-	m.Respond(status)
-	return telegram.EndGroup
+	_, err := m.Reply(status)
+	return err
 }
 
 func handleForwardedMessage(m *telegram.NewMessage) error {
-	if !IsSupergroup(m) {
+	if !m.IsGroup() || m.Channel == nil {
 		return nil
 	}
 
@@ -88,33 +86,17 @@ func handleForwardedMessage(m *telegram.NewMessage) error {
 		return nil
 	}
 
-	if ShouldIgnoreGroupAnonymous(m) {
-		return nil
-	}
-
-	isadmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.Sender.ID)
-	if err != nil {
-		L(m, "Modules -> noforward -> utils.IsChatAdmin()", err)
-		return nil
-	}
+	isadmin, _ := utils.IsAdmin(m.Client, m.ChatID(), m.SenderID())
 	if isadmin {
 		return nil
 	}
 
 	// Delete forwarded message
-	if _, err := m.Delete(); err != nil && handleNeedPerm(err, m) {
-		return telegram.EndGroup
-	} else if err != nil {
-		return L(m, "Modules -> noforward -> m.Delete()", err)
+	if _, err := m.Delete(); err != nil {
+		return err
 	}
 
-	var mention string
-	if m.Sender.Username != "" {
-		mention = "@" + m.Sender.Username
-	} else {
-		mention = fmt.Sprintf("<a href='tg://user?id=%d'>%s</a>", m.Sender.ID, html.EscapeString(m.Sender.FirstName))
-	}
-
-	m.Respond(fmt.Sprintf("🚫 %s, forwarding messages is not allowed in this group.", mention))
-	return telegram.EndGroup
+	mention := utils.MentionHTML(m.Sender)
+	_, err = m.Reply(fmt.Sprintf("🚫 %s, forwarding messages is not allowed in this group.", mention))
+	return err
 }

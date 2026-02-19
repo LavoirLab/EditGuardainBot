@@ -7,74 +7,66 @@ import (
 
 	"github.com/amarnathcjd/gogram/telegram"
 
-	"main/utils"
 	"main/database"
 )
 
-func SetLongLimitHandler(m *telegram.NewMessage) error {
-	if !IsValidSupergroup(m) {
-		return telegram.EndGroup
-	}
-	if _, err := m.Delete(); err != nil && handleNeedPerm(err, m) {
-		return telegram.EndGroup
-	} else if err != nil {
-		return L(m, "Modules -> longmode -> m.Delete()", err)
-	}
-	if isadmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
-		return L(m, "Modules -> longmode -> utils.IsChatAdmin()", err)
-	} else if !isadmin {
-		m.Respond("Access denied: Only group admins can use this command.")
+func init() {
+	RegisterModule(&ModuleInfo{
+		Name:    "longmode",
+		ModName: "Long Mode",
+		Handlers: []HandlerConfig{
+			{
+				Pattern: "command:setlonglimit",
+				Handler: RequirePermission("change_info", SetLongLimitHandler),
+			},
+			{
+				Pattern: "command:setlongmode",
+				Handler: RequirePermission("change_info", SetLongModeHandler),
+			},
+		},
+	})
+}
 
-		return telegram.EndGroup
+func SetLongLimitHandler(m *telegram.NewMessage) error {
+	if _, err := m.Delete(); err != nil {
+		return err
 	}
 
 	if m.Args() == "" {
-		m.Respond("Usage: /setlonglimit &lt;number&gt;")
-		return telegram.EndGroup
+		_, err := m.Reply("Usage: /setlonglimit &lt;number&gt;")
+		return err
 	}
 
 	args := strings.Fields(m.Args())
 	limit, convErr := strconv.Atoi(args[0])
 	if convErr != nil || limit < 200 || limit > 4000 {
-		m.Respond("Please provide a valid number between 200 and 4000.")
-		return telegram.EndGroup
+		_, err := m.Reply("Please provide a valid number between 200 and 4000.")
+		return err
 	}
 
 	err := database.SetEchoLimit(m.ChatID(), limit)
 	if err != nil {
-		m.Respond(fmt.Sprintf("Error saving limit: %v", err))
-		return telegram.EndGroup
+		_, err := m.Reply(fmt.Sprintf("Error saving limit: %v", err))
+		return err
 	}
 
-	m.Respond(fmt.Sprintf("✅ Long message limit set to %d characters.", limit))
-	return telegram.EndGroup
+	_, err = m.Reply(fmt.Sprintf("✅ Long message limit set to %d characters.", limit))
+	return err
 }
 
 func SetLongModeHandler(m *telegram.NewMessage) error {
-	if isgroup := IsValidSupergroup(m); !isgroup {
-		return telegram.EndGroup
-	}
-	if _, err := m.Delete(); err != nil && handleNeedPerm(err, m) {
-		return telegram.EndGroup
-	} else if err != nil {
-		return L(m, "Modules -> longmode -> m.Delete()", err)
-	}
-	if isadmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
-		return L(m, "Modules -> longmode -> IsChatAdmin", err)
-	} else if !isadmin {
-		m.Respond("Access denied: Only group admins can use this command.")
-
-		return telegram.EndGroup
+	if _, err := m.Delete(); err != nil {
+		return err
 	}
 
 	if m.Args() == "" {
-		m.Respond("Usage: /setlongmode &lt;off|manual|automatic&gt;")
-		return telegram.EndGroup
+		_, err := m.Reply("Usage: /setlongmode &lt;off|manual|automatic&gt;")
+		return err
 	}
 	mode := strings.ToLower(strings.Fields(m.Args())[0])
 	if mode != "off" && mode != "manual" && mode != "automatic" && mode != "auto" {
-		m.Respond("Invalid mode. Use one of: <code>off</code>, <code>manual</code>, <code>automatic</code>.")
-		return telegram.EndGroup
+		_, err := m.Reply("Invalid mode. Use one of: <code>off</code>, <code>manual</code>, <code>automatic</code>.")
+		return err
 	}
 
 	if mode == "auto" {
@@ -83,9 +75,9 @@ func SetLongModeHandler(m *telegram.NewMessage) error {
 
 	err := database.SetEchoMode(m.ChatID(), mode)
 	if err != nil {
-		return L(m, "Modules -> longmode -> SetEchoMode", err)
+		return err
 	}
 
-	m.Respond(fmt.Sprintf("✅ Long message mode set to '%s'.", mode))
-	return telegram.EndGroup
+	_, err = m.Reply(fmt.Sprintf("✅ Long message mode set to '%s'.", mode))
+	return err
 }

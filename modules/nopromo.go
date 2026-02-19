@@ -1,41 +1,53 @@
-// file: modules/nopromo.go
 package modules
 
 import (
 	"fmt"
-	"html"
 	"regexp"
 	"strings"
 	"unicode"
 
 	"github.com/amarnathcjd/gogram/telegram"
 
-	"main/utils"
 	"main/database"
+	"main/utils"
 )
 
 func init() {
-	AddHelp(
-		"🚫 NoPromo",
-		"nopromo_help",
-		"🚫 <b>Promotional Message Filter</b> blocks spam and promotional content.\n\n"+
-			"<b>Commands:</b>\n"+
-			"• <code>/nopromo on</code> — Enable promo blocking ✅\n"+
-			"• <code>/nopromo off</code> — Disable promo blocking ❌\n\n"+
-			"<b>Detected Patterns:</b>\n"+
-			"• Multiple repeated links (3+ URLs)\n"+
-			"• \"Join now\", \"Click here\" spam\n"+
-			"• 24/7 active, VC, chat group promotions\n"+
-			"• Excessive emojis (15+ unique emojis)\n"+
-			"• ALL-CAPS spam messages\n"+
-			"• Promotional text with multiple lines\n"+
-			"• \"Make new friends\", \"Safe for girls\" patterns\n\n"+
-			"<b>⚠️ Tiered Actions:</b>\n"+
-			"• Score 15-25: Warning message ⚠️\n"+
-			"• Score 25+: Message deleted 🚫\n\n"+
-			"<b>ℹ️ Note:</b> High-score promotional messages will be deleted.\n"+
+	RegisterModule(&ModuleInfo{
+		Name:    "nopromo",
+		ModName: "🚫 NoPromo",
+		Help: "🚫 <b>Promotional Message Filter</b> blocks spam and promotional content.\n\n" +
+			"<b>Commands:</b>\n" +
+			"• <code>/nopromo on</code> — Enable promo blocking ✅\n" +
+			"• <code>/nopromo off</code> — Disable promo blocking ❌\n\n" +
+			"<b>Detected Patterns:</b>\n" +
+			"• Multiple repeated links (3+ URLs)\n" +
+			"• \"Join now\", \"Click here\" spam\n" +
+			"• 24/7 active, VC, chat group promotions\n" +
+			"• Excessive emojis (15+ unique emojis)\n" +
+			"• ALL-CAPS spam messages\n" +
+			"• Promotional text with multiple lines\n" +
+			"• \"Make new friends\", \"Safe for girls\" patterns\n\n" +
+			"<b>⚠️ Tiered Actions:</b>\n" +
+			"• Score 15-25: Warning message ⚠️\n" +
+			"• Score 25+: Message deleted 🚫\n\n" +
+			"<b>ℹ️ Note:</b> High-score promotional messages will be deleted.\n" +
 			"👮 Only group admins can configure this setting.",
-	)
+		Handlers: []HandlerConfig{
+			{
+				Pattern: "command:nopromo",
+				Handler: RequirePermission("change_info", NoPromoCmd),
+			},
+			{
+				Pattern: "command:nopromotion",
+				Handler: RequirePermission("change_info", NoPromoCmd),
+			},
+			{
+				Pattern: "message",
+				Handler: handlePromoMessages,
+			},
+		},
+	})
 }
 
 // Promo detection patterns
@@ -75,55 +87,45 @@ const promoWarningThreshold = 15
 const promoDeleteThreshold = 25
 
 func NoPromoCmd(m *telegram.NewMessage) error {
-	args := strings.Fields(m.Text())
-	if isgroup := IsValidSupergroup(m); !isgroup {
-		return telegram.EndGroup
-	}
-	if _, err := m.Delete(); err != nil && handleNeedPerm(err, m) {
-		return telegram.EndGroup
-	} else if err != nil {
-		return L(m, "Modules -> nopromo -> m.Delete()", err)
-	}
-	if isadmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
-		return L(m, "Modules -> nopromo -> utils.IsChatAdmin()", err)
-	} else if !isadmin {
-		m.Respond("Access denied: Only group admins can use this command.")
-		return telegram.EndGroup
+	args := strings.Fields(m.Args())
+	if _, err := m.Delete(); err != nil {
+		return err
 	}
 
-	if len(args) < 2 {
+	if len(args) < 1 {
 		isEnabled, err := database.IsNoPromoEnabled(m.ChatID())
 		if err != nil {
-			m.Respond("⚠️ Usage:\n<code>/nopromo on</code> — Enable\n<code>/nopromo off</code> — Disable")
+			_, err := m.Reply("⚠️ Usage:\n<code>/nopromo on</code> — Enable\n<code>/nopromo off</code> — Disable")
+			return err
 		} else {
 			status := map[bool]string{true: "Enabled", false: "Disabled"}[isEnabled]
-			m.Respond(fmt.Sprintf("Currently NoPromo is %s for your chat.", status))
+			_, err := m.Reply(fmt.Sprintf("Currently NoPromo is %s for your chat.", status))
+			return err
 		}
-		return telegram.EndGroup
 	}
 
-	arg := strings.ToLower(args[1])
+	arg := strings.ToLower(args[0])
 	enable := arg == "on"
 	if arg != "on" && arg != "off" {
-		m.Respond("❌ Invalid option.\nUse <code>/nopromo on</code> or <code>/nopromo off</code>")
-		return telegram.EndGroup
+		_, err := m.Reply("❌ Invalid option.\nUse <code>/nopromo on</code> or <code>/nopromo off</code>")
+		return err
 	}
 
 	if err := database.SetNoPromoEnabled(m.ChatID(), enable); err != nil {
-		m.Respond("❌ Failed to update setting.")
-		return L(m, "Modules -> nopromo -> SetNoPromoEnabled", err)
+		_, err := m.Reply("❌ Failed to update setting.")
+		return err
 	}
 
 	status := "🚫 Promotional message blocking enabled ✅"
 	if !enable {
 		status = "✅ Promotional messages allowed ❌"
 	}
-	m.Respond(status)
-	return telegram.EndGroup
+	_, err := m.Reply(status)
+	return err
 }
 
 func handlePromoMessages(m *telegram.NewMessage) error {
-	if !IsSupergroup(m) || m.IsReply() {
+	if !m.IsGroup() || m.Channel == nil || m.IsReply() {
 		return nil
 	}
 
@@ -136,44 +138,23 @@ func handlePromoMessages(m *telegram.NewMessage) error {
 		return nil
 	}
 
-	if ShouldIgnoreGroupAnonymous(m) {
-		return nil
-	}
-
-	isadmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.Sender.ID)
-	if err != nil {
-		L(m, "Modules -> nopromo -> utils.IsChatAdmin()", err)
-		return nil
-	}
+	isadmin, _ := utils.IsAdmin(m.Client, m.ChatID(), m.SenderID())
 	if isadmin {
 		return nil
 	}
 
 	if containsBotUsername(m.Text()) {
-
-		if _, err := m.Delete(); err != nil && handleNeedPerm(err, m) {
-			return telegram.EndGroup
-		} else if err != nil {
-			return L(m, "Modules -> nopromo -> bot mention delete", err)
+		if _, err := m.Delete(); err != nil {
+			return err
 		}
 
-		var mention string
-		if m.Sender.Username != "" {
-			mention = "@" + m.Sender.Username
-		} else {
-			mention = fmt.Sprintf(
-				"<a href='tg://user?id=%d'>%s</a>",
-				m.Sender.ID,
-				html.EscapeString(m.Sender.FirstName),
-			)
-		}
-
-		m.Respond(fmt.Sprintf(
+		mention := utils.MentionHTML(m.Sender)
+		_, err = m.Reply(fmt.Sprintf(
 			"🚫 %s, promoting bot usernames is not allowed in this group.",
 			mention,
 		))
 
-		return telegram.EndGroup
+		return err
 	}
 	// Calculate promo score
 	score := calculatePromoScore(m)
@@ -182,30 +163,21 @@ func handlePromoMessages(m *telegram.NewMessage) error {
 		return nil // Not promotional enough
 	}
 
-	var mention string
-	if m.Sender.Username != "" {
-		mention = "@" + m.Sender.Username
-	} else {
-		mention = fmt.Sprintf("<a href='tg://user?id=%d'>%s</a>", m.Sender.ID, html.EscapeString(m.Sender.FirstName))
-	}
+	mention := utils.MentionHTML(m.Sender)
 
 	// Tiered action based on score
 	if score >= promoDeleteThreshold {
 		// High score - Delete message
-		if _, err := m.Delete(); err != nil && handleNeedPerm(err, m) {
-			return telegram.EndGroup
-		} else if err != nil {
-			return L(m, "Modules -> nopromo -> m.Delete()", err)
+		if _, err := m.Delete(); err != nil {
+			return err
 		}
-		m.Respond(fmt.Sprintf("🚫 %s, promotional messages are not allowed in this group. (Score: %d)", mention, score))
+		_, err = m.Reply(fmt.Sprintf("🚫 %s, promotional messages are not allowed in this group. (Score: %d)", mention, score))
 	} else {
 		// Medium score - Warning only
-		m.Respond(fmt.Sprintf("⚠️ %s, your message looks promotional. Please avoid excessive promotional content. (Score: %d)", mention, score), telegram.SendOptions{
-			ReplyID: m.ID,
-		})
+		_, err = m.Reply(fmt.Sprintf("⚠️ %s, your message looks promotional. Please avoid excessive promotional content. (Score: %d)", mention, score))
 	}
 
-	return telegram.EndGroup
+	return err
 }
 
 func calculatePromoScore(m *telegram.NewMessage) int {

@@ -8,7 +8,6 @@ import (
 	"github.com/amarnathcjd/gogram/telegram"
 
 	"main/config"
-	"main/utils"
 	"main/database"
 )
 
@@ -18,11 +17,29 @@ I'm <b><a href="tg://user?id=%d">%s</a></b>, your group’s security bot keeping
 📣 Stay informed with instant alerts.  
 ✅ Add me now and I’ll start protecting your group!`
 
-func startCB(c *telegram.CallbackQuery) error {
+func init() {
+	RegisterModule(&ModuleInfo{
+		Name:    "start",
+		ModName: "Start",
+		Handlers: []HandlerConfig{
+			{
+				Pattern: "command:start",
+				Handler: handleStart,
+			},
+			{
+				Pattern: "callback:start_callback",
+				Handler: handleStartCallback,
+			},
+		},
+	})
+}
+
+func handleStartCallback(c *telegram.CallbackQuery) error {
 	c.Answer("")
 	cl := c.Client.Me()
+	userFullName := strings.TrimSpace(c.Sender.FirstName + " " + c.Sender.LastName)
 	caption := fmt.Sprintf(startMsG,
-		c.Sender.ID, strings.TrimSpace(c.Sender.FirstName+" "+c.Sender.LastName),
+		c.Sender.ID, userFullName,
 		cl.ID, cl.FirstName)
 
 	btn := telegram.NewKeyboard()
@@ -39,75 +56,71 @@ func startCB(c *telegram.CallbackQuery) error {
 		),
 	)
 
-	replyMarkup := btn.Build()
-	c.Edit(caption, &telegram.SendOptions{
-		ReplyMarkup: replyMarkup,
+	_, err := c.Edit(caption, &telegram.SendOptions{
+		ReplyMarkup: btn.Build(),
 	})
-	return telegram.EndGroup
+	return err
 }
 
-func start(m *telegram.NewMessage) error {
-	if m.ChatType() == telegram.EntityUser {
+func handleStart(m *telegram.NewMessage) error {
+	if m.IsPrivate() {
 		m.Delete()
 
-		args := strings.Fields(m.Text())
-		if len(args) >= 2 {
-			modName := args[1]
-			if strings.HasPrefix(modName, "help") {
-				return help(m)
+		args := strings.Fields(m.Args())
+		if len(args) >= 1 {
+			modName := args[0]
+			if modName == "help" {
+				return handleHelp(m)
 			} else if strings.HasPrefix(modName, "info_") {
 				userIDStr := strings.TrimPrefix(modName, "info_")
 				userID, err := strconv.ParseInt(userIDStr, 10, 64)
-				if err != nil {
-					return err
-				}
+				if err == nil {
+					peer, err := m.Client.GetPeer(userID)
+					if err == nil {
+						var (
+							Name  string
+							ID    int64
+							Link1 string
+							Link2 string
+						)
 
-				peer, err := m.Client.GetPeer(userID)
-				if err != nil {
-					return err
-				}
+						switch p := peer.(type) {
+						case *telegram.UserObj:
+							ID = p.ID
+							Name = strings.TrimSpace(p.FirstName + " " + p.LastName)
+							Link2 = fmt.Sprintf("tg://openmessage?user_id=%d", ID)
+							if p.Username != "" {
+								Link1 = fmt.Sprintf("t.me/%s", p.Username)
+							} else {
+								Link1 = fmt.Sprintf("tg://user?id=%d", ID)
+							}
+						case *telegram.Channel:
+							ID = p.ID
+							Name = p.Title
+							if p.Username != "" {
+								Link1 = "https://t.me/" + p.Username
+								Link2 = Link1
+							} else {
+								Link1 = fmt.Sprintf("https://t.me/c/%d/%d", ID, m.ID)
+								Link2 = Link1
+							}
+						}
 
-				var (
-					Name  string
-					ID    int64
-					Link1 string
-					Link2 string
-				)
-
-				switch p := peer.(type) {
-				case *telegram.UserObj:
-					ID = p.ID
-					Name = strings.TrimSpace(p.FirstName + " " + p.LastName)
-					Link2 = fmt.Sprintf("tg://openmessage?user_id=%d", ID)
-					if p.Username != "" {
-						Link1 = fmt.Sprintf("t.me/%s", p.Username)
-					} else {
-						Link1 = fmt.Sprintf("tg://user?id=%d", ID)
-					}
-				case *telegram.Channel:
-					ID = p.ID
-					Name = p.Title
-					if p.Username != "" {
-						Link1 = "https://t.me/" + p.Username
-						Link2 = Link1
-					} else {
-						Link1 = fmt.Sprintf("https://t.me/c/%d/%d", ID, m.ID)
-						Link2 = Link1
-					}
-
-				}
-
-				info := fmt.Sprintf(`
+						info := fmt.Sprintf(`
 Name: %s
 Id: %d
 Link: <a href="%s">Link 1</a> <a href="%s">Link 2</a>`,
-					Name, ID, Link1, Link2)
+							Name, ID, Link1, Link2)
 
-				return m.E(m.Respond(info))
+						_, err = m.Reply(info)
+						return err
+					}
+				}
 			}
 
-			if h := GetHelp(modName); h != "" {
-				return m.E(m.Respond(h))
+			if module, exists := GetModule(modName); exists && module.Help != "" {
+				_, err := m.Reply(module.Help)
+				return err
 			}
 		}
 
@@ -132,38 +145,22 @@ Link: <a href="%s">Link 1</a> <a href="%s">Link 2</a>`,
 			),
 		)
 
-		replyMarkup := btn.Build()
-
 		database.AddServedUser(m.Sender.ID)
-		return m.E(m.RespondMedia(config.StartImage, telegram.MediaOptions{Caption: caption, ReplyMarkup: replyMarkup}))
-
+		_, err := m.ReplyMedia(config.StartImage, telegram.MediaOptions{Caption: caption, ReplyMarkup: btn.Build()})
+		return err
 	}
 
-	if IsBasicGroup(m) {
-		msg := `⚠️ Warning: I can't function in a basic group!
-
-To use my features, please upgrade this group to a supergroup.
-
-✅ How to upgrade:
-1. Go to Group Settings.
-2. Tap on "Chat History" and set it to "Visible".
-3. Re-add me, and I'll be ready to help!`
-
-		m.Respond(msg)
-		m.Delete()
-		m.Client.LeaveChannel(m.ChatID(), true)
+	if !m.IsGroup() || m.Channel == nil {
+		// Basic group check logic from old watcher/grouponly could go here but watcher handles it now
+		return nil
 	}
 
 	// Supergroup Chat
-	if IsSupergroup(m) {
-		m.Delete()
-		database.AddServedChat(m.ChatID())
-		if !utils.WarnIfLackOfPms(m.Client, m, m.ChatID()) {
-			return nil
-		}
-
-		return m.E(m.Respond("✅ I am active and ready to protect this supergroup!"))
-	}
-
-	return nil
+	m.Delete()
+	database.AddServedChat(m.ChatID())
+	// In the new system, we don't need to manually check WarnIfLackOfPms here if we trust the watcher/registry
+	// but let's keep it for compatibility if desired.
+	// Actually, let's keep it simple as requested "old UI messages".
+	_, err := m.Reply("✅ I am active and ready to protect this supergroup!")
+	return err
 }

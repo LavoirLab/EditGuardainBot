@@ -1,201 +1,255 @@
-// file: modules/modules.go - UPDATED VERSION
 package modules
 
 import (
+	"errors"
 	"fmt"
+	"html"
 	"log"
-	"slices"
+	"runtime/debug"
+	"sort"
+	"strconv"
 
-	"github.com/amarnathcjd/gogram/telegram"
+	tg "github.com/amarnathcjd/gogram/telegram"
 
 	"main/config"
+	"main/utils"
 )
 
-type HelpModule struct {
-	Callback string
+type ModuleInfo struct {
+	Name     string
+	ModName  string
 	Help     string
+	Handlers []HandlerConfig
 }
 
-type DeferredHandler struct {
-	Pattern any
+type HandlerConfig struct {
+	Pattern string
 	Handler any
-	Filters []telegram.Filter
+	Group   int
 }
 
-var (
-	Continue error = nil
-	Commands       = []string{
-		"/biolink",
-		"/setlonglimit",
-		"/setlongmode",
-		"/echo",
-		"/gcast",
-		"/ping",
-		"/reload",
-		"/start",
-		"/stats",
-		"/help",
-		"/nolinks",
-		"/noabuse",
-		"/allowlink",
-		"/allowhost",
-		"/removelink",
-		"/listlinks",
-		"/settings",
-		"/setting",
-		// NEW COMMANDS
-		"/mediadelete",
-		"/setmediadelay",
-		"/mediaexcept",
-		"/filedelete",
-		"/fileexcept",
-		"/msgdelete",
-		"/setmsgdelay",
-		"/noforward",
-		"/nophone",
-		"/purge",
-		"/nohashtags",
-		"/nopromo",
+var registeredModules = make(map[string]*ModuleInfo)
+var BotInfo *tg.UserObj
+
+func RegisterModule(info *ModuleInfo) {
+	if _, exists := registeredModules[info.Name]; exists {
+		log.Fatalf("Module '%s' is already registered", info.Name)
 	}
-)
-var commandSet map[string]struct{}
-var (
-	ModulesHelp = make(map[string]*HelpModule, 0)
-	handler     = make([]DeferredHandler, 0)
-)
-var BotInfo *telegram.UserObj
 
-func init() {
-	commandSet = make(map[string]struct{}, len(Commands))
-	for _, cmd := range Commands {
-		commandSet[cmd] = struct{}{}
+	registeredModules[info.Name] = info
+	log.Printf("✓ Registered module: %s", info.ModName)
+}
+
+func GetModule(name string) (*ModuleInfo, bool) {
+	mod, exists := registeredModules[name]
+	return mod, exists
+}
+
+func GetAllModules() []*ModuleInfo {
+	modules := make([]*ModuleInfo, 0, len(registeredModules))
+	for _, mod := range registeredModules {
+		modules = append(modules, mod)
 	}
-}
 
-func FilterOwner(m *telegram.NewMessage) bool {
-	return slices.Contains(config.OwnerId, m.SenderID())
-}
-
-func LoadMods(c *telegram.Client) {
-	c.UpdatesGetState()
-
-	// Existing commands
-	c.On("command:biolink", setBioMode)
-	c.On("command:setlonglimit", SetLongLimitHandler)
-	c.On("command:gcast", BroadcastFunc)
-	c.On("command:setlongmode", SetLongModeHandler)
-	c.On("command:echo", EcoHandler)
-	c.On("command:ping", pingHandler)
-	c.On("command:reload", ReloadHandler)
-	c.On("command:start", start)
-	c.On("command:stats", stats)
-	c.On("command:help", help)
-	c.On("command:nolinks", NoLinksCmd)
-	c.On("command:noabuse", NoAbuseCmd)
-	c.On("command:allowlink", AllowHostCmd)
-	c.On("command:allowhost", AllowHostCmd)
-	c.On("command:removelink", RemoveHostCmd)
-	c.On("command:listlinks", ListAllowedHosts)
-
-	// NEW FEATURE COMMANDS
-	c.On("command:mediadelete", MediaDeleteCmd)
-	c.On("command:setmediadelay", SetMediaDelayCmd)
-	c.On("command:msgdelete", MsgDeleteCmd)
-	c.On("command:setmsgdelay", SetMsgDelayCmd)
-	c.On("command:noforward", NoForwardCmd)
-	c.On("command:nophone", NoPhoneCmd)
-	c.On("command:purge", PurgeCmd)
-	c.On("command:(nohashtags|nohashtag)", NoHashtagsCmd)
-	c.On("command:(nopromo|nopromotion)", NoPromoCmd)
-
-	// Owner commands
-	c.On("command:sh", ShellHandle, telegram.FilterFunc(FilterOwner))
-	c.On("command:bash", ShellHandle, telegram.FilterFunc(FilterOwner))
-	c.On("command:ls", LsHandler, telegram.FilterFunc(FilterOwner))
-	c.On("command:eval", EvalHandle, telegram.FilterFunc(FilterOwner))
-
-	// Message handlers
-	c.On("message", OnMessageFnc)
-	c.On("edit", deleteEditedMessage)
-	c.On("participant", botAddded)
-
-	// Callback handlers
-	c.On("callback:close", closeCB)
-	c.On("callback:help", helpCB)
-	c.On("callback:start_callback", startCB)
-
-	for _, h := range handler {
-		c.On(h.Pattern, h.Handler, h.Filters...)
-	}
-}
-
-func AddHelp(name, callback, help string, filters ...telegram.Filter) {
-	handler = append(handler, DeferredHandler{
-		Pattern: "callback:" + callback,
-		Handler: helpModuleCB,
-		Filters: filters,
+	sort.Slice(modules, func(i, j int) bool {
+		return modules[i].ModName < modules[j].ModName
 	})
-	ModulesHelp[name] = &HelpModule{
-		Callback: callback,
-		Help:     help,
-	}
+
+	return modules
 }
 
-func GetHelp(callback string) string {
-	for _, data := range ModulesHelp {
-		if data.Callback == callback {
-			return data.Help
+func GetModulesWithHelp() []*ModuleInfo {
+	modules := make([]*ModuleInfo, 0)
+	for _, mod := range registeredModules {
+		if mod.Help != "" {
+			modules = append(modules, mod)
 		}
 	}
-	return ""
+
+	sort.Slice(modules, func(i, j int) bool {
+		return modules[i].ModName < modules[j].ModName
+	})
+
+	return modules
 }
 
-func orCont(err error) error {
-	if err != nil {
-		return err
-	}
-	return telegram.EndGroup
-}
+func LoadAllHandlers(client *tg.Client) {
+	log.Println("Loading handlers from registered modules...")
 
-func L(m *telegram.NewMessage, context string, err error) error {
-	if err == nil {
-		return telegram.EndGroup
+	names := make([]string, 0, len(registeredModules))
+	for name := range registeredModules {
+		names = append(names, name)
 	}
-	if BotInfo == nil {
-		me, meErr := m.Client.GetMe()
-		if meErr != nil {
-			return telegram.EndGroup
-		}
-		BotInfo = me
-	}
-	msg := fmt.Sprintf(
-		"<b>⚠️ Error Occurred</b>\n"+
-			"<b>🔹 Context:</b> <code>%s</code>\n"+
-			"%s"+
-			"<b>🗨️ Message:</b> <code>%s</code>\n"+
-			"<b>❗ Error:</b> <code>%s</code>",
-		context,
-		func() string {
-			if m.GetCommand() != "" {
-				return fmt.Sprintf("<b>💬 Command:</b> <code>%s</code>\n", m.Text())
+	sort.Strings(names)
+
+	for _, name := range names {
+		module := registeredModules[name]
+
+		for _, hConfig := range module.Handlers {
+			group := hConfig.Group
+			if group == 0 {
+				group = 10
 			}
-			return ""
-		}(),
-		m.Text(),
-		err.Error(),
-	)
 
-	if BotInfo.Username != "ViyomBot" && BotInfo.Username != "MasterGuardiansBot" {
-		m.Client.SendMessage("@Viyomx", msg)
-		return telegram.EndGroup
+			var handle tg.Handle
+
+			switch h := hConfig.Handler.(type) {
+			case func(*tg.NewMessage) error:
+				wrapped := safeMessageHandler(h)
+				handle = client.On(hConfig.Pattern, wrapped)
+
+			case func(*tg.CallbackQuery) error:
+				wrapped := safeCallbackHandler(h)
+				handle = client.On(hConfig.Pattern, wrapped)
+			default:
+				handle = client.On(hConfig.Pattern, h)
+			}
+
+			if handle != nil {
+				handle.SetGroup(strconv.Itoa(group))
+			}
+		}
+
+		log.Printf("✓ Loaded handlers for module: %s", module.ModName)
 	}
 
-	log.Printf("[ERROR] %s: %v", context, err)
+	log.Printf("✓ Successfully loaded %d modules", len(registeredModules))
+}
 
-	m.Client.SendMessage(config.LoggerId, msg)
-	for id := range config.OwnerId {
-		m.Client.SendMessage(id, msg)
+func safeCallbackHandler(
+	handler func(*tg.CallbackQuery) error,
+) func(*tg.CallbackQuery) error {
+	return func(cb *tg.CallbackQuery) (err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				handlePanic(r, cb, true)
+				err = tg.EndGroup
+			}
+		}()
+		err = handler(cb)
+		if err != nil {
+			if errors.Is(err, tg.EndGroup) {
+				return err
+			}
+			handlePanic(err, cb, false)
+		}
+		return tg.EndGroup
+	}
+}
+
+func safeMessageHandler(
+	handler func(*tg.NewMessage) error,
+) func(*tg.NewMessage) error {
+	return func(m *tg.NewMessage) (err error) {
+		if m.Message != nil && m.Message.Post {
+			return nil
+		}
+
+		m.Client.Log.Info(
+			fmt.Sprintf("Handling message from %d in chat %d",
+				m.SenderID(),
+				m.ChannelID(),
+			),
+		)
+
+		defer func() {
+			if r := recover(); r != nil {
+				handlePanic(r, m, true)
+				err = tg.EndGroup
+			}
+		}()
+
+		cmd := m.GetCommand()
+		if cmd != "" {
+			m.Client.Log.Debug("Executing handler for command " + cmd)
+		}
+		err = handler(m)
+
+		if err != nil {
+			if errors.Is(err, tg.EndGroup) {
+				return err
+			}
+			m.Client.Log.Error("Handler error: " + err.Error())
+			handlePanic(err, m, false)
+		} else {
+			if cmd != "" {
+				m.Client.Log.Info("Handler completed successfully for command " + cmd)
+			}
+		}
+
+		return tg.EndGroup
+	}
+}
+
+func handlePanic(r, ctx interface{}, isPanic bool) {
+	stack := html.EscapeString(string(debug.Stack()))
+
+	var userMention, handlerType, chatInfo, messageInfo, errorMessage string
+	var client *tg.Client
+
+	switch c := ctx.(type) {
+	case *tg.NewMessage:
+		userMention = utils.MentionHTML(c.Sender)
+		handlerType = "message"
+		chatInfo = fmt.Sprintf("ChatID: %d", c.ChannelID())
+		messageInfo = fmt.Sprintf("Message: %s\nLink: %s", html.EscapeString(c.Text()), c.Link())
+		errorMessage = html.EscapeString(fmt.Sprint(r))
+		client = c.Client
+
+	case *tg.CallbackQuery:
+		userMention = utils.MentionHTML(c.Sender)
+		handlerType = "callback"
+		chatInfo = fmt.Sprintf("ChatID: %d", c.ChatID)
+		messageInfo = fmt.Sprintf("Data: %s", html.EscapeString(c.DataString()))
+		errorMessage = html.EscapeString(fmt.Sprint(r))
+		client = c.Client
 	}
 
-	return telegram.EndGroup
+	if client == nil {
+		return
+	}
+
+	logMsg := "🚨 Error in %s handler:\nFrom: %s\n%s\n%s\nError: `%v`"
+	shortMsg := "<b>Error in %s handler</b>\n<b>From:</b> %s\n%s\n%s\n<b>Error:</b>\n<code>%s</code>"
+
+	if isPanic {
+		logMsg = "⚠️ Panic recovered in %s handler:\nFrom: %s\n%s\n%s\nError: `%v`\nStack:\n%s"
+		shortMsg = "<b>⚠️ Panic in %s handler</b>\n<b>From:</b> %s\n%s\n%s\n<b>Error:</b>\n<code>%s</code>\n<pre>%s</pre>"
+	}
+
+	if isPanic {
+		client.Log.Error(fmt.Sprintf(
+			logMsg,
+			handlerType,
+			userMention,
+			chatInfo,
+			messageInfo,
+			r,
+			stack,
+		))
+	} else {
+		client.Log.Error(fmt.Sprintf(logMsg, handlerType, userMention, chatInfo, messageInfo, r))
+	}
+
+	var short string
+	if isPanic {
+		short = fmt.Sprintf(
+			shortMsg,
+			handlerType,
+			userMention,
+			chatInfo,
+			messageInfo,
+			errorMessage,
+			stack,
+		)
+	} else {
+		short = fmt.Sprintf(shortMsg, handlerType, userMention, chatInfo, messageInfo, errorMessage)
+	}
+
+	if _, sendErr := client.SendMessage(config.LoggerId, short, &tg.SendOptions{ParseMode: "HTML"}); sendErr != nil {
+		client.Log.Error(fmt.Sprintf(
+			"Failed to send error message to log chat: %v",
+			sendErr,
+		))
+	}
 }

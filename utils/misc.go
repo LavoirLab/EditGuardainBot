@@ -1,8 +1,10 @@
 package utils
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func LoadTyped[T any](cache interface {
@@ -29,4 +31,40 @@ func EncodeDigits(num int64) string {
 		sb.WriteByte(digitMap[d])
 	}
 	return sb.String()
+}
+
+func ParseDuration(s string) (time.Duration, error) {
+	s = strings.TrimSpace(strings.ToLower(s))
+
+	if len(s) < 2 {
+		return 0, fmt.Errorf("invalid duration")
+	}
+
+	unit := s[len(s)-1]
+	numStr := s[:len(s)-1]
+	num, err := strconv.Atoi(numStr)
+	if err != nil {
+		return 0, err
+	}
+
+	switch unit {
+	case 'm':
+		return time.Duration(num) * time.Minute, nil
+	case 'h':
+		return time.Duration(num) * time.Hour, nil
+	default:
+		return 0, fmt.Errorf("invalid unit (use m or h)")
+	}
+}
+
+func FormatDuration(d time.Duration) string {
+	if d < time.Hour {
+		return fmt.Sprintf("%dm", int(d.Minutes()))
+	}
+	hours := int(d.Hours())
+	minutes := int(d.Minutes()) % 60
+	if minutes == 0 {
+		return fmt.Sprintf("%dh", hours)
+	}
+	return fmt.Sprintf("%dh %dm", hours, minutes)
 }

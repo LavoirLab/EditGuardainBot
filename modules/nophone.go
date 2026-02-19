@@ -1,87 +1,85 @@
-// file: modules/nophone.go
 package modules
 
 import (
 	"fmt"
-	"html"
 	"regexp"
 	"strings"
 
 	"github.com/amarnathcjd/gogram/telegram"
 
-	"main/utils"
 	"main/database"
+	"main/utils"
 )
 
 func init() {
-	AddHelp(
-		"📞 NoPhone",
-		"nophone_help",
-		"📞 <b>Phone Number Protection</b> blocks messages containing phone numbers.\n\n"+
-			"<b>Commands:</b>\n"+
-			"• <code>/nophone on</code> — Block phone numbers ✅\n"+
-			"• <code>/nophone off</code> — Allow phone numbers ❌\n\n"+
-			"<b>Detection:</b>\n"+
-			"• International format: +91 9876543210\n"+
-			"• With spaces/dashes: +1-234-567-8900\n"+
-			"• Without plus: 919876543210\n\n"+
-			"<b>ℹ️ Note:</b> Messages with phone numbers will be deleted.\n"+
+	RegisterModule(&ModuleInfo{
+		Name:    "nophone",
+		ModName: "📞 NoPhone",
+		Help: "📞 <b>Phone Number Protection</b> blocks messages containing phone numbers.\n\n" +
+			"<b>Commands:</b>\n" +
+			"• <code>/nophone on</code> — Block phone numbers ✅\n" +
+			"• <code>/nophone off</code> — Allow phone numbers ❌\n\n" +
+			"<b>Detection:</b>\n" +
+			"• International format: +91 9876543210\n" +
+			"• With spaces/dashes: +1-234-567-8900\n" +
+			"• Without plus: 919876543210\n\n" +
+			"<b>ℹ️ Note:</b> Messages with phone numbers will be deleted.\n" +
 			"👮 Only group admins can configure this setting.",
-	)
+		Handlers: []HandlerConfig{
+			{
+				Pattern: "command:nophone",
+				Handler: RequirePermission("change_info", NoPhoneCmd),
+			},
+			{
+				Pattern: "message",
+				Handler: handlePhoneNumber,
+			},
+		},
+	})
 }
 
 var phoneRegex = regexp.MustCompile(`(?:(?:\+|00)[1-9]\d{0,3}[\s.-]?)?\(?\d{1,4}\)?[\s.-]?\d{1,4}[\s.-]?\d{1,9}`)
 
 func NoPhoneCmd(m *telegram.NewMessage) error {
-	args := strings.Fields(m.Text())
-	if isgroup := IsValidSupergroup(m); !isgroup {
-		return telegram.EndGroup
-	}
-	if _, err := m.Delete(); err != nil && handleNeedPerm(err, m) {
-		return telegram.EndGroup
-	} else if err != nil {
-		return L(m, "Modules -> nophone -> m.Delete()", err)
-	}
-	if isadmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
-		return L(m, "Modules -> nophone -> utils.IsChatAdmin()", err)
-	} else if !isadmin {
-		m.Respond("Access denied: Only group admins can use this command.")
-		return telegram.EndGroup
+	args := strings.Fields(m.Args())
+	if _, err := m.Delete(); err != nil {
+		return err
 	}
 
-	if len(args) < 2 {
+	if len(args) < 1 {
 		isEnabled, err := database.IsNoPhoneEnabled(m.ChatID())
 		if err != nil {
-			m.Respond("⚠️ Usage:\n<code>/nophone on</code> — Enable\n<code>/nophone off</code> — Disable")
+			_, err := m.Reply("⚠️ Usage:\n<code>/nophone on</code> — Enable\n<code>/nophone off</code> — Disable")
+			return err
 		} else {
 			status := map[bool]string{true: "Enabled", false: "Disabled"}[isEnabled]
-			m.Respond(fmt.Sprintf("Currently NoPhone is %s for your chat.", status))
+			_, err := m.Reply(fmt.Sprintf("Currently NoPhone is %s for your chat.", status))
+			return err
 		}
-		return telegram.EndGroup
 	}
 
-	arg := strings.ToLower(args[1])
+	arg := strings.ToLower(args[0])
 	enable := arg == "on"
 	if arg != "on" && arg != "off" {
-		m.Respond("❌ Invalid option.\nUse <code>/nophone on</code> or <code>/nophone off</code>")
-		return telegram.EndGroup
+		_, err := m.Reply("❌ Invalid option.\nUse <code>/nophone on</code> or <code>/nophone off</code>")
+		return err
 	}
 
 	if err := database.SetNoPhoneEnabled(m.ChatID(), enable); err != nil {
-		m.Respond("❌ Failed to update setting.")
-		return L(m, "Modules -> nophone -> SetNoPhoneEnabled", err)
+		_, err := m.Reply("❌ Failed to update setting.")
+		return err
 	}
 
 	status := "📞 Phone number blocking enabled ✅"
 	if !enable {
 		status = "✅ Phone numbers allowed ❌"
 	}
-	m.Respond(status)
-	return telegram.EndGroup
+	_, err := m.Reply(status)
+	return err
 }
 
 func handlePhoneNumber(m *telegram.NewMessage) error {
-	if !IsSupergroup(m) {
+	if !m.IsGroup() || m.Channel == nil {
 		return nil
 	}
 
@@ -94,15 +92,7 @@ func handlePhoneNumber(m *telegram.NewMessage) error {
 		return nil
 	}
 
-	if ShouldIgnoreGroupAnonymous(m) {
-		return nil
-	}
-
-	isadmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.Sender.ID)
-	if err != nil {
-		L(m, "Modules -> nophone -> utils.IsChatAdmin()", err)
-		return nil
-	}
+	isadmin, _ := utils.IsAdmin(m.Client, m.ChatID(), m.SenderID())
 	if isadmin {
 		return nil
 	}
@@ -113,21 +103,13 @@ func handlePhoneNumber(m *telegram.NewMessage) error {
 	}
 
 	// Delete message with phone number
-	if _, err := m.Delete(); err != nil && handleNeedPerm(err, m) {
-		return telegram.EndGroup
-	} else if err != nil {
-		return L(m, "Modules -> nophone -> m.Delete()", err)
+	if _, err := m.Delete(); err != nil {
+		return err
 	}
 
-	var mention string
-	if m.Sender.Username != "" {
-		mention = "@" + m.Sender.Username
-	} else {
-		mention = fmt.Sprintf("<a href='tg://user?id=%d'>%s</a>", m.Sender.ID, html.EscapeString(m.Sender.FirstName))
-	}
-
-	m.Respond(fmt.Sprintf("🚫 %s, sharing phone numbers is not allowed in this group.", mention))
-	return telegram.EndGroup
+	mention := utils.MentionHTML(m.Sender)
+	_, err = m.Reply(fmt.Sprintf("🚫 %s, sharing phone numbers is not allowed in this group.", mention))
+	return err
 }
 
 func containsPhoneNumber(text string) bool {
@@ -136,13 +118,9 @@ func containsPhoneNumber(text string) bool {
 		return false
 	}
 
-	// Filter out false positives (numbers that are too short or clearly not phone numbers)
 	for _, match := range matches {
-		// Remove all non-digit characters
 		digits := regexp.MustCompile(`\d`).FindAllString(match, -1)
 		digitCount := len(digits)
-
-		// Valid phone numbers typically have 10-15 digits
 		if digitCount >= 10 && digitCount <= 15 {
 			return true
 		}

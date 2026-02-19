@@ -16,7 +16,6 @@ import (
 func main() {
 	defer database.Disconnect()
 
-
 	client, err := telegram.NewClient(telegram.ClientConfig{
 		AppID:     config.ApiId,
 		AppHash:   config.ApiHash,
@@ -40,7 +39,7 @@ func main() {
 		client.SendMessage(config.LoggerId, "Failed to getMe: "+err.Error())
 	}
 
-	modules.LoadMods(client)
+	modules.LoadAllHandlers(client)
 
 	client.SendMessage(config.LoggerId, "Started...")
 	log.Println("✅ Bot Started")

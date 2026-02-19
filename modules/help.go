@@ -9,74 +9,69 @@ import (
 	"github.com/amarnathcjd/gogram/telegram"
 )
 
-func help(m *telegram.NewMessage) error {
+func init() {
+	RegisterModule(&ModuleInfo{
+		Name:    "help",
+		ModName: "Help",
+		Help:    "Contact me in PM for help!",
+		Handlers: []HandlerConfig{
+			{
+				Pattern: "command:help",
+				Handler: handleHelp,
+			},
+			{
+				Pattern: "callback:help",
+				Handler: handleHelpCallback,
+			},
+			{
+				Pattern: "callback:help_module",
+				Handler: handleHelpModuleCallback,
+			},
+		},
+	})
+}
+
+func handleHelp(m *telegram.NewMessage) error {
 	m.Delete()
-	if m.ChatType() != telegram.EntityUser {
-		keyboard := telegram.Button.Keyboard(
-			telegram.Button.Row(
-				telegram.Button.URL("🗒 Command", fmt.Sprintf("https://t.me/%s?start=help", m.Client.Me().Username)),
-			),
-		)
-		_, err := m.Respond(
-			"Contact me in PM for help!", telegram.SendOptions{
-				ReplyMarkup: keyboard,
-			})
-		return L(m, "Modules -> help -> pvt-respond", err)
+	if !m.IsPrivate() {
+		keyboard := telegram.NewKeyboard().AddRow(
+			telegram.Button.URL("🗒 Command", fmt.Sprintf("https://t.me/%s?start=help", m.Client.Me().Username)),
+		).Build()
+		_, err := m.Reply("Contact me in PM for help!", telegram.SendOptions{
+			ReplyMarkup: keyboard,
+		})
+		return err
 	}
 
+	return sendFullHelp(m.Client, m.ChatID(), false)
+}
+
+func handleHelpCallback(c *telegram.CallbackQuery) error {
+	c.Answer("")
+	return sendFullHelp(c.Client, c.ChatID, true)
+}
+
+func sendFullHelp(client *telegram.Client, chatID int64, isEdit bool) error {
 	keyboard := telegram.NewKeyboard()
 
-	var buttons []telegram.KeyboardButton
-	keys := make([]string, 0, len(ModulesHelp))
-	for name := range ModulesHelp {
-		keys = append(keys, name)
-	}
+	modules := GetModulesWithHelp()
 
-	sort.Slice(keys, func(i, j int) bool {
-		return stripPrefixEmoji(keys[i]) < stripPrefixEmoji(keys[j])
+	sort.Slice(modules, func(i, j int) bool {
+		return stripPrefixEmoji(modules[i].ModName) < stripPrefixEmoji(modules[j].ModName)
 	})
 
-	for _, name := range keys {
-		mod := ModulesHelp[name]
-		button := telegram.Button.Data(name, mod.Callback)
+	var buttons []telegram.KeyboardButton
+
+	for _, mod := range modules {
+		if mod.Name == "help" || mod.Name == "start" {
+			continue
+		}
+		button := telegram.Button.Data(mod.ModName, "help_module:"+mod.Name)
 		buttons = append(buttons, button)
 	}
 
 	keyboard.NewColumn(2, buttons...)
 	keyboard.AddRow(telegram.Button.Data("🗑️ Close", "close"))
-	helpText := `📚 <b>Bot Command Help</b>
-
-Here you'll find details for all available plugins and features.
-
-👇 Tap the buttons below to view help for each module:`
-
-	_, err := m.Respond(helpText, telegram.SendOptions{
-		ReplyMarkup: keyboard.Build(),
-	})
-	return L(m, "Modules -> help -> grp/respond", err)
-}
-
-func helpCB(c *telegram.CallbackQuery) error {
-	keyboard := telegram.NewKeyboard()
-
-	var buttons []telegram.KeyboardButton
-	keys := make([]string, 0, len(ModulesHelp))
-	for name := range ModulesHelp {
-		keys = append(keys, name)
-	}
-
-	sort.Slice(keys, func(i, j int) bool {
-		return stripPrefixEmoji(keys[i]) < stripPrefixEmoji(keys[j])
-	})
-
-	for _, name := range keys {
-		mod := ModulesHelp[name]
-		button := telegram.Button.Data(name, mod.Callback)
-		buttons = append(buttons, button)
-	}
-
-	keyboard.NewColumn(2, buttons...)
-	keyboard.AddRow(telegram.Button.Data("⬅️ Back", "start_callback"))
 
 	helpText := `📚 <b>Bot Command Help</b>
 
@@ -84,30 +79,36 @@ Here you'll find details for all available plugins and features.
 
 👇 Tap the buttons below to view help for each module:`
 
-	_, err := c.Edit(helpText, &telegram.SendOptions{
-		ReplyMarkup: keyboard.Build(),
-	})
+	var err error
+	if isEdit {
+		_, err = client.EditMessage(chatID, 0, helpText, &telegram.SendOptions{
+			ReplyMarkup: keyboard.Build(),
+		})
+	} else {
+		_, err = client.SendMessage(chatID, helpText, &telegram.SendOptions{
+			ReplyMarkup: keyboard.Build(),
+		})
+	}
 	return err
 }
 
-func helpModuleCB(c *telegram.CallbackQuery) error {
-	var helpText string
-	for _, module := range ModulesHelp {
-		if module.Callback == string(c.Data) {
-			helpText = module.Help
-			break
-		}
+func handleHelpModuleCallback(c *telegram.CallbackQuery) error {
+	data := c.DataString()
+	parts := strings.SplitN(data, ":", 2)
+	if len(parts) != 2 {
+		return nil
+	}
+	moduleName := parts[1]
+
+	module, exists := GetModule(moduleName)
+	helpText := "❌ No help found for this module."
+	if exists && module.Help != "" {
+		helpText = module.Help
 	}
 
-	if helpText == "" {
-		helpText = "❌ No help found for this module."
-	}
-
-	keyboard := telegram.Button.Keyboard(
-		telegram.Button.Row(
-			telegram.Button.Data("⬅️ Back", "help"),
-		),
-	)
+	keyboard := telegram.NewKeyboard().AddRow(
+		telegram.Button.Data("⬅️ Back", "help"),
+	).Build()
 
 	_, err := c.Edit(helpText, &telegram.SendOptions{
 		ReplyMarkup: keyboard,

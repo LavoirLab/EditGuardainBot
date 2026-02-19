@@ -12,9 +12,22 @@ import (
 	"main/database"
 )
 
+func init() {
+	RegisterModule(&ModuleInfo{
+		Name:    "log",
+		ModName: "Log",
+		Handlers: []HandlerConfig{
+			{
+				Pattern: "participant",
+				Handler: botAddded,
+			},
+		},
+	})
+}
+
 func botAddded(m *telegram.ParticipantUpdate) error {
 	if m.UserID() != BotInfo.ID {
-		return telegram.EndGroup
+		return nil
 	}
 
 	isAdded := m.IsAdded() || m.IsPromoted()

@@ -1,7 +1,7 @@
 package modules
 
 import (
-	"strconv"
+	"fmt"
 	"time"
 
 	"github.com/amarnathcjd/gogram/telegram"
@@ -10,29 +10,36 @@ import (
 	"main/utils"
 )
 
-func pingHandler(m *telegram.NewMessage) error {
-	m.Delete()
+func init() {
+	RegisterModule(&ModuleInfo{
+		Name:    "ping",
+		ModName: "Ping",
+		Handlers: []HandlerConfig{
+			{
+				Pattern: "command:ping",
+				Handler: pingHandler,
+			},
+		},
+	})
+}
 
-	if IsSupergroup(m) {
-		if !utils.WarnIfLackOfPms(m.Client, m, m.ChatID()) {
-			return telegram.EndGroup
-		}
+func pingHandler(m *telegram.NewMessage) error {
+	if _, err := m.Delete(); err != nil {
+		return err
 	}
 
 	start := time.Now()
-	reply, err := m.Respond("🏓 Pinging...")
+	reply, err := m.Reply("🏓 Pinging...")
 	if err != nil {
-		return L(m, "Modules -> ping -> Respond", err)
+		return err
 	}
 
 	latency := time.Since(start).Milliseconds()
 	uptime := time.Since(config.StartTime)
 	uptimeStr := utils.FormatUptime(uptime)
 
-	text := "🏓 Pong!\n" +
-		"Latency: " + strconv.Itoa(int(latency)) + "ms\n" +
-		"🤖 I've been running for " + uptimeStr + " without rest!"
+	text := fmt.Sprintf("🏓 Pong!\nLatency: %dms\n🤖 I've been running for %s without rest!", latency, uptimeStr)
 
-	reply.Edit(text)
-	return telegram.EndGroup
+	_, err = reply.Edit(text)
+	return err
 }

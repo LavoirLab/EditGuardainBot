@@ -10,12 +10,15 @@ import (
 	"github.com/amarnathcjd/gogram/telegram"
 
 	"main/config"
-	"main/utils"
 	"main/database"
+	"main/utils"
 )
 
 func init() {
-	AddHelp("📝 Echo", "echo", `<b>Command:</b>
+	RegisterModule(&ModuleInfo{
+		Name:    "echo",
+		ModName: "📝 Echo",
+		Help: `<b>Command:</b>
 <blockquote>/echo &lt;text&gt;
  /setlongmode &lt;off|manual|automatic&gt;
  /setlonglimit &lt;number&gt;</blockquote>
@@ -33,7 +36,18 @@ Sends back the provided text. Also allows setting how the bot handles long messa
 • <b>/setlongmode</b> <code>automatic</code> – Deletes, sends Telegraph link ( Default ).
 
 <b>Custom Limit:</b>
-• <b>/setlonglimit</b> <code>&lt;number&gt;</code> – Set character limit (200–4000, default: 800).`)
+• <b>/setlonglimit</b> <code>&lt;number&gt;</code> – Set character limit (200–4000, default: 800).`,
+		Handlers: []HandlerConfig{
+			{
+				Pattern: "command:echo",
+				Handler: EcoHandler,
+			},
+			{
+				Pattern: "message",
+				Handler: deleteLongMessage,
+			},
+		},
+	})
 }
 
 type warningTracker struct {
@@ -48,65 +62,52 @@ var deleteWarningTracker = warningTracker{
 }
 
 func EcoHandler(m *telegram.NewMessage) error {
-	if isgroup := IsValidSupergroup(m); !isgroup {
-		return telegram.EndGroup
+	if !m.IsGroup() || m.Channel == nil {
+		return nil
 	}
-	if _, err := m.Delete(); err != nil && handleNeedPerm(err, m) {
-		return telegram.EndGroup
-	} else if err != nil {
-		return L(m, "Modules -> echo -> m.Delete()", err)
+	if _, err := m.Delete(); err != nil {
+		return err
 	}
 
 	if m.Args() == "" {
-		m.Reply("Usage: /echo &lt;long message&gt;")
-		return telegram.EndGroup
+		_, err := m.Reply("Usage: /echo &lt;long message&gt;")
+		return err
 	}
 
 	settings, err := database.GetEchoSettings(m.ChatID())
 	if err != nil {
-		m.Respond(fmt.Sprintf("⚠️ Something went wrong while processing the limit.\nError: %v", err))
-		return L(m, "Modules -> echo -> database.GetEchoSettings()", err)
-
+		_, err := m.Reply(fmt.Sprintf("⚠️ Something went wrong while processing the limit.\nError: %v", err))
+		return err
 	}
 
 	if len(m.Text()) < settings.Limit {
-		if isadmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
-			return L(m, "Modules -> echo -> utils.IsChatAdmin()", err)
-		} else if isadmin {
-			m.Respond(fmt.Sprintf("Oops! Your message is under %d characters. Since you're an admin, you're not required to use /echo. But if you’d like to, please send a message longer than %d characters.", settings.Limit, settings.Limit))
-			return telegram.EndGroup
+		isadmin, _ := utils.IsAdmin(m.Client, m.ChatID(), m.SenderID())
+		if isadmin {
+			_, err := m.Reply(fmt.Sprintf("Oops! Your message is under %d characters. Since you're an admin, you're not required to use /echo. But if you’d like to, please send a message longer than %d characters.", settings.Limit, settings.Limit))
+			return err
 		}
-		m.Respond(fmt.Sprintf("Oops! Your message is under %d characters. You can send it without using /echo.", settings.Limit))
-		return telegram.EndGroup
+		_, err := m.Reply(fmt.Sprintf("Oops! Your message is under %d characters. You can send it without using /echo.", settings.Limit))
+		return err
 	}
 
 	text := strings.SplitN(m.Text(), " ", 2)[1]
 
-	err = sendEchoMessage(m, text)
-	return L(m, "Modules -> echo -> sendEchoMessage(...)", err)
+	return sendEchoMessage(m, text)
 }
 
 func deleteLongMessage(m *telegram.NewMessage) error {
-	if !IsSupergroup(m) {
-		return nil
-	}
-
-	if ShouldIgnoreGroupAnonymous(m) {
+	if !m.IsGroup() || m.Channel == nil {
 		return nil
 	}
 
 	chatID := m.ChatID()
 
-	isadmin, err := utils.IsChatAdmin(m.Client, chatID, m.Sender.ID)
-	if err != nil {
-		L(m, "Modules -> echo -> deleteLongMessage -> utils.IsChatAdmin()", err)
-		return nil
-	} else if isadmin {
+	isadmin, _ := utils.IsAdmin(m.Client, chatID, m.SenderID())
+	if isadmin {
 		return nil
 	}
 
 	settings, err := database.GetEchoSettings(chatID)
-	L(m, "Modules -> echo -> database.GetEchoSettings(...)", err)
 	if err != nil {
 		return nil
 	}
@@ -127,11 +128,7 @@ func deleteLongMessage(m *telegram.NewMessage) error {
 	}
 
 	if _, err := m.Delete(); err != nil {
-		if handleNeedPerm(err, m) {
-			return err
-		}
-		L(m, "Modules -> echo -> deleteLongMessage -> m.Delete()", err)
-		return nil
+		return err
 	}
 
 	if !isAutomatic {
@@ -142,10 +139,10 @@ func deleteLongMessage(m *telegram.NewMessage) error {
 		if !exists || time.Since(lastWarning) > time.Second {
 			var name string
 			var id int64
-			if m.SenderChat.ID != 0 {
+			if m.SenderChat != nil && m.SenderChat.ID != 0 {
 				name = m.SenderChat.Title
 				id = m.SenderChat.ID
-			} else {
+			} else if m.Sender != nil {
 				name = strings.TrimSpace(m.Sender.FirstName + " " + m.Sender.LastName)
 				id = m.Sender.ID
 			}
@@ -157,19 +154,17 @@ Please shorten it before sending. ✂️
 Alternatively, use /echo for sending longer messages. 📜
 `, id, name, settings.Limit)
 
-			_, err := m.Respond(text)
+			_, err := m.Reply(text)
 			if err != nil {
-				L(m, "Modules -> echo -> manual -> m.Respond()", err)
 				return err
 			}
 			deleteWarningTracker.chats[chatID] = time.Now()
 		}
 	} else {
-		err = sendEchoMessage(m, m.Text())
-		return L(m, "modules -> echo -> Auto -> sendEchoMessage()", err)
+		return sendEchoMessage(m, m.Text())
 	}
 
-	return telegram.EndGroup
+	return nil
 }
 
 func sendEchoMessage(m *telegram.NewMessage, text string) error {
@@ -183,7 +178,6 @@ func sendEchoMessage(m *telegram.NewMessage, text string) error {
 
 	url, err := utils.CreateTelegraphPage(text, userFullName, authorURL)
 	if err != nil {
-		L(m, "Modules -> echo -> CreateTelegraphPage", err)
 		return err
 	}
 
@@ -194,10 +188,7 @@ func sendEchoMessage(m *telegram.NewMessage, text string) error {
 
 	if m.IsReply() {
 		rmsg, err := m.Client.GetMessageByID(m.ChatID(), m.ReplyID())
-		if err != nil {
-			L(m, "Modules -> echo -> sendEchoMessage -> GetReplyMessage()", err)
-			return err
-		} else if rmsg.Sender != nil {
+		if err == nil && rmsg.Sender != nil {
 			replyUserFullName := strings.TrimSpace(rmsg.Sender.FirstName + " " + rmsg.Sender.LastName)
 
 			// Use the full template with both names
@@ -219,11 +210,7 @@ func sendEchoMessage(m *telegram.NewMessage, text string) error {
 		)
 	}
 
-	_, err = m.Respond(msg, opts)
-	if err != nil {
-		L(m, "Modules -> echo -> sendEchoMessage -> m.Respond()", err)
-	}
-
+	_, err = m.Reply(msg, opts)
 	return err
 }
 
@@ -244,5 +231,7 @@ func (w *warningTracker) Unlock(chatId int64) {
 	lock := w.locks[chatId]
 	w.globalLock.Unlock()
 
-	lock.Unlock()
+	if lock != nil {
+		lock.Unlock()
+	}
 }

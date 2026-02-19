@@ -12,16 +12,31 @@ import (
 	"github.com/shirou/gopsutil/v4/mem"
 
 	"main/config"
-	"main/utils"
 	"main/database"
+	"main/utils"
 )
 
+func init() {
+	RegisterModule(&ModuleInfo{
+		Name:    "stats",
+		ModName: "Stats",
+		Handlers: []HandlerConfig{
+			{
+				Pattern: "command:stats",
+				Handler: stats,
+			},
+		},
+	})
+}
+
 func stats(msg *telegram.NewMessage) error {
-	msg.Delete()
+	if _, err := msg.Delete(); err != nil {
+		return err
+	}
 
 	if !slices.Contains(config.OwnerId, msg.SenderID()) {
-		msg.Respond("You are not authorised to use this command.")
-		return telegram.EndGroup
+		_, err := msg.Reply("You are not authorised to use this command.")
+		return err
 	}
 
 	var text string
@@ -52,6 +67,6 @@ func stats(msg *telegram.NewMessage) error {
 		text += fmt.Sprintf("• CPU: <code>%.2f%%</code>\n", percent[0])
 	}
 
-	msg.Respond(text)
-	return telegram.EndGroup
+	_, err := msg.Reply(text)
+	return err
 }

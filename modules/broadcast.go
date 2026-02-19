@@ -3,16 +3,37 @@ package modules
 import (
 	"fmt"
 	"log"
+	"slices"
 
 	"github.com/amarnathcjd/gogram/telegram"
+
+	"main/config"
 )
 
+func init() {
+	RegisterModule(&ModuleInfo{
+		Name:    "broadcast",
+		ModName: "Broadcast",
+		Help:    "",
+		Handlers: []HandlerConfig{
+			{
+				Pattern: "command:gcast",
+				Handler: BroadcastFunc,
+			},
+		},
+	})
+}
+
 func BroadcastFunc(m *telegram.NewMessage) error {
+	if !slices.Contains(config.OwnerId, m.SenderID()) {
+		return telegram.EndGroup
+	}
+
 	userChan, chatChan, err := m.Client.Broadcast()
 	if err != nil {
 		log.Println(err)
-		m.Reply(err.Error())
-		return telegram.EndGroup
+		_, err := m.Reply(err.Error())
+		return err
 	}
 
 	userCount := 0
@@ -25,7 +46,10 @@ func BroadcastFunc(m *telegram.NewMessage) error {
 		chatCount++
 	}
 	m.Delete()
-	m.Respond(fmt.Sprintf("Total Chats: %d\nTotal Users: %d", chatCount, chatCount))
-	m.Respond("Soon implemented....")
-	return telegram.EndGroup
+	_, err = m.Reply(fmt.Sprintf("Total Chats: %d\nTotal Users: %d", chatCount, userCount))
+	if err != nil {
+		return err
+	}
+	_, err = m.Reply("Soon implemented....")
+	return err
 }

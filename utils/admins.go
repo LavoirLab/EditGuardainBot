@@ -3,109 +3,287 @@ package utils
 import (
 	"fmt"
 	"log"
-	"slices"
 	"strings"
 	"time"
 
 	"github.com/amarnathcjd/gogram/telegram"
 )
 
-var adminsCache = NewCache[string, any](30 * time.Minute)
-
-func SetAdminsCache(chatID int64, admins []*telegram.Participant) {
-	adminsCache.Set(fmt.Sprintf("admins:%d", chatID), admins)
+type AdminInfo struct {
+	UserID    int64
+	Rights    *telegram.ChatAdminRights
+	IsCreator bool
+	Rank      string
 }
 
-func FetchAdmins(b *telegram.Client, ChatId int64) ([]*telegram.Participant, error) {
-	cacheKey := fmt.Sprintf("admins:%d", ChatId)
+type AdminListCache struct {
+	Admins map[int64]*AdminInfo
+}
 
-	if admins, ok := LoadTyped[[]*telegram.Participant](adminsCache, cacheKey); ok {
-		return admins, nil
+var (
+	adminCache           = NewCache[int64, *AdminListCache](5 * time.Minute)
+	individualAdminCache = NewCache[string, *AdminInfo](5 * time.Minute)
+)
+
+func makeAdminKey(chatID, userID int64) string {
+	return fmt.Sprintf("%d:%d", chatID, userID)
+}
+
+func GetChatAdmins(
+	client *telegram.Client,
+	chatID int64,
+) (map[int64]*AdminInfo, error) {
+	if cached, ok := adminCache.Get(chatID); ok {
+		return cached.Admins, nil
 	}
-	admins, _, err := b.GetChatMembers(ChatId, &telegram.ParticipantOptions{
-		Filter: &telegram.ChannelParticipantsAdmins{},
-		Limit:  -1,
-	})
+
+	return fetchAndCacheAdmins(client, chatID)
+}
+
+func fetchAndCacheAdmins(
+	client *telegram.Client,
+	chatID int64,
+) (map[int64]*AdminInfo, error) {
+	participants, _, err := client.GetChatMembers(
+		chatID,
+		&telegram.ParticipantOptions{
+			Filter: &telegram.ChannelParticipantsAdmins{},
+			Limit:  -1,
+		},
+	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to fetch admins: %w", err)
 	}
-	adminsCache.Set(cacheKey, admins)
+
+	admins := make(map[int64]*AdminInfo)
+
+	for _, participant := range participants {
+		if participant.User == nil {
+			continue
+		}
+
+		adminInfo := &AdminInfo{
+			UserID:    participant.User.ID,
+			Rights:    participant.Rights,
+			IsCreator: participant.Status == telegram.Creator,
+			Rank:      participant.Rank,
+		}
+
+		admins[participant.User.ID] = adminInfo
+		individualAdminCache.Set(
+			makeAdminKey(chatID, participant.User.ID),
+			adminInfo,
+		)
+	}
+
+	adminCache.Set(chatID, &AdminListCache{Admins: admins})
+
+	log.Printf("Cached %d admins for chat %d", len(admins), chatID)
 	return admins, nil
 }
 
-func GetAdmins(b *telegram.Client, ChatId int64) ([]int64, error) {
-	admins, err := FetchAdmins(b, ChatId)
+// GetAdmin returns (*AdminInfo, nil) if user is admin,
+// (nil, nil) if user is NOT admin,
+// or (nil, err) on failure.
+func GetAdmin(
+	client *telegram.Client,
+	chatID, userID int64,
+) (*AdminInfo, error) {
+	cacheKey := makeAdminKey(chatID, userID)
+	if cached, ok := individualAdminCache.Get(cacheKey); ok {
+		return cached, nil
+	}
+
+	admins, err := GetChatAdmins(client, chatID)
 	if err != nil {
 		return nil, err
 	}
 
-	var ids []int64
-	for _, p := range admins {
-		if p.User.Bot || p.User.Deleted {
-			continue
-		}
-		ids = append(ids, p.User.ID)
+	if admin, exists := admins[userID]; exists {
+		return admin, nil
 	}
 
-	return ids, nil
+	return nil, nil
 }
 
-func IsChatAdmin(c *telegram.Client, chatid, userid int64) (bool, error) {
-	ids, err := GetAdmins(c, chatid)
+func IsAdmin(client *telegram.Client, chatID, userID int64) (bool, error) {
+	cacheKey := makeAdminKey(chatID, userID)
+	if _, ok := individualAdminCache.Get(cacheKey); ok {
+		return true, nil
+	}
+
+	admins, err := GetChatAdmins(client, chatID)
 	if err != nil {
 		return false, err
 	}
-	return slices.Contains(ids, userid), nil
+
+	_, exists := admins[userID]
+	return exists, nil
 }
 
-func GetOwner(b *telegram.Client, ChatId int64) (int64, error) {
-	admins, err := FetchAdmins(b, ChatId)
+func CheckUserPermission(
+	client *telegram.Client,
+	chatID, userID int64,
+	permission string,
+) (bool, bool, error) {
+	admin, err := GetAdmin(client, chatID, userID)
 	if err != nil {
-		return 0, err
+		return false, false, err
 	}
 
-	for _, p := range admins {
-		if _, ok := p.Participant.(*telegram.ChannelParticipantCreator); ok {
-			return p.User.ID, nil
-		}
+	if admin == nil {
+		return false, false, nil
+	}
+	if admin.Rights == nil {
+		return false, true, nil
 	}
 
-	return 0, fmt.Errorf("no creator found")
+	hasPermission := checkPermission(admin.Rights, permission)
+	return hasPermission, true, nil
 }
 
-func WarnIfLackOfPms(b *telegram.Client, m *telegram.NewMessage, chatid int64) bool {
-	admins, _, err := b.GetChatMembers(chatid, &telegram.ParticipantOptions{
-		Filter: &telegram.ChannelParticipantsAdmins{},
-		Limit:  -1,
-	})
-	if err != nil {
-		log.Printf("Failed to get admins list for chat %d: %v", chatid, err)
-		if strings.Contains(err.Error(), "CHAT_ADMIN_REQUIRED") {
-			m.Respond("⚠️ Please promote me to <b>Admin</b> with <b>\"Delete messages\" permission</b> so I can protect this group properly.")
-		} else {
-			m.Respond("❌ Failed to fetch admin list. Ensure I have permission to see group admins.")
-		}
+func checkPermission(rights *telegram.ChatAdminRights, permission string) bool {
+	if rights == nil {
 		return false
 	}
 
-	adminsCache.Set(fmt.Sprintf("admins:%d", chatid), admins)
+	switch permission {
+	case "change_info":
+		return rights.ChangeInfo
+	case "post_messages":
+		return rights.PostMessages
+	case "edit_messages":
+		return rights.EditMessages
+	case "delete_messages":
+		return rights.DeleteMessages
+	case "ban_users":
+		return rights.BanUsers
+	case "invite_users":
+		return rights.InviteUsers
+	case "pin_messages":
+		return rights.PinMessages
+	case "add_admins":
+		return rights.AddAdmins
+	case "manage_call":
+		return rights.ManageCall
+	case "anonymous":
+		return rights.Anonymous
+	case "manage_topics":
+		return rights.ManageTopics
+	case "post_stories":
+		return rights.PostStories
+	case "edit_stories":
+		return rights.EditStories
+	case "delete_stories":
+		return rights.DeleteStories
+	default:
+		return false
+	}
+}
 
-	botID := b.Me().ID
-	for _, p := range admins {
-		if p.User.ID == botID {
-			if p.Status != "admin" && p.Status != "creator" {
-				m.Respond("⚠️ Please promote me to <b>Admin</b> with <b>\"Delete messages\" permission</b> so I can protect this group properly.")
-				return false
-			}
-			if p.Rights == nil || !p.Rights.DeleteMessages {
-				m.Respond("🧹 <b>I need the \"Delete messages\" permission</b> to remove spam or unwanted content.")
-				return false
-			}
-			return true
+func UpdateAdminFromParticipant(
+	client *telegram.Client,
+	chatID, userID int64,
+	participant telegram.ChannelParticipant,
+) {
+	if participant == nil {
+		return
+	}
+
+	adminInfo := &AdminInfo{
+		UserID: userID,
+	}
+
+	switch p := participant.(type) {
+	case *telegram.ChannelParticipantCreator:
+		adminInfo.IsCreator = true
+		adminInfo.Rights = p.AdminRights
+		adminInfo.Rank = p.Rank
+
+	case *telegram.ChannelParticipantAdmin:
+		adminInfo.IsCreator = false
+		adminInfo.Rights = p.AdminRights
+		adminInfo.Rank = p.Rank
+	default:
+		RemoveAdmin(chatID, userID)
+		return
+	}
+
+	cacheKey := makeAdminKey(chatID, userID)
+	individualAdminCache.Set(cacheKey, adminInfo)
+
+	if cached, ok := adminCache.Get(chatID); ok {
+		cached.Admins[userID] = adminInfo
+		adminCache.Set(chatID, cached)
+	}
+
+	log.Printf("Updated admin cache for user %d in chat %d", userID, chatID)
+}
+
+func RemoveAdmin(chatID, userID int64) {
+	cacheKey := makeAdminKey(chatID, userID)
+	individualAdminCache.Delete(cacheKey)
+
+	if cached, ok := adminCache.Get(chatID); ok {
+		delete(cached.Admins, userID)
+		adminCache.Set(chatID, cached)
+	}
+
+	log.Printf("Removed user %d from admin cache in chat %d", userID, chatID)
+}
+
+func ClearChatAdminCache(chatID int64) {
+	adminCache.Delete(chatID)
+
+	prefix := fmt.Sprintf("%d:", chatID)
+
+	for _, key := range individualAdminCache.Keys() {
+		if strings.HasPrefix(key, prefix) {
+			individualAdminCache.Delete(key)
 		}
 	}
 
-	log.Printf("Bot not found in admin list for chat %d", chatid)
-	m.Respond("⚠️ I am not an admin in this group. Please promote me with necessary permissions.")
-	return false
+	log.Printf("Cleared admin cache (chat + individual) for chat %d", chatID)
+}
+
+func ClearAllAdminCache() {
+	adminCache.Clear()
+	individualAdminCache.Clear()
+	log.Println("Cleared entire admin cache")
+}
+
+func RefreshAdminCache(client *telegram.Client, chatID int64) error {
+	_, err := fetchAndCacheAdmins(client, chatID)
+	return err
+}
+
+func PrettifyPermission(permission string) string {
+	permissionMap := map[string]string{
+		"change_info":     "change chat info",
+		"post_messages":   "post messages",
+		"edit_messages":   "edit messages",
+		"delete_messages": "delete messages",
+		"ban_users":       "ban users",
+		"invite_users":    "invite users",
+		"pin_messages":    "pin messages",
+		"add_admins":      "add admins",
+		"manage_call":     "manage calls",
+		"anonymous":       "remain anonymous",
+		"manage_topics":   "manage topics",
+		"post_stories":    "post stories",
+		"edit_stories":    "edit stories",
+		"delete_stories":  "delete stories",
+	}
+
+	if pretty, exists := permissionMap[permission]; exists {
+		return pretty
+	}
+	return permission
+}
+
+func GetCacheStats() map[string]interface{} {
+	return map[string]interface{}{
+		"cache_duration_minutes": 5.0,
+		"note":                   "Using generic cache with automatic expiry",
+	}
 }
