@@ -9,11 +9,10 @@ import (
 	"github.com/amarnathcjd/gogram/telegram"
 
 	"main/utils"
-	"main/utils/cache"
 	"main/database"
 )
 
-var bioCache = cache.NewCache[string, any](60 * time.Minute)
+var bioCache = utils.NewCache[string, any](60 * time.Minute)
 
 func init() {
 	AddHelp(
