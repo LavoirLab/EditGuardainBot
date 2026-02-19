@@ -125,7 +125,7 @@ func NoPromoCmd(m *telegram.NewMessage) error {
 }
 
 func handlePromoMessages(m *telegram.NewMessage) error {
-	if !m.IsGroup() || m.Channel == nil || m.IsReply() {
+	if !m.IsGroup() || m.Channel == nil || m.IsReply() || m.IsAnonmous() || m.IsChannelPost(){
 		return nil
 	}
 

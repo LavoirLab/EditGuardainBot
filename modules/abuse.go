@@ -67,7 +67,7 @@ func NoAbuseCmd(m *telegram.NewMessage) error {
 }
 
 func DeleteAbuseHandle(m *telegram.NewMessage) error {
-	if !m.IsGroup() || m.Channel == nil {
+	if !m.IsGroup() || m.Channel == nil || m.IsAnonmous() || m.IsChannelPost() {
 		return nil
 	}
 
