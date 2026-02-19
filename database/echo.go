@@ -1,21 +1,8 @@
 package database
 
 import (
-	"context"
-	"fmt"
 	"strings"
-
-	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
-
-	"main/config"
 )
-
-type EchoSettings struct {
-	ChatID int64  `bson:"chat_id"`
-	Mode   string `bson:"mode"`
-	Limit  int    `bson:"limit"`
-}
 
 const (
 	defaultEchoLimit = 450
@@ -35,93 +22,61 @@ func normalizeMode(input string) (string, bool) {
 	return val, ok
 }
 
-func SetEchoSettings(data *EchoSettings) error {
-	key := fmt.Sprintf("echos:%d", data.ChatID)
-
-	if data.Mode != "" {
-		if normalized, ok := normalizeMode(data.Mode); ok {
-			data.Mode = normalized
-		} else {
-			return fmt.Errorf("invalid echo mode: %q", data.Mode)
-		}
-	}
-
-	if val, ok := config.Cache.Load(key); ok {
-		existing := val.(*EchoSettings)
-		if data.Mode == "" {
-			data.Mode = existing.Mode
-		}
-		if data.Limit == 0 {
-			data.Limit = existing.Limit
-		}
-		if data.Mode == existing.Mode && data.Limit == existing.Limit {
-			return nil
-		}
-	} else {
-		existing, _ := GetEchoSettings(data.ChatID)
-		if data.Mode == "" {
-			data.Mode = existing.Mode
-		}
-		if data.Limit == 0 {
-			data.Limit = existing.Limit
-		}
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	update := bson.M{
-		"$set": bson.M{
-			"mode":  data.Mode,
-			"limit": data.Limit,
-		},
-	}
-
-	_, err := echoDB.UpdateOne(ctx, bson.M{"chat_id": data.ChatID}, update, options.UpdateOne().SetUpsert(true))
+func SetEchoMode(chatID int64, mode string) error {
+	settings, err := getChatSettings(chatID)
 	if err != nil {
 		return err
 	}
 
-	go config.Cache.Store(key, &EchoSettings{
-		ChatID: data.ChatID,
-		Mode:   data.Mode,
-		Limit:  data.Limit,
-	})
-
+	if normalized, ok := normalizeMode(mode); ok {
+		if settings.Echo.Mode == normalized {
+			return nil
+		}
+		settings.Echo.Mode = normalized
+		return updateChatSettings(settings)
+	}
 	return nil
 }
 
-func GetEchoSettings(chatID int64) (*EchoSettings, error) {
-	key := fmt.Sprintf("echos:%d", chatID)
-	if val, ok := config.Cache.Load(key); ok {
-		return val.(*EchoSettings), nil
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	var settings EchoSettings
-	err := echoDB.FindOne(ctx, bson.M{"chat_id": chatID}).Decode(&settings)
+func SetEchoLimit(chatID int64, limit int) error {
+	settings, err := getChatSettings(chatID)
 	if err != nil {
-		settings = EchoSettings{
-			ChatID: chatID,
-			Mode:   defaultEchoMode,
-			Limit:  defaultEchoLimit,
-		}
+		return err
+	}
+	if settings.Echo.Limit == limit {
+		return nil
+	}
+	settings.Echo.Limit = limit
+	return updateChatSettings(settings)
+}
+
+func GetEchoSettings(chatID int64) (*EchoSettings, error) {
+	settings, err := getChatSettings(chatID)
+	if err != nil {
+		return nil, err
 	}
 
+	changed := false
 	// Normalize legacy or incorrect values
-	mode := strings.ToUpper(settings.Mode)
+	mode := strings.ToUpper(settings.Echo.Mode)
 	if normalized, ok := normalizeMode(mode); ok {
-		settings.Mode = normalized
-	} else {
-		settings.Mode = defaultEchoMode
+		if settings.Echo.Mode != normalized {
+			settings.Echo.Mode = normalized
+			changed = true
+		}
+	} else if settings.Echo.Mode != defaultEchoMode {
+		settings.Echo.Mode = defaultEchoMode
+		changed = true
 	}
 
-	if settings.Limit == 0 {
-		settings.Limit = defaultEchoLimit
+	if settings.Echo.Limit == 0 {
+		settings.Echo.Limit = defaultEchoLimit
+		changed = true
 	}
 
-	config.Cache.Store(key, &settings)
-	return &settings, nil
+	if changed {
+		updateChatSettings(settings)
+	}
+
+	return &settings.Echo, nil
 }

@@ -9,7 +9,7 @@ import (
 
 	"github.com/amarnathcjd/gogram/telegram"
 
-	"main/config/helpers"
+	"main/utils"
 	"main/database"
 )
 
@@ -42,8 +42,8 @@ func NoPhoneCmd(m *telegram.NewMessage) error {
 	} else if err != nil {
 		return L(m, "Modules -> nophone -> m.Delete()", err)
 	}
-	if isadmin, err := helpers.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
-		return L(m, "Modules -> nophone -> helpers.IsChatAdmin()", err)
+	if isadmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
+		return L(m, "Modules -> nophone -> utils.IsChatAdmin()", err)
 	} else if !isadmin {
 		m.Respond("Access denied: Only group admins can use this command.")
 		return telegram.EndGroup
@@ -98,9 +98,9 @@ func handlePhoneNumber(m *telegram.NewMessage) error {
 		return nil
 	}
 
-	isadmin, err := helpers.IsChatAdmin(m.Client, m.ChatID(), m.Sender.ID)
+	isadmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.Sender.ID)
 	if err != nil {
-		L(m, "Modules -> nophone -> helpers.IsChatAdmin()", err)
+		L(m, "Modules -> nophone -> utils.IsChatAdmin()", err)
 		return nil
 	}
 	if isadmin {

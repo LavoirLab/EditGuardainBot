@@ -7,14 +7,14 @@ import (
 	"github.com/amarnathcjd/gogram/telegram"
 
 	"main/config"
-	"main/config/helpers"
+	"main/utils"
 )
 
 func pingHandler(m *telegram.NewMessage) error {
 	m.Delete()
 
 	if IsSupergroup(m) {
-		if !helpers.WarnIfLackOfPms(m.Client, m, m.ChatID()) {
+		if !utils.WarnIfLackOfPms(m.Client, m, m.ChatID()) {
 			return telegram.EndGroup
 		}
 	}
@@ -27,7 +27,7 @@ func pingHandler(m *telegram.NewMessage) error {
 
 	latency := time.Since(start).Milliseconds()
 	uptime := time.Since(config.StartTime)
-	uptimeStr := helpers.FormatUptime(uptime)
+	uptimeStr := utils.FormatUptime(uptime)
 
 	text := "🏓 Pong!\n" +
 		"Latency: " + strconv.Itoa(int(latency)) + "ms\n" +

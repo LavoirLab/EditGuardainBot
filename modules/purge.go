@@ -6,7 +6,7 @@ import (
 
 	"github.com/amarnathcjd/gogram/telegram"
 
-	"main/config/helpers"
+	"main/utils"
 )
 
 func init() {
@@ -31,8 +31,8 @@ func PurgeCmd(m *telegram.NewMessage) error {
 		return telegram.EndGroup
 	}
 
-	if isadmin, err := helpers.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
-		return L(m, "Modules -> purge -> helpers.IsChatAdmin()", err)
+	if isadmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
+		return L(m, "Modules -> purge -> utils.IsChatAdmin()", err)
 	} else if !isadmin {
 		m.Delete()
 		m.Respond("Access denied: Only group admins can use this command.")

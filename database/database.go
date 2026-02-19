@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -11,31 +12,22 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
 	"main/config"
+	"main/utils/cache"
 )
 
 var (
-	client      *mongo.Client
-	userDB      *mongo.Collection
-	chatDB      *mongo.Collection
-	editModeDB  *mongo.Collection
-	echoDB      *mongo.Collection
-	loggerDB    *mongo.Collection
-	linksDB     *mongo.Collection
-	bioLinkDB   *mongo.Collection
-	nsfwFlagsDB *mongo.Collection
+	client           *mongo.Client
+	chatSettingsColl *mongo.Collection
+	botSettingsColl  *mongo.Collection
+	dbCache          = cache.NewCache[string, any](60 * time.Minute)
 
-	mediaDeleteDB, fileDeleteDB, msgDeleteDB        *mongo.Collection
-	noForwardDB, noPhoneDB, noHashtagsDB, noPromoDB *mongo.Collection
-	timeout                                         = 11 * time.Second
+	timeout = 11 * time.Second
 )
 
 func init() {
 	if config.MongoUri == "" {
 		log.Panic("MongoDB URI is missing in config.MongoUri")
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
 
 	var err error
 	client, err = mongo.Connect(options.Client().ApplyURI(config.MongoUri))
@@ -44,35 +36,10 @@ func init() {
 	}
 
 	db := client.Database("EditGuardainBot")
-	userDB = db.Collection("userstats")
-	chatDB = db.Collection("chats")
-	editModeDB = db.Collection("editmodes")
-	echoDB = db.Collection("echos")
-	loggerDB = db.Collection("logger")
-	linksDB = db.Collection("links")
-	bioLinkDB = db.Collection("biolinks")
-	nsfwFlagsDB = db.Collection("nsfw_flags")
-	mediaDeleteDB = db.Collection("media_delete")
-	fileDeleteDB = db.Collection("file_delete")
-	msgDeleteDB = db.Collection("msg_delete")
-	noForwardDB = db.Collection("no_forward")
-	noPhoneDB = db.Collection("no_phone")
-	noHashtagsDB = db.Collection("no_hashtags")
-	noPromoDB = db.Collection("no_promo")
+	chatSettingsColl = db.Collection("chat_settings")
+	botSettingsColl = db.Collection("bot_settings")
 
-	// Indexes
-
-	CreateIndex(ctx, editModeDB, bson.D{{Key: "chat_id", Value: 1}}, true)
-	CreateIndex(ctx, echoDB, bson.D{{Key: "chat_id", Value: 1}}, true)
-	CreateIndex(ctx, linksDB, bson.D{{Key: "chat_id", Value: 1}}, true)
-	CreateIndex(ctx, loggerDB, bson.D{{Key: "enabled", Value: 1}}, false)
-	CreateIndex(ctx, mediaDeleteDB, bson.D{{Key: "chat_id", Value: 1}}, true)
-	CreateIndex(ctx, fileDeleteDB, bson.D{{Key: "chat_id", Value: 1}}, true)
-	CreateIndex(ctx, msgDeleteDB, bson.D{{Key: "chat_id", Value: 1}}, true)
-	CreateIndex(ctx, noForwardDB, bson.D{{Key: "chat_id", Value: 1}}, true)
-	CreateIndex(ctx, noPhoneDB, bson.D{{Key: "chat_id", Value: 1}}, true)
-	CreateIndex(ctx, noHashtagsDB, bson.D{{Key: "chat_id", Value: 1}}, true)
-	CreateIndex(ctx, noPromoDB, bson.D{{Key: "chat_id", Value: 1}}, true)
+	go MigrateData()
 }
 
 func Disconnect() {
@@ -84,6 +51,128 @@ func Disconnect() {
 	}
 }
 
+// Low-level methods
+
+func getBotState() (*BotState, error) {
+	const cacheKey = "bot_state"
+	if cached, found := dbCache.Get(cacheKey); found {
+		if state, ok := cached.(*BotState); ok {
+			return state, nil
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	var state BotState
+	err := botSettingsColl.FindOne(ctx, bson.M{"_id": "global"}).Decode(&state)
+	if err == mongo.ErrNoDocuments {
+		defaultState := &BotState{
+			ID:            "global",
+			LoggerEnabled: true,
+		}
+		dbCache.Set(cacheKey, defaultState)
+		return defaultState, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	dbCache.Set(cacheKey, &state)
+	return &state, nil
+}
+
+func updateBotState(newState *BotState) error {
+	const cacheKey = "bot_state"
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	opts := options.UpdateOne().SetUpsert(true)
+	_, err := botSettingsColl.UpdateOne(
+		ctx,
+		bson.M{"_id": "global"},
+		bson.M{"$set": newState},
+		opts,
+	)
+	if err != nil {
+		return err
+	}
+
+	dbCache.Set(cacheKey, newState)
+	return nil
+}
+
+func defaultChatSettings(chatID int64) *ChatSettings {
+	return &ChatSettings{
+		ChatID: chatID,
+		EditMode: EditModeSettings{
+			Mode:     "USER",
+			Duration: 0,
+		},
+		Echo: EchoSettings{
+			Mode:  "AUTO",
+			Limit: 450,
+		},
+		MediaDelete: MediaDeleteSettings{
+			Enabled: false,
+			Delay:   6 * time.Hour,
+		},
+		FileDelete: FileDeleteSettings{
+			Enabled: false,
+			Delay:   6 * time.Hour,
+		},
+		MsgDelete: MsgDeleteSettings{
+			Enabled: false,
+			Delay:   1 * time.Hour,
+		},
+	}
+}
+
+func getChatSettings(chatID int64) (*ChatSettings, error) {
+	cacheKey := "chat_settings_" + strconv.FormatInt(chatID, 10)
+	if cached, found := dbCache.Get(cacheKey); found {
+		if settings, ok := cached.(*ChatSettings); ok {
+			return settings, nil
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	var settings ChatSettings
+	err := chatSettingsColl.FindOne(ctx, bson.M{"_id": chatID}).Decode(&settings)
+	if err == mongo.ErrNoDocuments {
+		def := defaultChatSettings(chatID)
+		dbCache.Set(cacheKey, def)
+		return def, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	dbCache.Set(cacheKey, &settings)
+	return &settings, nil
+}
+
+func updateChatSettings(newSettings *ChatSettings) error {
+	cacheKey := "chat_settings_" + strconv.FormatInt(newSettings.ChatID, 10)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	opts := options.UpdateOne().SetUpsert(true)
+	_, err := chatSettingsColl.UpdateOne(
+		ctx,
+		bson.M{"_id": newSettings.ChatID},
+		bson.M{"$set": newSettings},
+		opts,
+	)
+	if err != nil {
+		return err
+	}
+
+	dbCache.Set(cacheKey, newSettings)
+	return nil
+}
+
+// Utility
+
 func CreateIndex(ctx context.Context, coll *mongo.Collection, keys bson.D, unique bool) {
 	indexModel := mongo.IndexModel{
 		Keys:    keys,
@@ -92,12 +181,10 @@ func CreateIndex(ctx context.Context, coll *mongo.Collection, keys bson.D, uniqu
 	_, err := coll.Indexes().CreateOne(ctx, indexModel)
 	if err != nil {
 		if strings.Contains(err.Error(), "IndexOptionsConflict") {
-			// Drop all indexes and retry
 			if errDrop := DropAllIndexes(ctx, coll); errDrop != nil {
 				log.Printf("❌ Failed to drop indexes on %s: %v\n", coll.Name(), errDrop)
 				return
 			}
-			// Retry creating the index
 			_, err = coll.Indexes().CreateOne(ctx, indexModel)
 		}
 		if err != nil {
@@ -108,6 +195,5 @@ func CreateIndex(ctx context.Context, coll *mongo.Collection, keys bson.D, uniqu
 }
 
 func DropAllIndexes(ctx context.Context, coll *mongo.Collection) error {
-	err := coll.Indexes().DropAll(ctx)
-	return err
+	return coll.Indexes().DropAll(ctx)
 }

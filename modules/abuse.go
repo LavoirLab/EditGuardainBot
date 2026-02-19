@@ -8,7 +8,7 @@ import (
 
 	"github.com/amarnathcjd/gogram/telegram"
 
-	"main/config/helpers"
+	"main/utils"
 	"main/database"
 )
 
@@ -38,8 +38,8 @@ func NoAbuseCmd(m *telegram.NewMessage) error {
 	} else if err != nil {
 		return L(m, "Modules -> abuse -> m.Delete()", err)
 	}
-	if isadmin, err := helpers.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
-		return L(m, "Modules -> abuse -> helpers.IsChatAdmin()", err)
+	if isadmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
+		return L(m, "Modules -> abuse -> utils.IsChatAdmin()", err)
 	} else if !isadmin {
 		m.Respond("Access denied: Only group admins can use this command.")
 
@@ -80,13 +80,13 @@ func DeleteAbuseHandle(m *telegram.NewMessage) error {
 	if ShouldIgnoreGroupAnonymous(m) {
 		return nil
 	}
-	if isadmin, err := helpers.IsChatAdmin(m.Client, m.ChatID(), m.Sender.ID); err != nil {
-		L(m, "Modules -> abuse -> helpers.IsChatAdmin()", err)
+	if isadmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.Sender.ID); err != nil {
+		L(m, "Modules -> abuse -> utils.IsChatAdmin()", err)
 		return nil
 	} else if isadmin {
 		return nil
 	}
-	isNsfw := helpers.ContainsAbusiveWord(m.Text())
+	isNsfw := utils.ContainsAbusiveWord(m.Text())
 	if !isNsfw {
 		return nil
 	}

@@ -12,7 +12,7 @@ import (
 	"github.com/shirou/gopsutil/v4/mem"
 
 	"main/config"
-	"main/config/helpers"
+	"main/utils"
 	"main/database"
 )
 
@@ -34,7 +34,7 @@ func stats(msg *telegram.NewMessage) error {
 	}
 
 	uptime := time.Since(config.StartTime)
-	text += fmt.Sprintf("⏱️ <b>Bot Uptime:</b> %s\n", helpers.FormatUptime(uptime))
+	text += fmt.Sprintf("⏱️ <b>Bot Uptime:</b> %s\n", utils.FormatUptime(uptime))
 
 	if vm, err := mem.VirtualMemory(); err == nil {
 		text += fmt.Sprintf("🧠 <b>RAM:</b> %.1f%% of %.1f GB\n", vm.UsedPercent, float64(vm.Total)/1e9)

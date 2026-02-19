@@ -8,7 +8,7 @@ import (
 
 	"github.com/amarnathcjd/gogram/telegram"
 
-	"main/config/helpers"
+	"main/utils"
 	"main/database"
 )
 
@@ -40,8 +40,8 @@ func MediaDeleteCmd(m *telegram.NewMessage) error {
 	} else if err != nil {
 		return L(m, "Modules -> mediadelete -> m.Delete()", err)
 	}
-	if isadmin, err := helpers.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
-		return L(m, "Modules -> mediadelete -> helpers.IsChatAdmin()", err)
+	if isadmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
+		return L(m, "Modules -> mediadelete -> utils.IsChatAdmin()", err)
 	} else if !isadmin {
 		m.Respond("Access denied: Only group admins can use this command.")
 		return telegram.EndGroup
@@ -93,8 +93,8 @@ func SetMediaDelayCmd(m *telegram.NewMessage) error {
 	} else if err != nil {
 		return L(m, "Modules -> mediadelete -> m.Delete()", err)
 	}
-	if isadmin, err := helpers.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
-		return L(m, "Modules -> mediadelete -> helpers.IsChatAdmin()", err)
+	if isadmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
+		return L(m, "Modules -> mediadelete -> utils.IsChatAdmin()", err)
 	} else if !isadmin {
 		m.Respond("Access denied: Only group admins can use this command.")
 		return telegram.EndGroup

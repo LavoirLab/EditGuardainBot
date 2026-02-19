@@ -8,7 +8,7 @@ import (
 	"github.com/amarnathcjd/gogram/telegram"
 
 	"main/config"
-	"main/config/helpers"
+	"main/utils"
 	"main/database"
 )
 
@@ -158,7 +158,7 @@ To use my features, please upgrade this group to a supergroup.
 	if IsSupergroup(m) {
 		m.Delete()
 		database.AddServedChat(m.ChatID())
-		if !helpers.WarnIfLackOfPms(m.Client, m, m.ChatID()) {
+		if !utils.WarnIfLackOfPms(m.Client, m, m.ChatID()) {
 			return nil
 		}
 

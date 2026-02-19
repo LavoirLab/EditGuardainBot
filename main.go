@@ -16,12 +16,6 @@ import (
 func main() {
 	defer database.Disconnect()
 
-	if err := database.MigrateUsers(); err != nil {
-		log.Panicf("MigrateUsers Error: %v", err)
-	}
-	if err := database.MigrateChats(); err != nil {
-		log.Panicf("MigrateChats Error: %v", err)
-	}
 
 	client, err := telegram.NewClient(telegram.ClientConfig{
 		AppID:     config.ApiId,

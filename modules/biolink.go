@@ -8,10 +8,12 @@ import (
 
 	"github.com/amarnathcjd/gogram/telegram"
 
-	"main/config"
-	"main/config/helpers"
+	"main/utils"
+	"main/utils/cache"
 	"main/database"
 )
+
+var bioCache = cache.NewCache[string, any](60 * time.Minute)
 
 func init() {
 	AddHelp(
@@ -42,8 +44,8 @@ func setBioMode(m *telegram.NewMessage) error {
 	} else if err != nil {
 		return L(m, "Modules -> bioLink -> m.Delete()", err)
 	}
-	if isadmin, err := helpers.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
-		return L(m, "Modules -> biolink -> helpers.IsChatAdmin()", err)
+	if isadmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
+		return L(m, "Modules -> biolink -> utils.IsChatAdmin()", err)
 	} else if !isadmin {
 		m.Respond("Access denied: Only group admins can use this command.")
 
@@ -105,9 +107,9 @@ func deleteUserMsgIfBio(m *telegram.NewMessage) error {
 		return Continue
 	}
 
-	isAdmin, err := helpers.IsChatAdmin(m.Client, m.ChatID(), m.SenderID())
+	isAdmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.SenderID())
 	if err != nil {
-		L(m, "Modules -> biolink -> helpers.IsChatAdmin()", err)
+		L(m, "Modules -> biolink -> utils.IsChatAdmin()", err)
 		return err
 	}
 	if isAdmin {
@@ -127,7 +129,7 @@ func deleteUserMsgIfBio(m *telegram.NewMessage) error {
 	})
 
 	if err != nil {
-		if val, ok := helpers.LoadTyped[*telegram.UserFull](config.Cache, cacheKey); ok {
+		if val, ok := utils.LoadTyped[*telegram.UserFull](bioCache, cacheKey); ok {
 			bio = val.About
 		} else {
 			if wait := telegram.GetFloodWait(err); wait > 0 && wait < 15 {
@@ -140,7 +142,7 @@ func deleteUserMsgIfBio(m *telegram.NewMessage) error {
 					return telegram.EndGroup
 				}
 				bio = resp.FullUser.About
-				config.Cache.Store(cacheKey, resp.FullUser)
+				bioCache.Set(cacheKey, resp.FullUser)
 			} else {
 				if !strings.Contains(err.Error(), "USER_ID_INVALID") && !strings.Contains(err.Error(), "FLOOD_WAIT_X") {
 					L(m, "Modules -> biolink -> client.UsersGetFullUser(...)", err)
@@ -150,7 +152,7 @@ func deleteUserMsgIfBio(m *telegram.NewMessage) error {
 		}
 	} else {
 		bio = resp.FullUser.About
-		config.Cache.Store(cacheKey, resp.FullUser)
+		bioCache.Set(cacheKey, resp.FullUser)
 	}
 
 	if bio == "" || !ShouldDeleteMsg(bio) {

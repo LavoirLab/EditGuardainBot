@@ -10,7 +10,7 @@ import (
 	"github.com/amarnathcjd/gogram/telegram"
 
 	"main/config"
-	"main/config/helpers"
+	"main/utils"
 	"main/database"
 )
 
@@ -70,8 +70,8 @@ func EcoHandler(m *telegram.NewMessage) error {
 	}
 
 	if len(m.Text()) < settings.Limit {
-		if isadmin, err := helpers.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
-			return L(m, "Modules -> echo -> helpers.IsChatAdmin()", err)
+		if isadmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
+			return L(m, "Modules -> echo -> utils.IsChatAdmin()", err)
 		} else if isadmin {
 			m.Respond(fmt.Sprintf("Oops! Your message is under %d characters. Since you're an admin, you're not required to use /echo. But if you’d like to, please send a message longer than %d characters.", settings.Limit, settings.Limit))
 			return telegram.EndGroup
@@ -97,9 +97,9 @@ func deleteLongMessage(m *telegram.NewMessage) error {
 
 	chatID := m.ChatID()
 
-	isadmin, err := helpers.IsChatAdmin(m.Client, chatID, m.Sender.ID)
+	isadmin, err := utils.IsChatAdmin(m.Client, chatID, m.Sender.ID)
 	if err != nil {
-		L(m, "Modules -> echo -> deleteLongMessage -> helpers.IsChatAdmin()", err)
+		L(m, "Modules -> echo -> deleteLongMessage -> utils.IsChatAdmin()", err)
 		return nil
 	} else if isadmin {
 		return nil
@@ -181,7 +181,7 @@ func sendEchoMessage(m *telegram.NewMessage, text string) error {
 		authorURL = config.SupportChannel
 	}
 
-	url, err := helpers.CreateTelegraphPage(text, userFullName, authorURL)
+	url, err := utils.CreateTelegraphPage(text, userFullName, authorURL)
 	if err != nil {
 		L(m, "Modules -> echo -> CreateTelegraphPage", err)
 		return err

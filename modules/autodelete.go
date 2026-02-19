@@ -8,7 +8,7 @@ import (
 
 	"github.com/amarnathcjd/gogram/telegram"
 
-	"main/config/helpers"
+	"main/utils"
 	"main/database"
 )
 
@@ -40,8 +40,8 @@ func MsgDeleteCmd(m *telegram.NewMessage) error {
 	} else if err != nil {
 		return L(m, "Modules -> msgdelete -> m.Delete()", err)
 	}
-	if isadmin, err := helpers.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
-		return L(m, "Modules -> msgdelete -> helpers.IsChatAdmin()", err)
+	if isadmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
+		return L(m, "Modules -> msgdelete -> utils.IsChatAdmin()", err)
 	} else if !isadmin {
 		m.Respond("Access denied: Only group admins can use this command.")
 		return telegram.EndGroup
@@ -87,8 +87,8 @@ func SetMsgDelayCmd(m *telegram.NewMessage) error {
 	} else if err != nil {
 		return L(m, "Modules -> msgdelete -> m.Delete()", err)
 	}
-	if isadmin, err := helpers.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
-		return L(m, "Modules -> msgdelete -> helpers.IsChatAdmin()", err)
+	if isadmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
+		return L(m, "Modules -> msgdelete -> utils.IsChatAdmin()", err)
 	} else if !isadmin {
 		m.Respond("Access denied: Only group admins can use this command.")
 		return telegram.EndGroup

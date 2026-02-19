@@ -1,20 +1,27 @@
-package helpers
+package utils
 
 import (
 	"fmt"
 	"log"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/amarnathcjd/gogram/telegram"
 
-	"main/config"
+	"main/utils/cache"
 )
+
+var adminsCache = cache.NewCache[string, any](30 * time.Minute)
+
+func SetAdminsCache(chatID int64, admins []*telegram.Participant) {
+	adminsCache.Set(fmt.Sprintf("admins:%d", chatID), admins)
+}
 
 func FetchAdmins(b *telegram.Client, ChatId int64) ([]*telegram.Participant, error) {
 	cacheKey := fmt.Sprintf("admins:%d", ChatId)
 
-	if admins, ok := LoadTyped[[]*telegram.Participant](config.Cache, cacheKey); ok {
+	if admins, ok := LoadTyped[[]*telegram.Participant](adminsCache, cacheKey); ok {
 		return admins, nil
 	}
 	admins, _, err := b.GetChatMembers(ChatId, &telegram.ParticipantOptions{
@@ -24,7 +31,7 @@ func FetchAdmins(b *telegram.Client, ChatId int64) ([]*telegram.Participant, err
 	if err != nil {
 		return nil, err
 	}
-	config.Cache.Store(cacheKey, admins)
+	adminsCache.Set(cacheKey, admins)
 	return admins, nil
 }
 
@@ -83,7 +90,7 @@ func WarnIfLackOfPms(b *telegram.Client, m *telegram.NewMessage, chatid int64) b
 		return false
 	}
 
-	config.Cache.Store(fmt.Sprintf("admins:%d", chatid), admins)
+	adminsCache.Set(fmt.Sprintf("admins:%d", chatid), admins)
 
 	botID := b.Me().ID
 	for _, p := range admins {

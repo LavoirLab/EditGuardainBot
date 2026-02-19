@@ -7,7 +7,7 @@ import (
 
 	"github.com/amarnathcjd/gogram/telegram"
 
-	"main/config/helpers"
+	"main/utils"
 	"main/database"
 )
 
@@ -20,8 +20,8 @@ func SetLongLimitHandler(m *telegram.NewMessage) error {
 	} else if err != nil {
 		return L(m, "Modules -> longmode -> m.Delete()", err)
 	}
-	if isadmin, err := helpers.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
-		return L(m, "Modules -> longmode -> helpers.IsChatAdmin()", err)
+	if isadmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
+		return L(m, "Modules -> longmode -> utils.IsChatAdmin()", err)
 	} else if !isadmin {
 		m.Respond("Access denied: Only group admins can use this command.")
 
@@ -40,12 +40,7 @@ func SetLongLimitHandler(m *telegram.NewMessage) error {
 		return telegram.EndGroup
 	}
 
-	settings := &database.EchoSettings{
-		ChatID: m.ChatID(),
-		Limit:  limit,
-	}
-
-	err := database.SetEchoSettings(settings)
+	err := database.SetEchoLimit(m.ChatID(), limit)
 	if err != nil {
 		m.Respond(fmt.Sprintf("Error saving limit: %v", err))
 		return telegram.EndGroup
@@ -64,7 +59,7 @@ func SetLongModeHandler(m *telegram.NewMessage) error {
 	} else if err != nil {
 		return L(m, "Modules -> longmode -> m.Delete()", err)
 	}
-	if isadmin, err := helpers.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
+	if isadmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
 		return L(m, "Modules -> longmode -> IsChatAdmin", err)
 	} else if !isadmin {
 		m.Respond("Access denied: Only group admins can use this command.")
@@ -85,14 +80,10 @@ func SetLongModeHandler(m *telegram.NewMessage) error {
 	if mode == "auto" {
 		mode = "automatic"
 	}
-	settings := &database.EchoSettings{
-		ChatID: m.ChatID(),
-		Mode:   mode,
-	}
 
-	err := database.SetEchoSettings(settings)
+	err := database.SetEchoMode(m.ChatID(), mode)
 	if err != nil {
-		return L(m, "Modules -> longmode -> SetEchoSettings", err)
+		return L(m, "Modules -> longmode -> SetEchoMode", err)
 	}
 
 	m.Respond(fmt.Sprintf("✅ Long message mode set to '%s'.", mode))

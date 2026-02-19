@@ -6,7 +6,7 @@ import (
 
 	"github.com/amarnathcjd/gogram/telegram"
 
-	"main/config/helpers"
+	"main/utils"
 )
 
 func deleteEditedMessage(m *telegram.NewMessage) error {
@@ -16,8 +16,8 @@ func deleteEditedMessage(m *telegram.NewMessage) error {
 	if ShouldIgnoreGroupAnonymous(m) {
 		return nil
 	}
-	if isadmin, err := helpers.IsChatAdmin(m.Client, m.ChatID(), m.Sender.ID); err != nil {
-		L(m, "Modules -> edit -> helpers.IsChatAdmin()", err)
+	if isadmin, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.Sender.ID); err != nil {
+		L(m, "Modules -> edit -> utils.IsChatAdmin()", err)
 		return nil
 	} else if isadmin {
 		return nil

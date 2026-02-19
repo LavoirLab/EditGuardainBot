@@ -6,8 +6,7 @@ import (
 
 	"github.com/amarnathcjd/gogram/telegram"
 
-	"main/config"
-	"main/config/helpers"
+	"main/utils"
 )
 
 func ReloadHandler(m *telegram.NewMessage) error {
@@ -32,10 +31,10 @@ func ReloadHandler(m *telegram.NewMessage) error {
 		return L(m, "Modules -> Reload -> GetChatMembers", err)
 
 	}
-	config.Cache.Store(fmt.Sprintf("admins:%d", m.ChatID()), admins)
+	utils.SetAdminsCache(m.ChatID(), admins)
 
 	var text string
-	if isb, err := helpers.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
+	if isb, err := utils.IsChatAdmin(m.Client, m.ChatID(), m.SenderID()); err != nil {
 		return err
 	} else if isb {
 		text = "✅ Successfully refreshed the cache of chat admins!"

@@ -5,7 +5,7 @@ import (
 
 	"github.com/amarnathcjd/gogram/telegram"
 
-	"main/config/helpers"
+	"main/utils"
 )
 
 func handleNeedPerm(e error, m *telegram.NewMessage) bool {
@@ -65,7 +65,7 @@ func ShouldIgnoreGroupAnonymous(m *telegram.NewMessage) bool {
 		return true
 	}
 
-	fullChat, err := helpers.GetFullChannel(m.Client, m.ChatID())
+	fullChat, err := utils.GetFullChannel(m.Client, m.ChatID())
 	if err != nil {
 		L(m, "Modules -> groupOnly -> GetFullChannel", err)
 		return false

@@ -1,14 +1,15 @@
-package helpers
+package utils
 
 import (
 	"strconv"
 	"strings"
-	"sync"
 )
 
-func LoadTyped[T any](cache *sync.Map, key string) (T, bool) {
+func LoadTyped[T any](cache interface {
+	Get(string) (any, bool)
+}, key string) (T, bool) {
 	var zero T
-	if val, ok := cache.Load(key); ok {
+	if val, ok := cache.Get(key); ok {
 		if typed, ok := val.(T); ok {
 			return typed, true
 		}
