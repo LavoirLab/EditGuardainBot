@@ -1,0 +1,1691 @@
+// file: config.go
+package tgbot
+
+import (
+	"log"
+	"os"
+	"strconv"
+
+	_ "github.com/joho/godotenv/autoload"
+)
+
+type Env string
+
+var Config = struct {
+	ApiID    int32
+	ApiHash  string
+	BotToken string
+	LoggerID int64
+}{
+	ApiID:   getEnv("API_ID", "25021578").ToInt32(),
+	ApiHash: getEnv("API_HASH", "dd92e0a3f0aa00f49ea0c26f441587b9").String(),
+	BotToken: getEnv(
+		"BOT_TOKEN",
+		"7538884584:AAHBnl2qzY4Wiv423XGfxF11tbFmqgKHkCo",
+	).String(),
+	LoggerID: getEnv("LOGGER_ID", "3632584224").ToInt64(),
+}
+
+func init() {
+	if Config.BotToken == "" {
+		log.Fatal("BOT_TOKEN is missing")
+	}
+	if Config.LoggerID == 0 {
+		log.Fatal("LOGGER_ID is missing")
+	}
+}
+
+func getEnv(key string, defaults ...string) Env {
+	val := os.Getenv(key)
+	if val == "" && len(defaults) > 0 {
+		val = defaults[0]
+	}
+	return Env(val)
+}
+
+func (e Env) String() string {
+	return string(e)
+}
+
+func (e Env) ToInt32() int32 {
+	return int32(e.ToInt64())
+}
+
+func (e Env) ToInt64() int64 {
+	if e == "" {
+		return 0
+	}
+	v, err := strconv.ParseInt(string(e), 10, 64)
+	if err != nil {
+		log.Fatalf("Invalid int64 value: %q", e)
+	}
+	return v
+}
+
+// file: helpers/cache.go
+package helpers
+
+import (
+	"sync"
+	"time"
+)
+
+type CacheItem[V any] struct {
+	Value      V
+	Expiration int64
+}
+
+func (i CacheItem[V]) Expired() bool {
+	return i.Expiration > 0 && time.Now().UnixMilli() > i.Expiration
+}
+
+type Cache[K comparable, V any] struct {
+	mu         sync.RWMutex
+	items      map[K]CacheItem[V]
+	defaultTTL int64
+}
+
+func NewCache[K comparable, V any](defaultTTL time.Duration) *Cache[K, V] {
+	return &Cache[K, V]{
+		items:      make(map[K]CacheItem[V]),
+		defaultTTL: defaultTTL.Milliseconds(),
+	}
+}
+
+func (c *Cache[K, V]) Set(key K, value V, ttl ...time.Duration) {
+	var exp int64
+	now := time.Now().UnixMilli()
+
+	if len(ttl) > 0 && ttl[0] > 0 {
+		exp = now + ttl[0].Milliseconds()
+	} else if c.defaultTTL > 0 {
+		exp = now + c.defaultTTL
+	}
+
+	c.mu.Lock()
+	c.items[key] = CacheItem[V]{Value: value, Expiration: exp}
+	c.mu.Unlock()
+}
+
+func (c *Cache[K, V]) Get(key K) (V, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	item, ok := c.items[key]
+	if !ok || item.Expired() {
+		if ok {
+			delete(c.items, key)
+		}
+		var zero V
+		return zero, false
+	}
+	return item.Value, true
+}
+
+func (c *Cache[K, V]) Keys() []K {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	keys := make([]K, 0, len(c.items))
+	for k := range c.items {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+func (c *Cache[K, V]) Delete(key K) {
+	c.mu.Lock()
+	delete(c.items, key)
+	c.mu.Unlock()
+}
+
+func (c *Cache[K, V]) Clear() {
+	c.mu.Lock()
+	c.items = make(map[K]CacheItem[V])
+	c.mu.Unlock()
+}
+
+// file: helpers/admins.go
+package helpers
+
+import (
+	"fmt"
+	"log"
+	"strings"
+	"time"
+
+	"github.com/amarnathcjd/gogram/telegram"
+)
+
+type AdminInfo struct {
+	UserID    int64
+	Rights    *telegram.ChatAdminRights
+	IsCreator bool
+	Rank      string
+}
+
+type AdminListCache struct {
+	Admins map[int64]*AdminInfo
+}
+
+var (
+	adminCache           = NewCache[int64, *AdminListCache](5 * time.Minute)
+	individualAdminCache = NewCache[string, *AdminInfo](5 * time.Minute)
+)
+
+func makeAdminKey(chatID, userID int64) string {
+	return fmt.Sprintf("%d:%d", chatID, userID)
+}
+
+func GetChatAdmins(
+	client *telegram.Client,
+	chatID int64,
+) (map[int64]*AdminInfo, error) {
+	if cached, ok := adminCache.Get(chatID); ok {
+		return cached.Admins, nil
+	}
+
+	return fetchAndCacheAdmins(client, chatID)
+}
+
+func fetchAndCacheAdmins(
+	client *telegram.Client,
+	chatID int64,
+) (map[int64]*AdminInfo, error) {
+	participants, _, err := client.GetChatMembers(
+		chatID,
+		&telegram.ParticipantOptions{
+			Filter: &telegram.ChannelParticipantsAdmins{},
+			Limit:  -1,
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch admins: %w", err)
+	}
+
+	admins := make(map[int64]*AdminInfo)
+
+	for _, participant := range participants {
+		if participant.User == nil {
+			continue
+		}
+
+		adminInfo := &AdminInfo{
+			UserID:    participant.User.ID,
+			Rights:    participant.Rights,
+			IsCreator: participant.Status == telegram.Creator,
+			Rank:      participant.Rank,
+		}
+
+		admins[participant.User.ID] = adminInfo
+		individualAdminCache.Set(
+			makeAdminKey(chatID, participant.User.ID),
+			adminInfo,
+		)
+	}
+
+	adminCache.Set(chatID, &AdminListCache{Admins: admins})
+
+	log.Printf("Cached %d admins for chat %d", len(admins), chatID)
+	return admins, nil
+}
+
+// GetAdmin returns (*AdminInfo, nil) if user is admin,
+// (nil, nil) if user is NOT admin,
+// or (nil, err) on failure.
+func GetAdmin(
+	client *telegram.Client,
+	chatID, userID int64,
+) (*AdminInfo, error) {
+	cacheKey := makeAdminKey(chatID, userID)
+	if cached, ok := individualAdminCache.Get(cacheKey); ok {
+		return cached, nil
+	}
+
+	admins, err := GetChatAdmins(client, chatID)
+	if err != nil {
+		return nil, err
+	}
+
+	if admin, exists := admins[userID]; exists {
+		return admin, nil
+	}
+
+	return nil, nil
+}
+
+func IsAdmin(client *telegram.Client, chatID, userID int64) (bool, error) {
+	cacheKey := makeAdminKey(chatID, userID)
+	if _, ok := individualAdminCache.Get(cacheKey); ok {
+		return true, nil
+	}
+
+	admins, err := GetChatAdmins(client, chatID)
+	if err != nil {
+		return false, err
+	}
+
+	_, exists := admins[userID]
+	return exists, nil
+}
+
+func CheckUserPermission(
+	client *telegram.Client,
+	chatID, userID int64,
+	permission string,
+) (bool, bool, error) {
+	admin, err := GetAdmin(client, chatID, userID)
+	if err != nil {
+		return false, false, err
+	}
+
+	if admin == nil {
+		return false, false, nil
+	}
+	if admin.Rights == nil {
+		return false, true, nil
+	}
+
+	hasPermission := checkPermission(admin.Rights, permission)
+	return hasPermission, true, nil
+}
+
+func checkPermission(rights *telegram.ChatAdminRights, permission string) bool {
+	if rights == nil {
+		return false
+	}
+
+	switch permission {
+	case "change_info":
+		return rights.ChangeInfo
+	case "post_messages":
+		return rights.PostMessages
+	case "edit_messages":
+		return rights.EditMessages
+	case "delete_messages":
+		return rights.DeleteMessages
+	case "ban_users":
+		return rights.BanUsers
+	case "invite_users":
+		return rights.InviteUsers
+	case "pin_messages":
+		return rights.PinMessages
+	case "add_admins":
+		return rights.AddAdmins
+	case "manage_call":
+		return rights.ManageCall
+	case "anonymous":
+		return rights.Anonymous
+	case "manage_topics":
+		return rights.ManageTopics
+	case "post_stories":
+		return rights.PostStories
+	case "edit_stories":
+		return rights.EditStories
+	case "delete_stories":
+		return rights.DeleteStories
+	default:
+		return false
+	}
+}
+
+func UpdateAdminFromParticipant(
+	client *telegram.Client,
+	chatID, userID int64,
+	participant telegram.ChannelParticipant,
+) {
+	if participant == nil {
+		return
+	}
+
+	adminInfo := &AdminInfo{
+		UserID: userID,
+	}
+
+	switch p := participant.(type) {
+	case *telegram.ChannelParticipantCreator:
+		adminInfo.IsCreator = true
+		adminInfo.Rights = p.AdminRights
+		adminInfo.Rank = p.Rank
+
+	case *telegram.ChannelParticipantAdmin:
+		adminInfo.IsCreator = false
+		adminInfo.Rights = p.AdminRights
+		adminInfo.Rank = p.Rank
+	default:
+		RemoveAdmin(chatID, userID)
+		return
+	}
+
+	cacheKey := makeAdminKey(chatID, userID)
+	individualAdminCache.Set(cacheKey, adminInfo)
+
+	if cached, ok := adminCache.Get(chatID); ok {
+		cached.Admins[userID] = adminInfo
+		adminCache.Set(chatID, cached)
+	}
+
+	log.Printf("Updated admin cache for user %d in chat %d", userID, chatID)
+}
+
+func RemoveAdmin(chatID, userID int64) {
+	cacheKey := makeAdminKey(chatID, userID)
+	individualAdminCache.Delete(cacheKey)
+
+	if cached, ok := adminCache.Get(chatID); ok {
+		delete(cached.Admins, userID)
+		adminCache.Set(chatID, cached)
+	}
+
+	log.Printf("Removed user %d from admin cache in chat %d", userID, chatID)
+}
+
+func ClearChatAdminCache(chatID int64) {
+	adminCache.Delete(chatID)
+
+	prefix := fmt.Sprintf("%d:", chatID)
+
+	for _, key := range individualAdminCache.Keys() {
+		if strings.HasPrefix(key, prefix) {
+			individualAdminCache.Delete(key)
+		}
+	}
+
+	log.Printf("Cleared admin cache (chat + individual) for chat %d", chatID)
+}
+
+func ClearAllAdminCache() {
+	adminCache.Clear()
+	individualAdminCache.Clear()
+	log.Println("Cleared entire admin cache")
+}
+
+func RefreshAdminCache(client *telegram.Client, chatID int64) error {
+	_, err := fetchAndCacheAdmins(client, chatID)
+	return err
+}
+
+func PrettifyPermission(permission string) string {
+	permissionMap := map[string]string{
+		"change_info":     "change chat info",
+		"post_messages":   "post messages",
+		"edit_messages":   "edit messages",
+		"delete_messages": "delete messages",
+		"ban_users":       "ban users",
+		"invite_users":    "invite users",
+		"pin_messages":    "pin messages",
+		"add_admins":      "add admins",
+		"manage_call":     "manage calls",
+		"anonymous":       "remain anonymous",
+		"manage_topics":   "manage topics",
+		"post_stories":    "post stories",
+		"edit_stories":    "edit stories",
+		"delete_stories":  "delete stories",
+	}
+
+	if pretty, exists := permissionMap[permission]; exists {
+		return pretty
+	}
+	return permission
+}
+
+func GetCacheStats() map[string]interface{} {
+	return map[string]interface{}{
+		"cache_duration_minutes": 5.0,
+		"note":                   "Using generic cache with automatic expiry",
+	}
+}
+
+// file: helpers/user.go
+package helpers
+
+import (
+	"fmt"
+	"html"
+
+	tg "github.com/amarnathcjd/gogram/telegram"
+)
+
+func MentionHTML(u *tg.UserObj) string {
+	if u == nil {
+		return "Unknown"
+	}
+
+	fullName := u.FirstName
+	if u.LastName != "" {
+		fullName += " " + u.LastName
+	}
+
+	if fullName == "" {
+		fullName = "User"
+	}
+	fullName = html.EscapeString(fullName)
+
+	return fmt.Sprintf("<a href=\"tg://user?id=%d\">%s</a>", u.ID, fullName)
+}
+
+// file: helpers/extractions.go
+package helpers
+
+import (
+	"strconv"
+	"strings"
+
+	tg "github.com/amarnathcjd/gogram/telegram"
+)
+
+func fail(m *tg.NewMessage, message ...string) {
+	msg := "I don't know who you're talking about, you're going to need to specify a user...!"
+	if len(message) > 0 && message[0] != "" {
+		msg = message[0]
+	}
+	m.Reply(msg)
+}
+
+func extractUserIDFromEntity(m *tg.NewMessage, ent tg.MessageEntity) int64 {
+	switch e := ent.(type) {
+
+	case *tg.MessageEntityMentionName:
+		return e.UserID
+
+	case *tg.MessageEntityMention:
+		username := strings.TrimPrefix(
+			m.Text()[e.Offset:e.Offset+e.Length],
+			"@",
+		)
+
+		peer, err := m.Client.ResolvePeer(username)
+		if err != nil {
+			fail(m, "Looks like I don't have control over that user.")
+			return 0
+		}
+
+		user, ok := peer.(*tg.InputPeerUser)
+		if !ok {
+			fail(m, "This can only be used on users.")
+			return 0
+		}
+
+		return user.UserID
+	}
+
+	return 0
+}
+
+func extractUserIDFallback(m *tg.NewMessage, text string) int64 {
+	text = strings.TrimSpace(text)
+
+	if id, err := strconv.ParseInt(text, 10, 64); err == nil {
+		return id
+	}
+
+	peer, err := m.Client.ResolvePeer(text)
+	if err != nil {
+		fail(m)
+		return 0
+	}
+
+	user, ok := peer.(*tg.InputPeerUser)
+	if !ok {
+		fail(m, "This can only be used on users.")
+		return 0
+	}
+
+	return user.UserID
+}
+
+func ExtractUserAndReason(m *tg.NewMessage) (int64, string) {
+	if m == nil || m.Message == nil {
+		return 0, ""
+	}
+
+	text := m.Text()
+
+	// ✅ Reply case
+	if m.IsReply() {
+		reply, err := m.GetReplyMessage()
+		if err != nil {
+			fail(m)
+			return 0, ""
+		}
+
+		if _, ok := reply.Message.FromID.(*tg.PeerUser); !ok {
+			fail(m, "This can only be used on users.")
+			return 0, ""
+		}
+
+		return reply.SenderID(), strings.TrimSpace(m.Args())
+	}
+
+	cmd := strings.SplitN(text, " ", 2)[0]
+	cmdEnd := len(cmd)
+
+	hasEntity := false
+
+	for _, ent := range m.Message.Entities {
+		// ✅ CASE 1
+		switch e := ent.(type) {
+
+		case *tg.MessageEntityMention:
+			hasEntity = true
+
+			if e.Offset != int32(cmdEnd+1) {
+				fail(m, "User mention must come right after the command.")
+				return 0, ""
+			}
+
+			userID := extractUserIDFromEntity(m, e)
+			if userID == 0 {
+				return 0, ""
+			}
+
+			reason := strings.TrimSpace(
+				text[e.Offset+e.Length:],
+			)
+
+			return userID, reason
+
+		// ✅ CASE 2
+		case *tg.MessageEntityMentionName:
+			hasEntity = true
+
+			if e.Offset != int32(cmdEnd+1) {
+				fail(m, "User mention must come right after the command.")
+				return 0, ""
+			}
+
+			reason := strings.TrimSpace(
+				text[e.Offset+e.Length:],
+			)
+
+			return e.UserID, reason
+		}
+	}
+
+	// ✅ Fallback
+	if !hasEntity {
+		args := m.ArgsList()
+		if len(args) >= 1 {
+			userID := extractUserIDFallback(m, args[0])
+			if userID == 0 {
+				return 0, ""
+			}
+
+			if len(args) == 1 {
+				return userID, ""
+			}
+
+			return userID, strings.Join(args[1:], " ")
+		}
+	}
+
+	fail(m)
+	return 0, ""
+}
+
+func ExtractUser(m *tg.NewMessage) int64 {
+	id, _ := ExtractUserAndReason(m)
+	return id
+}
+
+// file: modules/admin.go
+package modules
+
+import (
+	"github.com/amarnathcjd/gogram/telegram"
+
+	"main/tgbot/helpers"
+)
+
+func init() {
+	RegisterModule(&ModuleInfo{
+		Name:    "admin",
+		ModName: "Admin",
+		Help: `Make it easy to promote and demote users with the admin module!
+
+<b>Admin commands:</b>
+- /promote <code>[reply/username/mention/userid]:</code> Promote a user.`,
+		Handlers: []HandlerConfig{
+			{
+				Pattern: "command:promote",
+				Handler: RequirePermission("add_admins", handlePromote),
+			},
+		},
+	})
+}
+
+func handlePromote(m *telegram.NewMessage) error {
+	client := m.Client
+	chatID := m.ChannelID()
+	userID, tag := helpers.ExtractUserAndReason(m)
+
+	// ExtractUserAndReason internally warned user on any issues, so it returned 0
+	if userID == 0 {
+		return telegram.ErrEndGroup
+	}
+
+	if adminInfo, err := helpers.GetAdmin(client, chatID, userID); err != nil {
+		client.Log.Errorf(
+			"Failed to get helpers.GetAdmin(..) for %d : %v",
+			chatID,
+			err,
+		)
+	} else if adminInfo != nil {
+
+		if adminInfo.IsCreator {
+
+			_, err := m.Reply("I would love to promote the chat creator, but... well, they already have all the power.")
+			return err
+		}
+
+		_, err := m.Reply("Alredy promoted")
+		return err
+
+	}
+	return telegram.ErrEndGroup
+}
+
+// file: modules/help.go
+package modules
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/amarnathcjd/gogram/telegram"
+)
+
+const helpMessageTemplate = `
+Hey there! My name is <b>%s</b>.
+I'm a modular group management bot with a few fun extras! Have a look at the following for an idea of some of the things I can help you with.
+
+<b>Main commands available:</b>
+ - /start: start the bot
+ - /help: PM's you this message
+ - /help &lt;module name&gt;: PM's you info about that module
+
+Click the buttons below to get help for specific modules:
+`
+
+func init() {
+	RegisterModule(&ModuleInfo{
+		Name:    "help",
+		ModName: "Help",
+		Help: `
+<b>Main commands available:</b>
+ - /start: start the bot
+ - /help: PM's you this message
+ - /help &lt;module name&gt;: PM's you info about that module`,
+		Handlers: []HandlerConfig{
+			{
+				Pattern: "command:help",
+				Handler: handleHelp,
+				Group:   10,
+			},
+			{
+				Pattern: "callback:^help_module:",
+				Handler: handleHelpModuleCallback,
+				Group:   10,
+			},
+			{
+				Pattern: "callback:^help_back$",
+				Handler: handleHelpBackCallback,
+				Group:   10,
+			},
+		},
+	})
+}
+
+func handleHelp(m *telegram.NewMessage) error {
+	if !m.IsPrivate() {
+
+		_, err := m.Reply(
+			"Contact me in PM to get the list of possible commands.",
+			&telegram.SendOptions{
+				ReplyMarkup: telegram.NewKeyboard().AddRow(
+					telegram.Button.URL("📚 Help & Commands", fmt.Sprintf(
+						"https://t.me/%s?start=help",
+						m.Client.Me().Username,
+					)),
+				).Build(),
+			},
+		)
+
+		return err
+	}
+	args := m.ArgsList()
+
+	if len(args) > 0 && strings.ToLower(args[0]) != "help" {
+		moduleName := strings.ToLower(args[0])
+
+		module, exists := GetModule(moduleName)
+		if !exists || module.Help == "" {
+			_, err := m.Reply("No help message affiliated with " + moduleName)
+			return err
+		}
+
+		helpText := fmt.Sprintf(
+			"Here is the available help for the <b>%s</b> module:\n\n%s",
+			module.ModName,
+			module.Help,
+		)
+
+		_, err := m.Reply(helpText, &telegram.SendOptions{
+			ParseMode: "HTML",
+			ReplyMarkup: telegram.NewKeyboard().AddRow(
+				telegram.Button.Data("« Back", "help_back"),
+			).Build(),
+		})
+		return err
+	}
+
+	return sendFullHelpWithButtons(m)
+}
+
+func sendFullHelpWithButtons(m *telegram.NewMessage) error {
+	helpText := fmt.Sprintf(helpMessageTemplate, m.Client.Me().FirstName)
+	modules := GetModulesWithHelp()
+
+	keyboard := telegram.NewKeyboard()
+
+	for _, module := range modules {
+		if module.Name == "help" || module.Name == "start" {
+			continue
+		}
+
+		keyboard.AddRow(
+			telegram.Button.Data(module.ModName, "help_module:"+module.Name),
+		)
+	}
+
+	_, err := m.Reply(helpText, &telegram.SendOptions{
+		ParseMode:   "HTML",
+		ReplyMarkup: keyboard.Build(),
+	})
+
+	return err
+}
+
+func handleHelpModuleCallback(c *telegram.CallbackQuery) error {
+	data := c.DataString()
+	parts := strings.SplitN(data, ":", 2)
+	if len(parts) != 2 {
+		c.Answer("Invalid callback data", &telegram.CallbackOptions{})
+		return telegram.ErrEndGroup
+	}
+
+	moduleName := parts[1]
+
+	module, exists := GetModule(moduleName)
+	if !exists || module.Help == "" {
+		c.Answer("Module not found!", &telegram.CallbackOptions{})
+		return telegram.ErrEndGroup
+	}
+
+	helpText := fmt.Sprintf(
+		"Here is the available help for the <b>%s</b> module:\n\n%s",
+		module.ModName,
+		module.Help,
+	)
+
+	_, err := c.Edit(helpText, &telegram.SendOptions{
+		ParseMode: "HTML",
+		ReplyMarkup: telegram.NewKeyboard().AddRow(
+			telegram.Button.Data("« Back", "help_back"),
+		).Build(),
+	})
+
+	c.Answer("")
+
+	return err
+}
+
+func handleHelpBackCallback(c *telegram.CallbackQuery) error {
+	helpText := fmt.Sprintf(helpMessageTemplate, c.Client.Me().FirstName)
+	modules := GetModulesWithHelp()
+
+	keyboard := telegram.NewKeyboard()
+
+	for _, module := range modules {
+		if module.Name == "help" || module.Name == "start" {
+			continue
+		}
+
+		keyboard.AddRow(
+			telegram.Button.Data(module.ModName, "help_module:"+module.Name),
+		)
+	}
+
+	_, err := c.Edit(helpText, &telegram.SendOptions{
+		ParseMode:   "HTML",
+		ReplyMarkup: keyboard.Build(),
+	})
+
+	c.Answer("")
+
+	return err
+}
+
+// file: modules/registry.go
+package modules
+
+import (
+	"errors"
+	"fmt"
+	"html"
+	"log"
+	"runtime/debug"
+	"sort"
+
+	tg "github.com/amarnathcjd/gogram/telegram"
+
+	"main/tgbot"
+	"main/tgbot/helpers"
+)
+
+type ModuleInfo struct {
+	Name     string
+	ModName  string
+	Help     string
+	Handlers []HandlerConfig
+}
+
+type HandlerConfig struct {
+	Pattern string
+	Handler any
+	Group   int
+}
+
+var registeredModules = make(map[string]*ModuleInfo)
+
+func RegisterModule(info *ModuleInfo) {
+	if _, exists := registeredModules[info.Name]; exists {
+		log.Fatalf("Module '%s' is already registered", info.Name)
+	}
+
+	registeredModules[info.Name] = info
+	log.Printf("✓ Registered module: %s", info.ModName)
+}
+
+func GetModule(name string) (*ModuleInfo, bool) {
+	mod, exists := registeredModules[name]
+	return mod, exists
+}
+
+func GetAllModules() []*ModuleInfo {
+	modules := make([]*ModuleInfo, 0, len(registeredModules))
+	for _, mod := range registeredModules {
+		modules = append(modules, mod)
+	}
+
+	sort.Slice(modules, func(i, j int) bool {
+		return modules[i].ModName < modules[j].ModName
+	})
+
+	return modules
+}
+
+func GetModulesWithHelp() []*ModuleInfo {
+	modules := make([]*ModuleInfo, 0)
+	for _, mod := range registeredModules {
+		if mod.Help != "" {
+			modules = append(modules, mod)
+		}
+	}
+
+	sort.Slice(modules, func(i, j int) bool {
+		return modules[i].ModName < modules[j].ModName
+	})
+
+	return modules
+}
+
+func LoadAllHandlers(client *tg.Client) {
+	log.Println("Loading handlers from registered modules...")
+
+	names := make([]string, 0, len(registeredModules))
+	for name := range registeredModules {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		module := registeredModules[name]
+
+		for _, hConfig := range module.Handlers {
+			group := hConfig.Group
+			if group == 0 {
+				group = 10
+			}
+
+			var handle tg.Handle
+
+			switch h := hConfig.Handler.(type) {
+			case func(*tg.NewMessage) error:
+				wrapped := safeMessageHandler(h)
+				handle = client.On(hConfig.Pattern, wrapped)
+
+			case func(*tg.CallbackQuery) error:
+				wrapped := safeCallbackHandler(h)
+				handle = client.On(hConfig.Pattern, wrapped)
+			default:
+				handle = client.On(hConfig.Pattern, h)
+			}
+
+			if handle != nil {
+				handle.SetGroup(group)
+			}
+		}
+
+		log.Printf("✓ Loaded handlers for module: %s", module.ModName)
+	}
+
+	log.Printf("✓ Successfully loaded %d modules", len(registeredModules))
+}
+
+func safeCallbackHandler(
+	handler func(*tg.CallbackQuery) error,
+) func(*tg.CallbackQuery) error {
+	return func(cb *tg.CallbackQuery) (err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				handlePanic(r, cb, true)
+				err = tg.ErrEndGroup
+			}
+		}()
+		err = handler(cb)
+		if err != nil {
+			if errors.Is(err, tg.ErrEndGroup) {
+				return err
+			}
+			handlePanic(err, cb, false)
+		}
+		return tg.ErrEndGroup
+	}
+}
+
+func safeMessageHandler(
+	handler func(*tg.NewMessage) error,
+) func(*tg.NewMessage) error {
+	return func(m *tg.NewMessage) (err error) {
+		m.Client.Log.Info(
+			fmt.Sprintf("Handling message from %d in chat %d",
+				m.SenderID(),
+				m.ChannelID(),
+			),
+		)
+
+		defer func() {
+			if r := recover(); r != nil {
+				handlePanic(r, m, true)
+				err = tg.ErrEndGroup
+			}
+		}()
+
+		cmd := m.GetCommand()
+		m.Client.Log.Debug("Executing handler for command " + cmd)
+		err = handler(m)
+
+		if err != nil {
+			if errors.Is(err, tg.ErrEndGroup) {
+				return err
+			}
+			m.Client.Log.Error("Handler error: " + err.Error())
+			handlePanic(err, m, false)
+		} else {
+			m.Client.Log.Info("Handler completed successfully for command " + m.GetCommand())
+		}
+
+		return tg.ErrEndGroup
+	}
+}
+
+func handlePanic(r, ctx interface{}, isPanic bool) {
+	stack := html.EscapeString(string(debug.Stack()))
+
+	var userMention, handlerType, chatInfo, messageInfo, errorMessage string
+	var client *tg.Client
+
+	switch c := ctx.(type) {
+	case *tg.NewMessage:
+		userMention = helpers.MentionHTML(c.Sender)
+		handlerType = "message"
+		chatInfo = fmt.Sprintf("ChatID: %d", c.ChannelID())
+		messageInfo = fmt.Sprintf("Message: %s\nLink: %s", html.EscapeString(c.Text()), c.Link())
+		errorMessage = html.EscapeString(fmt.Sprint(r))
+		client = c.Client
+
+	case *tg.CallbackQuery:
+		userMention = helpers.MentionHTML(c.Sender)
+		handlerType = "callback"
+		chatInfo = fmt.Sprintf("ChatID: %d", c.ChatID)
+		messageInfo = fmt.Sprintf("Data: %s", html.EscapeString(c.DataString()))
+		errorMessage = html.EscapeString(fmt.Sprint(r))
+		client = c.Client
+	}
+
+	if client == nil {
+		return
+	}
+
+	logMsg := "🚨 Error in %s handler:\nFrom: %s\n%s\n%s\nError: `%v`"
+	shortMsg := "<b>Error in %s handler</b>\n<b>From:</b> %s\n%s\n%s\n<b>Error:</b>\n<code>%s</code>"
+
+	if isPanic {
+		logMsg = "⚠️ Panic recovered in %s handler:\nFrom: %s\n%s\n%s\nError: `%v`\nStack:\n%s"
+		shortMsg = "<b>⚠️ Panic in %s handler</b>\n<b>From:</b> %s\n%s\n%s\n<b>Error:</b>\n<code>%s</code>\n<pre>%s</pre>"
+	}
+
+	if isPanic {
+		client.Log.Errorf(
+			logMsg,
+			handlerType,
+			userMention,
+			chatInfo,
+			messageInfo,
+			r,
+			stack,
+		)
+	} else {
+		client.Log.Errorf(logMsg, handlerType, userMention, chatInfo, messageInfo, r)
+	}
+
+	var short string
+	if isPanic {
+		short = fmt.Sprintf(
+			shortMsg,
+			handlerType,
+			userMention,
+			chatInfo,
+			messageInfo,
+			errorMessage,
+			stack,
+		)
+	} else {
+		short = fmt.Sprintf(shortMsg, handlerType, userMention, chatInfo, messageInfo, errorMessage)
+	}
+
+	if _, sendErr := client.SendMessage(tgbot.Config.LoggerID, short, &tg.SendOptions{ParseMode: "HTML"}); sendErr != nil {
+		client.Log.Errorf(
+			"Failed to send error message to log chat: %v",
+			sendErr,
+		)
+	}
+}
+
+// file: modules/start.go
+package modules
+
+import (
+	"fmt"
+
+	"github.com/amarnathcjd/gogram/telegram"
+)
+
+const PM_START_TEXT = `
+Hey %s! My name is %s - I'm here to help you manage your groups! Use /help to find out how to use me to my full potential.
+
+Join my [news channel](https://t.me/TheTeamVivek) to get information on all the latest updates.`
+
+func init() {
+	RegisterModule(&ModuleInfo{
+		Name:    "start",
+		ModName: "Start",
+		Help:    "",
+		Handlers: []HandlerConfig{
+			{
+				Pattern: "command:start",
+				Handler: handleStart,
+				Group:   10,
+			},
+		},
+	})
+}
+
+func handleStart(m *telegram.NewMessage) error {
+	if m.IsPrivate() {
+		args := m.ArgsList()
+
+		if len(args) > 0 && args[0] == "help" {
+			return handleHelp(m)
+		}
+
+		text := fmt.Sprintf(
+			PM_START_TEXT,
+			m.Sender.FirstName,
+			m.Client.Me().FirstName,
+		)
+
+		_, err := m.Reply(text, &telegram.SendOptions{
+			ParseMode: "markdown",
+			ReplyMarkup: telegram.NewKeyboard().AddRow(
+				telegram.Button.URL(
+					"Add me to your group!",
+					fmt.Sprintf(
+						"t.me/%s?startgroup=true",
+						m.Client.Me().Username,
+					),
+				),
+			).Build(),
+		})
+		return err
+	}
+
+	if m.IsGroup() {
+		_, err := m.Reply(
+			"Heya :) PM me if you have any questions on how to use me!",
+			nil,
+		)
+		return err
+	}
+
+	return telegram.ErrEndGroup
+}
+
+// file: modules/watcher.go
+package modules
+
+import (
+	"fmt"
+	"log"
+	"time"
+
+	"github.com/amarnathcjd/gogram/telegram"
+
+	"main/tgbot/helpers"
+)
+
+func init() {
+	RegisterModule(&ModuleInfo{
+		Name:    "watcher",
+		ModName: "Watcher",
+		Help:    "",
+		Handlers: []HandlerConfig{
+			{
+				Pattern: "action",
+				Handler: handleChatAction,
+				Group:   10,
+			},
+			{
+				Pattern: "participant",
+				Handler: handleParticipantUpdate,
+				Group:   10,
+			},
+		},
+	})
+}
+
+func handleParticipantUpdate(pu *telegram.ParticipantUpdate) error {
+	if pu == nil || pu.Channel == nil {
+		return nil
+	}
+
+	self := pu.Client.Me()
+	chatID := pu.ChannelID()
+	userID := pu.UserID()
+	oldStatus := getParticipantStatus(pu.Old)
+	newStatus := getParticipantStatus(pu.New)
+
+	// bot itself
+
+	if userID == self.ID {
+		log.Printf(
+			"MyChatMember | chat_id=%d %s -> %s",
+			chatID,
+			oldStatus,
+			newStatus,
+		)
+
+		// bot promoted to admin
+		if newStatus == "administrator" {
+			helpers.UpdateAdminFromParticipant(
+				pu.Client,
+				chatID,
+				self.ID,
+				pu.New,
+			)
+			return telegram.ErrEndGroup
+		}
+
+		// bot demoted / removed
+		if newStatus == "member" ||
+			newStatus == "left" ||
+			newStatus == "kicked" {
+			helpers.ClearChatAdminCache(chatID)
+			return telegram.ErrEndGroup
+		}
+
+		return telegram.ErrEndGroup
+	}
+
+	// ------------------------------------------------
+	// CHAT_MEMBER  (any other user)
+	// ------------------------------------------------
+	if pu.User == nil {
+		return nil
+	}
+
+	log.Printf(
+		"ChatMember | user=%d chat=%d %s -> %s",
+		userID,
+		chatID,
+		oldStatus,
+		newStatus,
+	)
+
+	// promoted / rights changed
+	if newStatus == "administrator" || newStatus == "creator" {
+		helpers.UpdateAdminFromParticipant(
+			pu.Client,
+			chatID,
+			userID,
+			pu.New,
+		)
+		return telegram.ErrEndGroup
+	}
+
+	// demoted / left / kicked / restricted
+	if newStatus == "member" ||
+		newStatus == "restricted" ||
+		newStatus == "left" ||
+		newStatus == "kicked" {
+		helpers.RemoveAdmin(chatID, userID)
+		return telegram.ErrEndGroup
+	}
+
+	return telegram.ErrEndGroup
+}
+
+func getParticipantStatus(p telegram.ChannelParticipant) string {
+	if p == nil {
+		return "left"
+	}
+
+	switch p.(type) {
+	case *telegram.ChannelParticipantCreator:
+		return "creator"
+	case *telegram.ChannelParticipantAdmin:
+		return "administrator"
+	case *telegram.ChannelParticipantSelf,
+		*telegram.ChannelParticipantObj:
+		return "member"
+	case *telegram.ChannelParticipantLeft:
+		return "left"
+	case *telegram.ChannelParticipantBanned:
+		return "kicked"
+	default:
+		return "unknown"
+	}
+}
+
+func handleChatAction(m *telegram.NewMessage) error {
+	if !isValidChatType(m) {
+		warnAndLeave(m.Client, m.ChannelID())
+		return telegram.ErrEndGroup
+	}
+
+	botID := m.Client.Me().ID
+	switch action := m.Action.(type) {
+	case *telegram.MessageActionChatAddUser:
+		// Check if bot was added
+		for _, userID := range action.Users {
+			if userID == botID {
+				return handleBotAdded(m)
+			}
+		}
+
+	case *telegram.MessageActionChatDeleteUser:
+		// Check if bot was removed
+		if action.UserID == botID {
+			return handleBotRemoved(m)
+		}
+	}
+
+	return nil
+}
+
+func handleBotAdded(m *telegram.NewMessage) error {
+	chatType := m.ChatType()
+
+	switch chatType {
+	case telegram.EntityChannel:
+		return nil
+
+	default:
+		// SuperGroup - proceed normally
+		welcomeText := fmt.Sprintf(`👋 <b>Hello!</b>
+
+Thanks for adding me to <b>%s</b>! I'm %s, your group management assistant.
+
+Use /help to see what I can do!`, getTitle(m), m.Client.Me().FirstName)
+
+		_, err := m.Reply(welcomeText, &telegram.SendOptions{ParseMode: "HTML"})
+		return err
+	}
+}
+
+func handleBotRemoved(m *telegram.NewMessage) error {
+	return nil
+}
+
+func getTitle(m *telegram.NewMessage) string {
+	if m.Channel != nil {
+		return m.Channel.Title
+	}
+	return "this group"
+}
+
+func isValidChatType(m *telegram.NewMessage) bool {
+	return m.ChatType() != telegram.EntityChat ||
+		(m.Channel != nil && m.Channel.Megagroup)
+}
+
+func warnAndLeave(client *telegram.Client, chatID int64) {
+	text := `⚠️ <b>Basic Groups Not Supported</b>
+
+I only work in SuperGroups! Please convert this group to a SuperGroup first.
+
+<b>How to convert:</b>
+1. Go to Group Settings
+2. Select "Chat History"
+3. Make it "Visible"
+
+After converting, add me again and I'll work perfectly! 😊`
+
+	client.SendMessage(chatID, text)
+
+	go func() {
+		time.Sleep(1 * time.Second)
+		client.LeaveChannel(chatID)
+	}()
+	return
+}
+
+// file: modules/wrapper.go
+package modules
+
+import (
+	"fmt"
+	"log"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/amarnathcjd/gogram/telegram"
+
+	"main/tgbot/helpers"
+)
+
+func RequirePermission(
+	permission string,
+	next func(*telegram.NewMessage) error,
+) func(*telegram.NewMessage) error {
+	return func(m *telegram.NewMessage) error {
+		if m.IsChannel() {
+			return telegram.ErrEndGroup
+		}
+
+		if m.IsPrivate() {
+			m.Reply(
+				"This command is made to be used in group chats, not in PM!",
+			)
+			return telegram.ErrEndGroup
+		}
+
+		if m.Channel == nil {
+			return nil
+		}
+
+		if m.IsAnonymous() {
+			return handleAnonAdmin(m, permission, next)
+		}
+
+		if m.Sender == nil {
+			return telegram.ErrEndGroup
+		}
+
+		chatID := m.ChannelID()
+		userID := m.SenderID()
+
+		userHasPerm, userIsAdmin, err := helpers.CheckUserPermission(
+			m.Client, chatID, userID, permission,
+		)
+		if err != nil {
+			log.Printf("Failed to check user permission: %v", err)
+			m.Reply("Failed to verify your permissions.")
+			return err
+		}
+
+		if !userIsAdmin {
+			m.Reply("Who dis non-admin telling me what to do?")
+			return telegram.ErrEndGroup
+		}
+
+		if !userHasPerm {
+			m.Reply(
+				fmt.Sprintf(
+					"You don't have permission to %s.",
+					helpers.PrettifyPermission(permission),
+				),
+			)
+			return telegram.ErrEndGroup
+		}
+
+		botHasPerm, botIsAdmin, err := helpers.CheckUserPermission(
+			m.Client, chatID, m.Client.Me().ID, permission,
+		)
+		if err != nil {
+			m.Client.Log.Errorf("Failed to check bot permission: %v", err)
+			m.Reply("Failed to verify my permissions.")
+			return err
+		}
+
+		if !botIsAdmin {
+			m.Reply(
+				fmt.Sprintf(
+					"I'm not an admin, how do you expect me to %s?",
+					helpers.PrettifyPermission(permission),
+				),
+			)
+			return telegram.ErrEndGroup
+		}
+
+		if !botHasPerm {
+			m.Reply(
+				fmt.Sprintf(
+					"I don't have permission to %s.",
+					helpers.PrettifyPermission(permission),
+				),
+			)
+			return telegram.ErrEndGroup
+		}
+		return next(m)
+	}
+}
+
+var (
+	anonVerifyCache   = make(map[string]*AnonVerification)
+	anonVerifyCacheMu sync.RWMutex
+)
+
+type AnonVerification struct {
+	OriginalMessage *telegram.NewMessage
+	Permission      string
+	Handler         func(*telegram.NewMessage) error
+	CreatedAt       time.Time
+}
+
+func init() {
+	RegisterModule(&ModuleInfo{
+		Name:    "anon_verification",
+		ModName: "Anonymous Admin Verification",
+		Handlers: []HandlerConfig{
+			{
+				Pattern: "callback:^anon_verify:",
+				Handler: HandleAnonVerification,
+			},
+		},
+	})
+}
+
+func handleAnonAdmin(
+	m *telegram.NewMessage,
+	permission string,
+	handler func(*telegram.NewMessage) error,
+) error {
+	verifyKey := fmt.Sprintf(
+		"anon_%d_%d",
+		m.ChannelID(),
+		time.Now().UnixNano(),
+	)
+
+	keyboard := telegram.NewKeyboard().AddRow(
+		telegram.Button.Data("✅ Verify Identity", "anon_verify:"+verifyKey),
+	).Build()
+
+	_, err := m.Reply(
+		"You are an anonymous admin. Click the button below to verify your identity.",
+		&telegram.SendOptions{ReplyMarkup: keyboard},
+	)
+	if err != nil {
+		log.Printf("Failed to send anon verification message: %v", err)
+		return err
+	}
+
+	anonVerifyCacheMu.Lock()
+	anonVerifyCache[verifyKey] = &AnonVerification{
+		OriginalMessage: m,
+		Permission:      permission,
+		Handler:         handler,
+		CreatedAt:       time.Now(),
+	}
+	anonVerifyCacheMu.Unlock()
+
+	go func() {
+		time.Sleep(5 * time.Minute)
+		anonVerifyCacheMu.Lock()
+		delete(anonVerifyCache, verifyKey)
+		anonVerifyCacheMu.Unlock()
+	}()
+
+	return telegram.ErrEndGroup
+}
+
+func HandleAnonVerification(cb *telegram.CallbackQuery) error {
+	parts := strings.SplitN(cb.DataString(), ":", 2)
+	if len(parts) != 2 {
+		cb.Answer(
+			"Invalid verification",
+			&telegram.CallbackOptions{Alert: true},
+		)
+		return telegram.ErrEndGroup
+	}
+
+	key := parts[1]
+
+	anonVerifyCacheMu.RLock()
+	verify, ok := anonVerifyCache[key]
+	anonVerifyCacheMu.RUnlock()
+
+	if !ok {
+		cb.Answer("")
+		cb.Edit("This button has expired. Please use the command again.")
+		return telegram.ErrEndGroup
+	}
+
+	chatID := verify.OriginalMessage.ChannelID()
+	userID := cb.SenderID
+
+	botHasPerm, botIsAdmin, err := helpers.CheckUserPermission(
+		cb.Client, chatID, cb.Client.Me().ID, verify.Permission,
+	)
+	if err != nil {
+		cb.Answer(
+			"Failed to verify bot permissions.",
+			&telegram.CallbackOptions{Alert: true},
+		)
+		return telegram.ErrEndGroup
+	}
+
+	if !botIsAdmin {
+		anonVerifyCacheMu.Lock()
+		delete(anonVerifyCache, key)
+		anonVerifyCacheMu.Unlock()
+
+		cb.Answer("I'm not an admin!", &telegram.CallbackOptions{Alert: true})
+		cb.Edit(fmt.Sprintf(
+			"I'm not an admin, how do you expect me to %s?",
+			helpers.PrettifyPermission(verify.Permission),
+		))
+		return telegram.ErrEndGroup
+	}
+
+	userHasPerm, userIsAdmin, err := helpers.CheckUserPermission(
+		cb.Client, chatID, userID, verify.Permission,
+	)
+	if err != nil {
+		cb.Answer(
+			"Failed to verify your permissions.",
+			&telegram.CallbackOptions{Alert: true},
+		)
+		return telegram.ErrEndGroup
+	}
+
+	if !userIsAdmin {
+		cb.Answer(
+			"Who dis non-admin telling me what to do?",
+			&telegram.CallbackOptions{Alert: true},
+		)
+		return telegram.ErrEndGroup
+	}
+
+	if !userHasPerm {
+		cb.Answer(
+			fmt.Sprintf(
+				"You don't have permission to %s.",
+				helpers.PrettifyPermission(verify.Permission),
+			),
+			&telegram.CallbackOptions{Alert: true},
+		)
+		return telegram.ErrEndGroup
+	}
+
+	if !botHasPerm {
+		cb.Answer("")
+		cb.Edit(
+			fmt.Sprintf(
+				"I don't have permission to %s.",
+				helpers.PrettifyPermission(verify.Permission),
+			),
+		)
+		anonVerifyCacheMu.Lock()
+		delete(anonVerifyCache, key)
+		anonVerifyCacheMu.Unlock()
+		return telegram.ErrEndGroup
+	}
+
+	anonVerifyCacheMu.Lock()
+	delete(anonVerifyCache, key)
+	anonVerifyCacheMu.Unlock()
+
+	cb.Answer("✓ Verified", &telegram.CallbackOptions{})
+	cb.Delete()
+
+	verifiedMsg := createVerifiedMessage(verify.OriginalMessage, cb.Sender)
+	return verify.Handler(verifiedMsg)
+}
+
+func createVerifiedMessage(
+	original *telegram.NewMessage,
+	verifiedUser *telegram.UserObj,
+) *telegram.NewMessage {
+	verifiedMessage := *original
+	verifiedMessage.Sender = verifiedUser
+
+	msgCopy := *verifiedMessage.Message
+	msgCopy.FromID = &telegram.PeerUser{UserID: verifiedUser.ID}
+	verifiedMessage.Message = &msgCopy
+
+	return &verifiedMessage
+}
+
