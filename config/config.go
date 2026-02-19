@@ -1,97 +1,98 @@
 package config
 
 import (
-	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/joho/godotenv"
+	_ "github.com/joho/godotenv/autoload"
 )
+
+/* ---------- ENV TYPE ---------- */
+
+type EnvValue struct {
+	key   string
+	value string
+}
+
+func getEnv(key, def string) EnvValue {
+	v, ok := os.LookupEnv(key)
+	if !ok || strings.TrimSpace(v) == "" {
+		v = def
+	}
+	return EnvValue{key: key, value: v}
+}
+
+/* ---------- PARSERS ---------- */
+
+func (e EnvValue) String() string {
+	return e.value
+}
+
+func (e EnvValue) Int64() int64 {
+	v, err := strconv.ParseInt(e.value, 10, 64)
+	if err != nil {
+		log.Fatalf("Invalid int64 for %s: %s (%v)", e.key, e.value, err)
+	}
+	return v
+}
+
+func (e EnvValue) Int32() int32 {
+	return int32(e.Int64())
+}
+
+func (e EnvValue) Int64Slice() []int64 {
+	parts := strings.Fields(e.value)
+	out := make([]int64, 0, len(parts))
+
+	for _, p := range parts {
+		v, err := strconv.ParseInt(p, 10, 64)
+		if err != nil {
+			log.Fatalf("Invalid int64 in %s: %s (%v)", e.key, p, err)
+		}
+		out = append(out, v)
+	}
+	return out
+}
+
+/* ---------- CONFIG VARS ---------- */
 
 var (
-	ApiId    int32
-	ApiHash  string
-	LoggerId int64
-	OwnerId  []int64
-	MongoUri string
-
-	StartImage string
-
-	Token     string
-	StartTime time.Time
-
-	SupportChat    string
-	SupportChannel string
-
-	BaseURL string
-)
-
-func init() {
-	godotenv.Load()
 	StartTime = time.Now()
 
-	parseToInt64 := func(val string) int64 {
-		parsed, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			panic(fmt.Sprintf("Error parsing int64: %v", err))
-		}
-		return parsed
-	}
-	apiId := Getenv("API_ID", "12380656", parseToInt64)
-	ApiId = int32(apiId)
-	ApiHash = Getenv[string]("API_HASH", "d927c13beaaf5110f25c505b7c071273", nil)
-	Token = Getenv[string]("TOKEN", "8050656956:AAGsJ8EniqZ1Bhe6F5xSelX08C43kzqboQI", nil)
+	ApiId   = getEnv("API_ID", "12380656").Int32()
+	ApiHash = getEnv("API_HASH", "").String()
+	Token   = getEnv("TOKEN", "").String()
 
-	StartImage = Getenv[string](
+	StartImage = getEnv(
 		"START_IMG_GIF",
 		"https://raw.githubusercontent.com/Vivekkumar-IN/assets/refs/heads/master/ezgif-408f355da640ed.gif",
-		nil,
-	)
+	).String()
 
-	LoggerId = Getenv("LOGGER_ID", "-1002867211623", parseToInt64)
-	MongoUri = Getenv[string]("MONGO_DB_URI", "mongodb+srv://marin:marin69@cluster0.zxaf7uc.mongodb.net/?retryWrites=true&w=majority", nil)
-	SupportChannel = Getenv[string]("SUPPORT_CHANNEL", "https://t.me/Team_Dns_Network", nil)
-	SupportChat = Getenv[string]("SUPPORT_CHAT", "https://t.me/dns_support_group", nil)
-	BaseURL = Getenv[string]("BASE_URL", "http://t.me/ViyomBot/settings", nil)
+	LoggerId = getEnv("LOGGER_ID", "-1002867211623").Int64()
 
-	OwnerId = Getenv("OWNER_ID", "7706682472 5663483507", func(key string) []int64 {
-		id := strings.Split(key, " ")
-		var ids []int64
+	MongoUri = getEnv("MONGO_DB_URI", "").String()
 
-		for _, k := range id {
-			ids = append(ids, parseToInt64(k))
+	SupportChannel = getEnv("SUPPORT_CHANNEL", "https://t.me/Team_Dns_Network").String()
+	SupportChat    = getEnv("SUPPORT_CHAT", "https://t.me/dns_support_group").String()
+
+	OwnerId = getEnv("OWNER_ID", "7706682472 5663483507").Int64Slice()
+)
+
+/* ---------- REQUIRED CHECK ---------- */
+
+func init() {
+	required := []EnvValue{
+		getEnv("API_HASH", ""),
+		getEnv("TOKEN", ""),
+		getEnv("MONGO_DB_URI", ""),
+	}
+
+	for _, v := range required {
+		if strings.TrimSpace(v.value) == "" {
+			log.Fatalf("Missing required environment variable: %s", v.key)
 		}
-		return ids
-	})
-
-	if Token == "" {
-		PrintAndExit("TOKEN variable is empty, please fill it")
 	}
-	if MongoUri == "" {
-		PrintAndExit("MONGO_DB_URI variable is empty, fill it")
-	}
-
-	if BaseURL == "" {
-		PrintAndExit("BASE_URL is not filled please fll it")
-	}
-}
-
-func Getenv[T any](key, defaultValue string, convert func(string) T) T {
-	value := defaultValue
-	if envValue, exists := os.LookupEnv(key); exists {
-		value = envValue
-	}
-
-	if convert != nil {
-		return convert(value)
-	}
-
-	return any(value).(T)
-}
-
-func PrintAndExit(msg string) {
-	fmt.Fprintln(os.Stderr, msg)
-	os.Exit(1)
 }
