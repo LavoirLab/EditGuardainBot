@@ -12,14 +12,14 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
 	"main/config"
-	"main/utils/cache"
+	"main/utils"
 )
 
 var (
 	client           *mongo.Client
 	chatSettingsColl *mongo.Collection
 	botSettingsColl  *mongo.Collection
-	dbCache          = cache.NewCache[string, any](60 * time.Minute)
+	dbCache          = utils.NewCache[string, any](60 * time.Minute)
 
 	timeout = 11 * time.Second
 )
