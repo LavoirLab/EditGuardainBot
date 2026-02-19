@@ -8,11 +8,9 @@ import (
 	"time"
 
 	"github.com/amarnathcjd/gogram/telegram"
-
-	"main/utils/cache"
 )
 
-var adminsCache = cache.NewCache[string, any](30 * time.Minute)
+var adminsCache = NewCache[string, any](30 * time.Minute)
 
 func SetAdminsCache(chatID int64, admins []*telegram.Participant) {
 	adminsCache.Set(fmt.Sprintf("admins:%d", chatID), admins)
