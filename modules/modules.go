@@ -36,7 +36,7 @@ func RegisterModule(info *ModuleInfo) {
 	}
 
 	registeredModules[info.Name] = info
-	log.Printf("✓ Registered module: %s", info.ModName)
+	// log.Printf("✓ Registered module: %s", info.ModName)
 }
 
 func GetModule(name string) (*ModuleInfo, bool) {
@@ -109,7 +109,7 @@ func LoadAllHandlers(client *tg.Client) {
 			}
 		}
 
-		log.Printf("✓ Loaded handlers for module: %s", module.ModName)
+		// log.Printf("✓ Loaded handlers for module: %s", module.ModName)
 	}
 
 	log.Printf("✓ Successfully loaded %d modules", len(registeredModules))
