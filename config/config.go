@@ -80,19 +80,3 @@ var (
 
 	OwnerId = getEnv("OWNER_ID", "6119285647").Int64Slice()
 )
-
-/* ---------- REQUIRED CHECK ---------- */
-
-func init() {
-	required := []EnvValue{
-		getEnv("API_HASH", ""),
-		getEnv("TOKEN", ""),
-		getEnv("MONGO_DB_URI", ""),
-	}
-
-	for _, v := range required {
-		if strings.TrimSpace(v.value) == "" {
-			log.Fatalf("Missing required environment variable: %s", v.key)
-		}
-	}
-}
