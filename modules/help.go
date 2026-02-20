@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"unicode"
 
 	"github.com/amarnathcjd/gogram/telegram"
 )
@@ -31,33 +30,45 @@ func init() {
 	})
 }
 
+const 	helpText = `📚 <b>Bot Command Help</b>
+
+Here you'll find details for all available plugins and features.
+
+👇 Tap the buttons below to view help for each module:`
+
 func handleHelp(m *telegram.NewMessage) error {
-	m.Delete()
+
 	if !m.IsPrivate() {
 		keyboard := telegram.NewKeyboard().AddRow(
 			telegram.Button.URL("🗒 Command", fmt.Sprintf("https://t.me/%s?start=help", m.Client.Me().Username)),
 		).Build()
-		_, err := m.Reply("Contact me in PM for help!", &telegram.SendOptions{
+		
+		m.Reply("Contact me in PM for help!", &telegram.SendOptions{
 			ReplyMarkup: keyboard,
 		})
-		return err
+		
+		return telegram.ErrEndGroup
 	}
 
-	return sendFullHelp(m.Client, m.ChatID(), false)
+  m.Reply(helpText, &telegram.SendOptions{
+			ReplyMarkup: getFullHelp(),
+		})
+		return telegram.ErrEndGroup
 }
 
 func handleHelpCallback(c *telegram.CallbackQuery) error {
 	c.Answer("")
-	return sendFullHelp(c.Client, c.ChatID, true)
+	c.Edit(helpText, &telegram.SendOptions{ReplyMarkup: getFullHelp()})
+	return telegram.ErrEndGroup
 }
 
-func sendFullHelp(client *telegram.Client, chatID int64, isEdit bool) error {
+func getFullHelp() telegram.ReplyMarkup {
 	keyboard := telegram.NewKeyboard()
 
 	modules := GetModulesWithHelp()
 
 	sort.Slice(modules, func(i, j int) bool {
-		return stripPrefixEmoji(modules[i].ModName) < stripPrefixEmoji(modules[j].ModName)
+		return modules[i].Name < modules[j].Name
 	})
 
 	var buttons []telegram.KeyboardButton
@@ -73,23 +84,7 @@ func sendFullHelp(client *telegram.Client, chatID int64, isEdit bool) error {
 	keyboard.NewColumn(2, buttons...)
 	keyboard.AddRow(telegram.Button.Data("🗑️ Close", "close"))
 
-	helpText := `📚 <b>Bot Command Help</b>
-
-Here you'll find details for all available plugins and features.
-
-👇 Tap the buttons below to view help for each module:`
-
-	var err error
-	if isEdit {
-		_, err = client.EditMessage(chatID, 0, helpText, &telegram.SendOptions{
-			ReplyMarkup: keyboard.Build(),
-		})
-	} else {
-		_, err = client.SendMessage(chatID, helpText, &telegram.SendOptions{
-			ReplyMarkup: keyboard.Build(),
-		})
-	}
-	return err
+	return keyboard.Build()
 }
 
 func handleHelpModuleCallback(c *telegram.CallbackQuery) error {
@@ -114,13 +109,4 @@ func handleHelpModuleCallback(c *telegram.CallbackQuery) error {
 		ReplyMarkup: keyboard,
 	})
 	return err
-}
-
-func stripPrefixEmoji(s string) string {
-	for i, r := range s {
-		if unicode.IsLetter(r) || unicode.IsNumber(r) {
-			return strings.ToLower(s[i:])
-		}
-	}
-	return s
 }
