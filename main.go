@@ -19,7 +19,7 @@ func main() {
 	client, err := telegram.NewClient(telegram.ClientConfig{
 		AppID:     config.ApiId,
 		AppHash:   config.ApiHash,
-		LogLevel:  telegram.LogError,
+		LogLevel:  telegram.LogDebug,
 		ParseMode: "HTML",
 	})
 	if err != nil {
