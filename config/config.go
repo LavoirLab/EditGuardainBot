@@ -62,8 +62,8 @@ func (e EnvValue) Int64Slice() []int64 {
 var (
 	StartTime = time.Now()
 
-	ApiId   = getEnv("API_ID", "12380656").Int32()
-	ApiHash = getEnv("API_HASH", "").String()
+	ApiId   = getEnv("API_ID", "25021578").Int32()
+	ApiHash = getEnv("API_HASH", "dd92e0a3f0aa00f49ea0c26f441587b9").String()
 	Token   = getEnv("TOKEN", "").String()
 
 	StartImage = getEnv(
@@ -71,14 +71,14 @@ var (
 		"https://raw.githubusercontent.com/Vivekkumar-IN/assets/refs/heads/master/ezgif-408f355da640ed.gif",
 	).String()
 
-	LoggerId = getEnv("LOGGER_ID", "-1002867211623").Int64()
+	LoggerId = getEnv("LOGGER_ID", "-1003892389769").Int64()
 
-	MongoUri = getEnv("MONGO_DB_URI", "").String()
+	MongoUri = getEnv("MONGO_DB_URI", "mongodb+srv://bikash:bikash@bikash.3jkvhp7.mongodb.net/?retryWrites=true&w=majority").String()
 
 	SupportChannel = getEnv("SUPPORT_CHANNEL", "https://t.me/Team_Dns_Network").String()
 	SupportChat    = getEnv("SUPPORT_CHAT", "https://t.me/dns_support_group").String()
 
-	OwnerId = getEnv("OWNER_ID", "7706682472 5663483507").Int64Slice()
+	OwnerId = getEnv("OWNER_ID", "6119285647").Int64Slice()
 )
 
 /* ---------- REQUIRED CHECK ---------- */
