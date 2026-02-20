@@ -131,8 +131,9 @@ func safeCallbackHandler(
 				return err
 			}
 			handlePanic(err, cb, false)
+			return tg.ErrEndGroup
 		}
-		return tg.ErrEndGroup
+		return nil
 	}
 }
 
@@ -170,13 +171,14 @@ func safeMessageHandler(
 			}
 			m.Client.Log.Error("Handler error: " + err.Error())
 			handlePanic(err, m, false)
+			return tg.ErrEndGroup
 		} else {
 			if cmd != "" {
 				m.Client.Log.Info("Handler completed successfully for command " + cmd)
 			}
 		}
 
-		return tg.ErrEndGroup
+		return nil
 	}
 }
 
