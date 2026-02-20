@@ -201,8 +201,8 @@ func HandleAnonVerification(cb *telegram.CallbackQuery) error {
 	anonVerifyCacheMu.RUnlock()
 
 	if !ok {
-		cb.Answer("", nil)
-		_, err := cb.Edit("This button has expired. Please use the command again.", nil)
+		cb.Answer("")
+		_, err := cb.Edit("This button has expired. Please use the command again.")
 		if err != nil {
 			return err
 		}
@@ -232,7 +232,7 @@ func HandleAnonVerification(cb *telegram.CallbackQuery) error {
 		_, err := cb.Edit(fmt.Sprintf(
 			"I'm not an admin, how do you expect me to %s?",
 			utils.PrettifyPermission(verify.Permission),
-		), nil)
+		))
 		if err != nil {
 			return err
 		}
@@ -270,13 +270,13 @@ func HandleAnonVerification(cb *telegram.CallbackQuery) error {
 	}
 
 	if !botHasPerm {
-		cb.Answer("", nil)
+		cb.Answer("")
 		_, err := cb.Edit(
 			fmt.Sprintf(
 				"I don't have permission to %s.",
 				utils.PrettifyPermission(verify.Permission),
 			),
-			nil,
+			
 		)
 		if err != nil {
 			return err
@@ -291,7 +291,7 @@ func HandleAnonVerification(cb *telegram.CallbackQuery) error {
 	delete(anonVerifyCache, key)
 	anonVerifyCacheMu.Unlock()
 
-	cb.Answer("✓ Verified", nil)
+	cb.Answer("✓ Verified")
 	cb.Delete()
 
 	verifiedMsg := createVerifiedMessage(verify.OriginalMessage, cb.Sender)

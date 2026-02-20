@@ -11,6 +11,42 @@ import (
 	"main/utils"
 )
 
+const (
+	noAbuseStatusEnabled = `🛡️ <b>NoAbuse</b>
+<b>Status:</b> <i>Enabled</i>
+
+<i>Abusive messages are automatically removed.</i>
+
+<i>Use <code>/noabuse off</code> to turn it off.</i>`
+
+	noAbuseStatusDisabled = `🚫 <b>NoAbuse</b>
+<b>Status:</b> <i>Disabled</i>
+
+<i>Messages are not filtered.</i>
+
+<i>Use <code>/noabuse on</code> to turn it on.</i>`
+
+	noAbuseEnabledMsg = `🛡️ <b>NoAbuse Enabled</b>
+
+<i>Abusive messages will now be deleted.</i>`
+
+	noAbuseDisabledMsg = `🚫 <b>NoAbuse Disabled</b>
+
+<i>Messages will no longer be filtered.</i>`
+
+	noAbuseInvalidMsg = `❌ <b>Invalid usage</b>
+
+<code>/noabuse on</code>
+<code>/noabuse off</code>`
+
+	noAbuseRemovedMsg = `🚫 <b>Message Removed</b>
+
+%s, <i>abusive language is not allowed here.</i>`
+
+	noAbuseErrMsg = `❌ <b>Update failed</b>
+<i>Please try again later.</i>`
+)
+
 func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "abuse",
@@ -27,7 +63,7 @@ func init() {
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:noabuse",
-				Handler: RequirePermission("change_info", NoAbuseCmd),
+				Handler: RequirePermission("delete_messages", NoAbuseCmd),
 			},
 			{
 				Pattern: "message",
@@ -39,30 +75,42 @@ func init() {
 
 func NoAbuseCmd(m *telegram.NewMessage) error {
 	args := strings.Fields(m.Args())
+
 	if _, err := m.Delete(); err != nil {
 		return err
 	}
 
+	// show status when no argument
 	if len(args) < 1 {
-		_, err := m.Reply("⚠️ Usage:\n<code>/noabuse on</code> – Enable Abuse detection\n<code>/noabuse off</code> – Disable abuse detection")
+		if database.IsNSFWEnabled(m.ChatID()) {
+			_, err := m.Reply(noAbuseStatusEnabled)
+			return err
+		}
+		_, err := m.Reply(noAbuseStatusDisabled)
 		return err
 	}
+
 	arg := strings.ToLower(args[0])
-	enable := arg == "on"
+
 	if arg != "on" && arg != "off" {
-		_, err := m.Reply("❌ Invalid option.\nUse <code>/noabuse on</code> or <code>/noabuse off</code>")
+		_, err := m.Reply(noAbuseInvalidMsg)
 		return err
 	}
+
+	enable := arg == "on"
+
 	if err := database.SetNSFWFlag(m.ChatID(), enable); err != nil {
 		log.Println("NoAbuse.error:", err)
-		_, err := m.Reply("❌ Failed to update setting.")
+		_, err := m.Reply(noAbuseErrMsg)
 		return err
 	}
-	status := "🛡️ NoAbuse detection is enabled ✅"
-	if !enable {
-		status = "🚫 NoAbuse detection is disabled ❌"
+
+	if enable {
+		_, err := m.Reply(noAbuseEnabledMsg)
+		return err
 	}
-	_, err := m.Reply(status)
+
+	_, err := m.Reply(noAbuseDisabledMsg)
 	return err
 }
 
@@ -89,7 +137,6 @@ func DeleteAbuseHandle(m *telegram.NewMessage) error {
 	}
 
 	user := utils.MentionHTML(m.Sender)
-	_, err := m.Reply(fmt.Sprintf("🚫 %s, Your message was deleted due to abusive words.", user))
-
+	_, err := m.Reply(fmt.Sprintf(noAbuseRemovedMsg, user))
 	return err
 }

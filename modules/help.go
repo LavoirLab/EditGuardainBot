@@ -19,11 +19,11 @@ func init() {
 				Handler: handleHelp,
 			},
 			{
-				Pattern: "callback:help",
+				Pattern: "callback:^help$",
 				Handler: handleHelpCallback,
 			},
 			{
-				Pattern: "callback:help_module",
+				Pattern: "callback:^help_module:",
 				Handler: handleHelpModuleCallback,
 			},
 		},
@@ -82,13 +82,14 @@ func getFullHelp() telegram.ReplyMarkup {
 	}
 
 	keyboard.NewColumn(2, buttons...)
-	keyboard.AddRow(telegram.Button.Data("🗑️ Close", "close"))
+		keyboard.AddRow(telegram.Button.Data("⬅️ Back", "start_callback"))
 
 	return keyboard.Build()
 }
 
 func handleHelpModuleCallback(c *telegram.CallbackQuery) error {
 	data := c.DataString()
+	c.Answer("")
 	parts := strings.SplitN(data, ":", 2)
 	if len(parts) != 2 {
 		return nil
@@ -96,16 +97,16 @@ func handleHelpModuleCallback(c *telegram.CallbackQuery) error {
 	moduleName := parts[1]
 
 	module, exists := GetModule(moduleName)
-	helpText := "❌ No help found for this module."
+	modHelpText := "❌ No help found for this module."
 	if exists && module.Help != "" {
-		helpText = module.Help
+		modHelpText = "<i>Here is the available help of " + module.ModName + "\n\n</i>"+ module.Help
 	}
 
 	keyboard := telegram.NewKeyboard().AddRow(
 		telegram.Button.Data("⬅️ Back", "help"),
 	).Build()
 
-	_, err := c.Edit(helpText, &telegram.SendOptions{
+	_, err := c.Edit(modHelpText, &telegram.SendOptions{
 		ReplyMarkup: keyboard,
 	})
 	return err
