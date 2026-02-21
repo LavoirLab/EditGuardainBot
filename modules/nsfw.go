@@ -291,6 +291,7 @@ func sendFileToNsfwApi(filePath string) (bool, error) {
 		return false, err
 	}
 
+fmt.Println("The confidence level is ", result.Confidence)
 	return strings.ToLower(result.Label) == "nsfw", nil
 }
 
