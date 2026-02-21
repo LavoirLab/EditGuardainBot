@@ -26,7 +26,7 @@ var (
 	nsfwViolationMu sync.Mutex
 )
 
-const nsfwViolationThreshold = 3
+const nsfwViolationThreshold = 10
 
 func init() {
 	RegisterModule(&ModuleInfo{
@@ -308,7 +308,7 @@ func trackViolationAndMute(client *tg.Client, chatID, userID int64) bool {
 	nsfwViolations.Set(key, count)
 
 	if count >= nsfwViolationThreshold {
-		muteUntil := int32(time.Now().Add(24 * time.Hour).Unix())
+		muteUntil := int32(time.Now().Add(1 * time.Hour).Unix())
 		_, err := client.EditBanned(chatID, userID, &tg.BannedOptions{
 			Mute:     true,
 			TillDate: muteUntil,
@@ -327,7 +327,7 @@ func trackViolationAndMute(client *tg.Client, chatID, userID int64) bool {
 func buildNsfwWarnMsg(mention string, muted bool) string {
 	msg := fmt.Sprintf("🔞 %s NSFW content detected and removed.", mention)
 	if muted {
-		msg += " 🔇 Muted for 24h due to repeated violations."
+		msg += " 🔇 Muted for 1h due to repeated violations."
 	}
 	return msg
 }
