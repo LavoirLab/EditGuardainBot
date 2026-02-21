@@ -37,8 +37,6 @@ func init() {
 			"• <code>/nonsfw on</code> — Enable NSFW detection ✅\n" +
 			"• <code>/nonsfw off</code> — Disable NSFW detection ❌\n\n" +
 			"<b>How it works:</b>\n" +
-			"• Every photo sent by users is checked against an AI model\n" +
-			"• Results are cached per image — same image won't be re-checked\n" +
 			"• If NSFW → message is deleted and user is warned\n" +
 			"• After <b>3 NSFW violations</b> in 24h → user is <b>muted for 24 hours</b> 🔇\n\n" +
 			"<b>ℹ️ Note:</b> Applies to all users (admins are exempt).\n" +
