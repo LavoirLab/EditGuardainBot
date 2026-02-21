@@ -19,15 +19,12 @@ import (
 	"main/utils"
 )
 
-// nsfwFileCache caches NSFW check results by photo file_reference hash (photoID + accessHash)
-// key: "<photoID>_<accessHash>" → bool (true = nsfw)
 var (
 	nsfwFileCache   = utils.NewCache[string, bool](24 * time.Hour)
-	nsfwViolations  = utils.NewCache[string, int](24 * time.Hour) // key: "<chatID>_<userID>" → count
+	nsfwViolations  = utils.NewCache[string, int](24 * time.Hour)
 	nsfwViolationMu sync.Mutex
 )
 
-// nsfwViolationThreshold: how many NSFW images before auto-mute
 const nsfwViolationThreshold = 3
 
 func init() {
@@ -67,7 +64,6 @@ func NsfwCmdHandler(m *tg.NewMessage) error {
 
 	args := strings.Fields(m.Args())
 
-	// No args → show status/info
 	if len(args) < 1 {
 		enabled := database.IsNSFWEnabled(m.ChatID())
 		statusEmoji := "❌"
@@ -95,7 +91,6 @@ func NsfwCmdHandler(m *tg.NewMessage) error {
 		return err
 	}
 
-	// Has arg → toggle on/off
 	enable, err := utils.ParseBool(args[0])
 	if err != nil {
 		_, err = m.Reply("❌ Invalid option.\nUse <code>/nonsfw on</code> or <code>/nonsfw off</code>")
@@ -120,12 +115,10 @@ func NsfwHandler(m *tg.NewMessage) error {
 		return nil
 	}
 
-	// Only process single photos here. Albums are handled by AlbumNsfwHandler.
 	if m.Photo() == nil || m.Message.GroupedID != 0 {
 		return nil
 	}
 
-	// Admin exempt
 	if isAdmin, _ := utils.IsAdmin(m.Client, m.ChatID(), m.SenderID()); isAdmin {
 		return nil
 	}
@@ -148,7 +141,6 @@ func AlbumNsfwHandler(a *tg.Album) error {
 		return nil
 	}
 
-	// Admin exempt
 	if len(a.Messages) > 0 {
 		if isAdmin, _ := utils.IsAdmin(a.Client, a.ChatID(), a.Messages[0].SenderID()); isAdmin {
 			return nil
@@ -181,13 +173,12 @@ func AlbumNsfwHandler(a *tg.Album) error {
 		sender := a.Messages[0].Sender
 		mention := utils.MentionHTML(sender)
 
-		// Track violation and maybe mute
 		chatID := a.Messages[0].ChatID()
 		userID := a.Messages[0].SenderID()
 		muted := trackViolationAndMute(a.Client, chatID, userID)
 
 		warnMsg := buildNsfwWarnMsg(mention, muted)
-		_, err = a.Messages[0].Respond(warnMsg, &tg.SendOptions{})
+		_, err = a.Messages[0].Respond(warnMsg)
 		if err != nil {
 			return err
 		}
@@ -197,14 +188,12 @@ func AlbumNsfwHandler(a *tg.Album) error {
 	return nil
 }
 
-// getOrCheckNsfw checks cache by m.File.FileID, calls API only on cache miss
 func getOrCheckNsfw(m *tg.NewMessage) (bool, error) {
 	cacheKey := ""
 	if m.File != nil {
 		cacheKey = m.File.FileID
 	}
 
-	// Check cache
 	if cacheKey != "" {
 		if cached, ok := nsfwFileCache.Get(cacheKey); ok {
 			m.Client.Log.Debug(fmt.Sprintf("NSFW cache hit for FileID %s: %v", cacheKey, cached))
@@ -212,21 +201,17 @@ func getOrCheckNsfw(m *tg.NewMessage) (bool, error) {
 		}
 	}
 
-	// Not cached → call API
 	isNsfw, err := checkImageNsfw(m)
 	if err != nil {
 		return false, err
 	}
 
-	// Store in cache
 	if cacheKey != "" {
 		nsfwFileCache.Set(cacheKey, isNsfw)
 	}
 	return isNsfw, nil
 }
 
-// trackViolationAndMute increments violation count and mutes if threshold reached
-// returns true if user was muted
 func trackViolationAndMute(client *tg.Client, chatID, userID int64) bool {
 	nsfwViolationMu.Lock()
 	defer nsfwViolationMu.Unlock()
@@ -240,7 +225,6 @@ func trackViolationAndMute(client *tg.Client, chatID, userID int64) bool {
 	nsfwViolations.Set(key, count)
 
 	if count >= nsfwViolationThreshold {
-		// Mute user for 24 hours
 		muteUntil := int32(time.Now().Add(24 * time.Hour).Unix())
 		_, err := client.EditBanned(chatID, userID, &tg.BannedOptions{
 			Mute:     true,
@@ -251,7 +235,6 @@ func trackViolationAndMute(client *tg.Client, chatID, userID int64) bool {
 			return false
 		}
 
-		// Reset their count after muting
 		nsfwViolations.Set(key, 0)
 		return true
 	}
