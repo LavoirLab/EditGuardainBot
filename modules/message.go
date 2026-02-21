@@ -42,6 +42,7 @@ func OnMessageFnc(m *telegram.NewMessage) error {
 		NoPromoHandler,
 		LongMessageHandler,
 		BioLinkHandler,
+		NsfwHandler,
 	}
 
 	for _, handler := range handlers {

@@ -84,6 +84,10 @@ func LoadAllHandlers(client *tg.Client) {
 	for _, name := range names {
 		module := registeredModules[name]
 
+		if module.Name == "nsfw" && !config.NsfwApiEnabled {
+			continue
+		}
+
 		for _, hConfig := range module.Handlers {
 			group := hConfig.Group
 			if group == 0 {
@@ -100,6 +104,11 @@ func LoadAllHandlers(client *tg.Client) {
 			case func(*tg.CallbackQuery) error:
 				wrapped := safeCallbackHandler(h)
 				handle = client.On(hConfig.Pattern, wrapped)
+
+			case func(*tg.Album) error:
+				wrapped := safeAlbumHandler(h)
+				handle = client.On(hConfig.Pattern, wrapped)
+
 			default:
 				handle = client.On(hConfig.Pattern, h)
 			}
@@ -133,6 +142,39 @@ func safeCallbackHandler(
 			handlePanic(err, cb, false)
 			return tg.ErrEndGroup
 		}
+		return nil
+	}
+}
+
+func safeAlbumHandler(
+	handler func(*tg.Album) error,
+) func(*tg.Album) error {
+	return func(a *tg.Album) (err error) {
+		a.Client.Log.Info(
+			fmt.Sprintf("Handling album from %d in chat %d",
+				a.Messages[0].SenderID(),
+				a.Messages[0].ChannelID(),
+			),
+		)
+
+		defer func() {
+			if r := recover(); r != nil {
+				handlePanic(r, a.Messages[0], true)
+				err = tg.ErrEndGroup
+			}
+		}()
+
+		err = handler(a)
+
+		if err != nil {
+			if errors.Is(err, tg.ErrEndGroup) {
+				return err
+			}
+			a.Client.Log.Error("Album handler error: " + err.Error())
+			handlePanic(err, a.Messages[0], false)
+			return tg.ErrEndGroup
+		}
+
 		return nil
 	}
 }

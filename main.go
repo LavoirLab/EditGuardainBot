@@ -11,6 +11,7 @@ import (
 	"main/config"
 	"main/database"
 	"main/modules"
+	"main/utils"
 )
 
 func main() {
@@ -37,6 +38,19 @@ func main() {
 	modules.BotInfo, err = client.GetMe()
 	if err != nil {
 		client.SendMessage(config.LoggerId, "Failed to getMe: "+err.Error())
+	}
+
+	if config.NsfwApiUrl != "" {
+		if err := utils.CheckNsfwApi(config.NsfwApiUrl); err != nil {
+			log.Printf("⚠️ NSFW API check failed: %v. NSFW features will be disabled.", err)
+			config.NsfwApiEnabled = false
+		} else {
+			log.Println("✅ NSFW API is online and working.")
+			config.NsfwApiEnabled = true
+		}
+	} else {
+		log.Println("ℹ️ NSFW API URL not set. NSFW features will be disabled.")
+		config.NsfwApiEnabled = false
 	}
 
 	modules.LoadAllHandlers(client)

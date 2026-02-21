@@ -240,12 +240,17 @@ if __name__ == "__main__":
     # Run with multiple workers for production
     # For development, use: uvicorn main:app --reload
     # For production, use the command below or gunicorn with uvicorn workers
+    import multiprocessing
+
+    # Calculate workers: use CPU count for maximum throughput
+    # On some systems, workers might need to be limited by RAM
+    cpu_count = multiprocessing.cpu_count()
     
     uvicorn.run(
-        app,
+        "main:app",  # Use string import for multiple workers
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8000")),
-        workers=1,  # Adjust based on your CPU cores and GPU memory
+        workers=cpu_count,
         log_level="info",
         access_log=True
     )
