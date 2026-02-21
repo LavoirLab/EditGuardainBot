@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -20,7 +21,7 @@ import (
 )
 
 var (
-	nsfwFileCache   = utils.NewCache[string, bool](24 * time.Hour)
+	nsfwFileCache   = utils.NewCache[string, bool](48 * time.Hour)
 	nsfwViolations  = utils.NewCache[string, int](24 * time.Hour)
 	nsfwViolationMu sync.Mutex
 )
@@ -31,17 +32,12 @@ func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "nsfw",
 		ModName: "🔞 NSFW Detection",
-		Help: "🔞 <b>NSFW Image Detection</b> automatically detects and removes inappropriate images.\n\n" +
+		Help: "🔞 <b>NSFW Detection</b>\n\n" +
 			"<b>Commands:</b>\n" +
-			"• <code>/nonsfw</code> — Show module info & current status\n" +
-			"• <code>/nonsfw on</code> — Enable NSFW detection ✅\n" +
-			"• <code>/nonsfw off</code> — Disable NSFW detection ❌\n\n" +
-			"<b>How it works:</b>\n" +
-			"• If NSFW → message is deleted and user is warned\n" +
-			"• After <b>3 NSFW violations</b> in 24h → user is <b>muted for 24 hours</b> 🔇\n\n" +
-			"<b>ℹ️ Note:</b> Applies to all users (admins are exempt).\n" +
-			"👮 Only group admins can enable or disable this feature.\n\n" +
-			"<blockquote>⚡ Image results are cached for 24h to avoid duplicate API calls.</blockquote>",
+			"• <code>/nonsfw on</code> — Enable ✅\n" +
+			"• <code>/nonsfw off</code> — Disable ❌\n\n" +
+			"Scans photos and stickers (webp, webm). Deletes NSFW content and mutes repeat offenders after 3 violations in 24h.\n" +
+			"Results cached 48h per file. Admins are exempt.",
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "/nonsfw",
@@ -64,34 +60,17 @@ func NsfwCmdHandler(m *tg.NewMessage) error {
 
 	if len(args) < 1 {
 		enabled := database.IsNSFWEnabled(m.ChatID())
-		statusEmoji := "❌"
-		statusText := "Disabled"
+		status := "Disabled ❌"
 		if enabled {
-			statusEmoji = "✅"
-			statusText = "Enabled"
+			status = "Enabled ✅"
 		}
-
-		msg := fmt.Sprintf(`🔞 <b>NSFW Detection Module</b>
-
-<b>Status:</b> %s <i>%s</i>
-
-<b>What it does:</b>
-• Detects inappropriate images using AI
-• Deletes NSFW photos automatically
-• Caches results per image (no duplicate API calls)
-• Auto-mutes repeat offenders after 3 violations in 24h
-
-<b>Usage:</b>
-• <code>/nonsfw on</code> — Enable
-• <code>/nonsfw off</code> — Disable`, statusEmoji, statusText)
-
-		_, err := m.Reply(msg)
+		_, err := m.Reply(fmt.Sprintf("🔞 <b>NSFW Detection:</b> %s", status))
 		return err
 	}
 
 	enable, err := utils.ParseBool(args[0])
 	if err != nil {
-		_, err = m.Reply("❌ Invalid option.\nUse <code>/nonsfw on</code> or <code>/nonsfw off</code>")
+		_, err = m.Reply("Use <code>/nonsfw on</code> or <code>/nonsfw off</code>")
 		return err
 	}
 
@@ -99,12 +78,11 @@ func NsfwCmdHandler(m *tg.NewMessage) error {
 		return err
 	}
 
-	statusStr := "disabled ❌"
+	status := "disabled ❌"
 	if enable {
-		statusStr = "enabled ✅"
+		status = "enabled ✅"
 	}
-
-	_, err = m.Reply(fmt.Sprintf("🔞 <b>NSFW Detection</b> has been <b>%s</b> for this chat.", statusStr))
+	_, err = m.Reply(fmt.Sprintf("🔞 NSFW Detection %s", status))
 	return err
 }
 
@@ -113,7 +91,14 @@ func NsfwHandler(m *tg.NewMessage) error {
 		return nil
 	}
 
-	if m.Photo() == nil || m.Message.GroupedID != 0 {
+	if m.Message.GroupedID != 0 {
+		return nil
+	}
+
+	isPhoto := m.Photo() != nil
+	isSticker := m.Sticker() != nil
+
+	if !isPhoto && !isSticker {
 		return nil
 	}
 
@@ -147,13 +132,12 @@ func AlbumNsfwHandler(a *tg.Album) error {
 
 	isNsfwDetected := false
 	for _, m := range a.Messages {
-		if m.Photo() == nil {
+		if m.Photo() == nil && m.Sticker() == nil {
 			continue
 		}
-
 		isNsfw, err := getOrCheckNsfw(m)
 		if err != nil {
-			m.Client.Log.Error(fmt.Sprintf("NSFW Check Error in album: %v", err))
+			m.Client.Log.Error(fmt.Sprintf("NSFW album check error: %v", err))
 			continue
 		}
 		if isNsfw {
@@ -163,20 +147,13 @@ func AlbumNsfwHandler(a *tg.Album) error {
 	}
 
 	if isNsfwDetected {
-		_, err := a.Delete()
-		if err != nil {
+		if _, err := a.Delete(); err != nil {
 			return err
 		}
-
-		sender := a.Messages[0].Sender
-		mention := utils.MentionHTML(sender)
-
 		chatID := a.Messages[0].ChatID()
 		userID := a.Messages[0].SenderID()
 		muted := trackViolationAndMute(a.Client, chatID, userID)
-
-		warnMsg := buildNsfwWarnMsg(mention, muted)
-		_, err = a.Messages[0].Respond(warnMsg)
+		_, err := a.Messages[0].Respond(buildNsfwWarnMsg(utils.MentionHTML(a.Messages[0].Sender), muted))
 		if err != nil {
 			return err
 		}
@@ -194,12 +171,21 @@ func getOrCheckNsfw(m *tg.NewMessage) (bool, error) {
 
 	if cacheKey != "" {
 		if cached, ok := nsfwFileCache.Get(cacheKey); ok {
-			m.Client.Log.Debug(fmt.Sprintf("NSFW cache hit for FileID %s: %v", cacheKey, cached))
 			return cached, nil
 		}
 	}
 
-	isNsfw, err := checkImageNsfw(m)
+	var (
+		isNsfw bool
+		err    error
+	)
+
+	if sticker := m.Sticker(); sticker != nil {
+		isNsfw, err = checkStickerNsfw(m, sticker)
+	} else {
+		isNsfw, err = checkImageNsfw(m)
+	}
+
 	if err != nil {
 		return false, err
 	}
@@ -208,6 +194,104 @@ func getOrCheckNsfw(m *tg.NewMessage) (bool, error) {
 		nsfwFileCache.Set(cacheKey, isNsfw)
 	}
 	return isNsfw, nil
+}
+
+func checkStickerNsfw(m *tg.NewMessage, doc *tg.DocumentObj) (bool, error) {
+	switch doc.MimeType {
+	case "image/webp":
+		return checkWebpSticker(m)
+	case "video/webm":
+		return checkWebmSticker(m)
+	default:
+		return false, nil
+	}
+}
+
+func checkWebpSticker(m *tg.NewMessage) (bool, error) {
+	webpPath, err := m.Download()
+	if err != nil {
+		return false, err
+	}
+	defer os.Remove(webpPath)
+
+	pngPath := webpPath + ".png"
+	defer os.Remove(pngPath)
+
+	if out, err := exec.Command("ffmpeg", "-y", "-i", webpPath, pngPath).CombinedOutput(); err != nil {
+		return false, fmt.Errorf("webp→png: %w\n%s", err, out)
+	}
+
+	return sendFileToNsfwApi(pngPath)
+}
+
+func checkWebmSticker(m *tg.NewMessage) (bool, error) {
+	webmPath, err := m.Download()
+	if err != nil {
+		return false, err
+	}
+	defer os.Remove(webmPath)
+
+	pngPath := webmPath + "_frame.png"
+	defer os.Remove(pngPath)
+
+	if out, err := exec.Command("ffmpeg", "-y", "-i", webmPath, "-vframes", "1", "-f", "image2", pngPath).CombinedOutput(); err != nil {
+		return false, fmt.Errorf("webm→frame: %w\n%s", err, out)
+	}
+
+	return sendFileToNsfwApi(pngPath)
+}
+
+func checkImageNsfw(m *tg.NewMessage) (bool, error) {
+	path, err := m.Download()
+	if err != nil {
+		return false, err
+	}
+	defer os.Remove(path)
+
+	return sendFileToNsfwApi(path)
+}
+
+func sendFileToNsfwApi(filePath string) (bool, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", filepath.Base(filePath))
+	if err != nil {
+		return false, err
+	}
+	if _, err = io.Copy(part, file); err != nil {
+		return false, err
+	}
+	writer.Close()
+
+	apiUrl := strings.TrimRight(config.NsfwApiUrl, "/") + "/detect"
+	req, err := http.NewRequest("POST", apiUrl, body)
+	if err != nil {
+		return false, err
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("API status %d", resp.StatusCode)
+	}
+
+	var result NsfwApiResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return false, err
+	}
+
+	return strings.ToLower(result.Label) == "nsfw", nil
 }
 
 func trackViolationAndMute(client *tg.Client, chatID, userID int64) bool {
@@ -229,10 +313,9 @@ func trackViolationAndMute(client *tg.Client, chatID, userID int64) bool {
 			TillDate: muteUntil,
 		})
 		if err != nil {
-			client.Log.Error(fmt.Sprintf("NSFW: failed to mute user %d in chat %d: %v", userID, chatID, err))
+			client.Log.Error(fmt.Sprintf("NSFW mute failed for user %d in chat %d: %v", userID, chatID, err))
 			return false
 		}
-
 		nsfwViolations.Set(key, 0)
 		return true
 	}
@@ -241,12 +324,11 @@ func trackViolationAndMute(client *tg.Client, chatID, userID int64) bool {
 }
 
 func buildNsfwWarnMsg(mention string, muted bool) string {
-	base := fmt.Sprintf("🔞 <b>NSFW Content Detected!</b>\n\n<b>User:</b> %s\n<b>Action:</b> <i>Message Deleted</i>", mention)
+	msg := fmt.Sprintf("🔞 %s NSFW content detected and removed.", mention)
 	if muted {
-		base += "\n🔇 <b>Auto-muted for 24 hours</b> due to repeated violations."
+		msg += " 🔇 Muted for 24h due to repeated violations."
 	}
-	base += "\n\n💡 <i>Please avoid sending NSFW content in this group.</i>"
-	return base
+	return msg
 }
 
 type NsfwApiResponse struct {
@@ -254,71 +336,13 @@ type NsfwApiResponse struct {
 	Confidence float64 `json:"confidence"`
 }
 
-func checkImageNsfw(m *tg.NewMessage) (bool, error) {
-	path, err := m.Download()
-	if err != nil {
-		return false, err
-	}
-	defer os.Remove(path)
-
-	file, err := os.Open(path)
-	if err != nil {
-		return false, err
-	}
-	defer file.Close()
-
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
-	part, err := writer.CreateFormFile("file", filepath.Base(path))
-	if err != nil {
-		return false, err
-	}
-	_, err = io.Copy(part, file)
-	if err != nil {
-		return false, err
-	}
-	writer.Close()
-
-	apiUrl := strings.TrimRight(config.NsfwApiUrl, "/") + "/detect"
-	req, err := http.NewRequest("POST", apiUrl, body)
-	if err != nil {
-		return false, err
-	}
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-
-	httpClient := &http.Client{}
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return false, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return false, fmt.Errorf("API returned status %d", resp.StatusCode)
-	}
-
-	var result NsfwApiResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return false, err
-	}
-
-	return strings.ToLower(result.Label) == "nsfw", nil
-}
-
 func handleNsfwDetected(m *tg.NewMessage) error {
-	_, err := m.Delete()
-	if err != nil {
+	if _, err := m.Delete(); err != nil {
 		return err
 	}
 
-	mention := utils.MentionHTML(m.Sender)
-	chatID := m.ChatID()
-	userID := m.SenderID()
-
-	muted := trackViolationAndMute(m.Client, chatID, userID)
-	warnMsg := buildNsfwWarnMsg(mention, muted)
-
-	_, err = m.Respond(warnMsg)
+	muted := trackViolationAndMute(m.Client, m.ChatID(), m.SenderID())
+	_, err := m.Respond(buildNsfwWarnMsg(utils.MentionHTML(m.Sender), muted))
 	if err != nil {
 		return err
 	}
