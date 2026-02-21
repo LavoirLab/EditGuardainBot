@@ -39,9 +39,9 @@ const (
 <code>/noabuse on</code>
 <code>/noabuse off</code>`
 
-	noAbuseRemovedMsg = `🚫 <b>Message Removed</b>
+	noAbuseRemovedMsg = `🚨 <b>Abuse Detected!</b>
 
-%s, <i>abusive language is not allowed here.</i>`
+%s, <i>your message was removed because it contained abusive or offensive language. Please maintain a respectful environment.</i> 🛡️`
 
 	noAbuseErrMsg = `❌ <b>Update failed</b>
 <i>Please try again later.</i>`
@@ -65,57 +65,51 @@ func init() {
 				Pattern: "command:noabuse",
 				Handler: RequirePermission("delete_messages", NoAbuseCmd),
 			},
-			{
-				Pattern: "message",
-				Handler: DeleteAbuseHandle,
-			},
 		},
 	})
 }
 
 func NoAbuseCmd(m *telegram.NewMessage) error {
+	var err error
 	args := strings.Fields(m.Args())
 
-	if _, err := m.Delete(); err != nil {
+	if _, err = m.Delete(); err != nil {
 		return err
 	}
 
 	// show status when no argument
 	if len(args) < 1 {
 		if database.IsNSFWEnabled(m.ChatID()) {
-			_, err := m.Reply(noAbuseStatusEnabled)
+			_, err = m.Reply(noAbuseStatusEnabled)
 			return err
 		}
-		_, err := m.Reply(noAbuseStatusDisabled)
+		_, err = m.Reply(noAbuseStatusDisabled)
 		return err
 	}
 
-	arg := strings.ToLower(args[0])
-
-	if arg != "on" && arg != "off" {
+	enable, err := utils.ParseBool(args[0])
+	if err != nil {
 		_, err := m.Reply(noAbuseInvalidMsg)
 		return err
 	}
 
-	enable := arg == "on"
-
 	if err := database.SetNSFWFlag(m.ChatID(), enable); err != nil {
 		log.Println("NoAbuse.error:", err)
-		_, err := m.Reply(noAbuseErrMsg)
+		_, err = m.Reply(noAbuseErrMsg)
 		return err
 	}
 
 	if enable {
-		_, err := m.Reply(noAbuseEnabledMsg)
+		_, err = m.Reply(noAbuseEnabledMsg)
 		return err
 	}
 
-	_, err := m.Reply(noAbuseDisabledMsg)
+	_, err = m.Reply(noAbuseDisabledMsg)
 	return err
 }
 
-func DeleteAbuseHandle(m *telegram.NewMessage) error {
-	if !m.IsGroup() || m.Channel == nil || m.IsAnonymous() || m.IsChannelPost() {
+func AbuseHandler(m *telegram.NewMessage) error {
+	if m.IsAnonymous() {
 		return nil
 	}
 
@@ -137,6 +131,6 @@ func DeleteAbuseHandle(m *telegram.NewMessage) error {
 	}
 
 	user := utils.MentionHTML(m.Sender)
-	_, err := m.Reply(fmt.Sprintf(noAbuseRemovedMsg, user))
-	return err
+	_, _ = m.Reply(fmt.Sprintf(noAbuseRemovedMsg, user))
+	return telegram.ErrEndGroup
 }

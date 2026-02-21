@@ -25,41 +25,37 @@ func init() {
 				Pattern: "command:noforward",
 				Handler: RequirePermission("change_info", NoForwardCmd),
 			},
-			{
-				Pattern: "message",
-				Handler: handleForwardedMessage,
-			},
 		},
 	})
 }
 
 func NoForwardCmd(m *telegram.NewMessage) error {
+	var err error
 	args := strings.Fields(m.Args())
-	if _, err := m.Delete(); err != nil {
+	if _, err = m.Delete(); err != nil {
 		return err
 	}
 
 	if len(args) < 1 {
 		isEnabled, err := database.IsNoForwardEnabled(m.ChatID())
 		if err != nil {
-			_, err := m.Reply("⚠️ Usage:\n<code>/noforward on</code> — Enable\n<code>/noforward off</code> — Disable")
+			_, err = m.Reply("⚠️ Usage:\n<code>/noforward on</code> — Enable\n<code>/noforward off</code> — Disable")
 			return err
 		} else {
 			status := map[bool]string{true: "Enabled", false: "Disabled"}[isEnabled]
-			_, err := m.Reply(fmt.Sprintf("Currently NoForward is %s for your chat.", status))
+			_, err = m.Reply(fmt.Sprintf("Currently NoForward is %s for your chat.", status))
 			return err
 		}
 	}
 
-	arg := strings.ToLower(args[0])
-	enable := arg == "on"
-	if arg != "on" && arg != "off" {
-		_, err := m.Reply("❌ Invalid option.\nUse <code>/noforward on</code> or <code>/noforward off</code>")
+	enable, err := utils.ParseBool(args[0])
+	if err != nil {
+		_, err = m.Reply("❌ Invalid option.\nUse <code>/noforward on</code> or <code>/noforward off</code>")
 		return err
 	}
 
 	if err := database.SetNoForwardEnabled(m.ChatID(), enable); err != nil {
-		_, err := m.Reply("❌ Failed to update setting.")
+		_, err = m.Reply("❌ Failed to update setting.")
 		return err
 	}
 
@@ -67,12 +63,12 @@ func NoForwardCmd(m *telegram.NewMessage) error {
 	if !enable {
 		status = "✅ Forwarding allowed ❌"
 	}
-	_, err := m.Reply(status)
+	_, err = m.Reply(status)
 	return err
 }
 
-func handleForwardedMessage(m *telegram.NewMessage) error {
-	if !m.IsGroup() || m.Channel == nil || m.IsAnonymous() || m.IsChannelPost(){
+func NoForwardHandler(m *telegram.NewMessage) error {
+	if m.IsAnonymous() {
 		return nil
 	}
 
@@ -97,6 +93,6 @@ func handleForwardedMessage(m *telegram.NewMessage) error {
 	}
 
 	mention := utils.MentionHTML(m.Sender)
-	_, err = m.Reply(fmt.Sprintf("🚫 %s, forwarding messages is not allowed in this group.", mention))
-	return err
+	_, _ = m.Reply(fmt.Sprintf("📤 <b>NoForward Enabled!</b>\n\n%s, <i>forwarding messages is restricted in this group to maintain original conversations.</i> 🚫", mention))
+	return telegram.ErrEndGroup
 }

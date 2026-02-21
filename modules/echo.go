@@ -42,10 +42,6 @@ Sends back the provided text. Also allows setting how the bot handles long messa
 				Pattern: "command:echo",
 				Handler: EcoHandler,
 			},
-			{
-				Pattern: "message",
-				Handler: deleteLongMessage,
-			},
 		},
 	})
 }
@@ -95,8 +91,8 @@ func EcoHandler(m *telegram.NewMessage) error {
 	return sendEchoMessage(m, text)
 }
 
-func deleteLongMessage(m *telegram.NewMessage) error {
-	if !m.IsGroup() || m.Channel == nil || m.IsAnonymous() || m.IsChannelPost(){
+func LongMessageHandler(m *telegram.NewMessage) error {
+	if m.IsAnonymous() {
 		return nil
 	}
 
@@ -148,23 +144,21 @@ func deleteLongMessage(m *telegram.NewMessage) error {
 			}
 
 			text := fmt.Sprintf(`
-⚠️ <a href="tg://user?id=%d">%s</a>, your message exceeds the %d-character limit! 🚫  
-Please shorten it before sending. ✂️  
+📏 <b>Message Too Long!</b>
 
-Alternatively, use /echo for sending longer messages. 📜
+⚠️ <a href="tg://user?id=%d">%s</a>, <i>your message exceeds the %d-character limit allowed in this group.</i> 🚫
+
+💡 <b>Tip:</b> Please shorten your message or use the <code>/echo</code> command to share long texts via Telegraph. 📜
 `, id, name, settings.Limit)
 
-			_, err := m.Reply(text)
-			if err != nil {
-				return err
-			}
+			_, _ = m.Reply(text)
 			deleteWarningTracker.chats[chatID] = time.Now()
 		}
 	} else {
-		return sendEchoMessage(m, m.Text())
+		_ = sendEchoMessage(m, m.Text())
 	}
 
-	return nil
+	return telegram.ErrEndGroup
 }
 
 func sendEchoMessage(m *telegram.NewMessage, text string) error {
@@ -193,7 +187,11 @@ func sendEchoMessage(m *telegram.NewMessage, text string) error {
 
 			// Use the full template with both names
 			msg = fmt.Sprintf(
-				`Hello <a href="tg://user?id=%d">%s</a>, <a href="tg://user?id=%d">%s</a> wanted to share a message, but it was too long to send here. You can view the full message on <b><a href="%s">Telegraph 📝</a></b>`,
+				`👋 Hello <a href="tg://user?id=%d">%s</a>,
+
+<a href="tg://user?id=%d">%s</a> <b>wanted to share a long message with you.</b> 📝
+
+📖 <b>View full message on:</b> <a href="%s">Telegraph</a>`,
 				m.ReplySenderID(), html.EscapeString(replyUserFullName),
 				m.SenderID(), html.EscapeString(userFullName),
 				url,
@@ -205,7 +203,9 @@ func sendEchoMessage(m *telegram.NewMessage, text string) error {
 	// Non-reply fallback (no empty <a> tag)
 	if msg == "" {
 		msg = fmt.Sprintf(
-			`Hello <a href="tg://user?id=%d">%s</a> wanted to share a message, but it was too long to send here. You can view the full message on <b><a href="%s">Telegraph 📝</a></b>`,
+			`👋 <a href="tg://user?id=%d">%s</a> <b>wanted to share a long message.</b> 📝
+
+📖 <b>View full message on:</b> <a href="%s">Telegraph</a>`,
 			m.SenderID(), html.EscapeString(userFullName), url,
 		)
 	}

@@ -29,10 +29,6 @@ func init() {
 				Pattern: "command:biolink",
 				Handler: RequirePermission("change_info", setBioMode),
 			},
-			{
-				Pattern: "message",
-				Handler: deleteUserMsgIfBio,
-			},
 		},
 	})
 }
@@ -44,7 +40,8 @@ func ShouldDeleteMsg(text string) bool {
 }
 
 func setBioMode(m *telegram.NewMessage) error {
-	if _, err := m.Delete(); err != nil {
+	var err error
+	if _, err = m.Delete(); err != nil {
 		return err
 	}
 
@@ -52,41 +49,43 @@ func setBioMode(m *telegram.NewMessage) error {
 
 	if len(args) < 1 {
 		if isEn, err := database.GetBioMode(m.ChatID()); err != nil {
-			_, err := m.Reply("📚 Usage: <code>/biolink on</code> | <code>/biolink off</code>")
+			_, err = m.Reply("📚 Usage: <code>/biolink on</code> | <code>/biolink off</code>")
 			return err
 		} else {
-			_, err := m.Reply("Currently bioLink mode is " + map[bool]string{true: "Enabled", false: "Disabled"}[isEn] + " for your chat")
+			_, err = m.Reply("Currently bioLink mode is " + map[bool]string{true: "Enabled", false: "Disabled"}[isEn] + " for your chat")
 			return err
 		}
 	}
 
-	part := strings.ToLower(args[0])
-	var msg string
+	enable, err := utils.ParseBool(args[0])
+	if err != nil {
+		_, err = m.Reply("❗ Invalid option. Use <code>on</code> or <code>off</code>.")
+		return err
+	}
 
-	if part == "on" || part == "enable" {
+	var msg string
+	if enable {
 		err := database.SetBioMode(m.ChatID())
 		if err != nil {
 			msg = fmt.Sprintf("⚠️ <b>Oops! Failed to enable BioMode.</b>\n\n🚫 An error occurred while trying to turn it on.\n\n<b>Error:</b> <code>%v</code>\n\n🔁 Please try again later.", err)
 		} else {
 			msg = "✅ <b>BioMode enabled successfully!</b>\n\n🔍 I will now monitor bios for any links and automatically delete messages if found.\n\n🛡 Stay safe!"
 		}
-	} else if part == "off" || part == "disable" {
+	} else {
 		err := database.DelBioMode(m.ChatID())
 		if err != nil {
 			msg = fmt.Sprintf("⚠️ <b>Oops! Failed to disable BioMode.</b>\n\n🚫 An error occurred while trying to turn it off.\n\n<b>Error:</b> <code>%v</code>\n\n🔁 Please try again later.", err)
 		} else {
 			msg = "🛑 <b>BioMode disabled successfully!</b>\n\n🔓 I'm no longer monitoring user bios for links in this group.\n\n✅ You're back to normal behavior."
 		}
-	} else {
-		msg = "❗ Invalid option. Use <code>on</code> or <code>off</code>."
 	}
 
-	_, err := m.Reply(msg)
+	_, err = m.Reply(msg)
 	return err
 }
 
-func deleteUserMsgIfBio(m *telegram.NewMessage) error {
-	if !m.IsGroup() || m.Channel == nil || m.IsAnonymous() || m.IsChannelPost(){
+func BioLinkHandler(m *telegram.NewMessage) error {
+	if m.IsAnonymous() {
 		return nil
 	}
 
@@ -148,7 +147,7 @@ func deleteUserMsgIfBio(m *telegram.NewMessage) error {
 	}
 
 	mention := utils.MentionHTML(m.Sender)
-	msg := fmt.Sprintf("🚨 %s, your message was deleted because your bio contains a link.", mention)
-	_, err = m.Reply(msg)
-	return err
+	msg := fmt.Sprintf("🛡️ <b>BioLink Protected!</b>\n\n%s, <i>your message was removed because your profile bio contains a link. To prevent spam, links in bios are not allowed here.</i> 🚫", mention)
+	_, _ = m.Reply(msg)
+	return telegram.ErrEndGroup
 }

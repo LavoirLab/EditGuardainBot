@@ -27,5 +27,28 @@ func OnMessageFnc(m *telegram.NewMessage) error {
 		database.AddServedChat(m.ChatID())
 	}
 
+	if !m.IsGroup() || m.IsChannelPost() {
+		return nil
+	}
+
+	handlers := []func(*telegram.NewMessage) error{
+		AutoDeleteHandler,
+		MediaDeleteHandler,
+		AbuseHandler,
+		NoForwardHandler,
+		NoHashtagsHandler,
+		NoPhoneHandler,
+		LinkFilterHandler,
+		NoPromoHandler,
+		LongMessageHandler,
+		BioLinkHandler,
+	}
+
+	for _, handler := range handlers {
+		if err := handler(m); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

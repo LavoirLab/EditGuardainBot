@@ -33,10 +33,6 @@ func init() {
 				Pattern: "command:nohashtag",
 				Handler: RequirePermission("change_info", NoHashtagsCmd),
 			},
-			{
-				Pattern: "message",
-				Handler: handleHashtags,
-			},
 		},
 	})
 }
@@ -44,32 +40,32 @@ func init() {
 var hashtagRegex = regexp.MustCompile(`#\w+`)
 
 func NoHashtagsCmd(m *telegram.NewMessage) error {
+	var err error
 	args := strings.Fields(m.Args())
-	if _, err := m.Delete(); err != nil {
+	if _, err = m.Delete(); err != nil {
 		return err
 	}
 
 	if len(args) < 1 {
 		isEnabled, err := database.IsNoHashtagsEnabled(m.ChatID())
 		if err != nil {
-			_, err := m.Reply("⚠️ Usage:\n<code>/nohashtags on</code> — Enable\n<code>/nohashtags off</code> — Disable")
+			_, err = m.Reply("⚠️ Usage:\n<code>/nohashtags on</code> — Enable\n<code>/nohashtags off</code> — Disable")
 			return err
 		} else {
 			status := map[bool]string{true: "Enabled", false: "Disabled"}[isEnabled]
-			_, err := m.Reply(fmt.Sprintf("Currently NoHashtags is %s for your chat.", status))
+			_, err = m.Reply(fmt.Sprintf("Currently NoHashtags is %s for your chat.", status))
 			return err
 		}
 	}
 
-	arg := strings.ToLower(args[0])
-	enable := arg == "on"
-	if arg != "on" && arg != "off" {
-		_, err := m.Reply("❌ Invalid option.\nUse <code>/nohashtags on</code> or <code>/nohashtags off</code>")
+	enable, err := utils.ParseBool(args[0])
+	if err != nil {
+		_, err = m.Reply("❌ Invalid option.\nUse <code>/nohashtags on</code> or <code>/nohashtags off</code>")
 		return err
 	}
 
 	if err := database.SetNoHashtagsEnabled(m.ChatID(), enable); err != nil {
-		_, err := m.Reply("❌ Failed to update setting.")
+		_, err = m.Reply("❌ Failed to update setting.")
 		return err
 	}
 
@@ -77,15 +73,14 @@ func NoHashtagsCmd(m *telegram.NewMessage) error {
 	if !enable {
 		status = "✅ Hashtags allowed ❌"
 	}
-	_, err := m.Reply(status)
+	_, err = m.Reply(status)
 	return err
 }
 
-func handleHashtags(m *telegram.NewMessage) error {
-	if !m.IsGroup() || m.Channel == nil {
+func NoHashtagsHandler(m *telegram.NewMessage) error {
+	if m.IsAnonymous() {
 		return nil
 	}
-
 	isEnabled, err := database.IsNoHashtagsEnabled(m.ChatID())
 	if err != nil || !isEnabled {
 		return nil
@@ -111,6 +106,6 @@ func handleHashtags(m *telegram.NewMessage) error {
 	}
 
 	mention := utils.MentionHTML(m.Sender)
-	_, err = m.Reply(fmt.Sprintf("🚫 %s, hashtags are not allowed in this group.", mention))
-	return err
+	_, _ = m.Reply(fmt.Sprintf("🏷️ <b>No Hashtags!</b>\n\n%s, <i>hashtags are not permitted in this group to prevent spamming and maintain clarity.</i> 🚫", mention))
+	return telegram.ErrEndGroup
 }

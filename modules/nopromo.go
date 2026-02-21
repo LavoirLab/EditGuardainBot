@@ -42,10 +42,6 @@ func init() {
 				Pattern: "command:nopromotion",
 				Handler: RequirePermission("change_info", NoPromoCmd),
 			},
-			{
-				Pattern: "message",
-				Handler: handlePromoMessages,
-			},
 		},
 	})
 }
@@ -87,32 +83,32 @@ const promoWarningThreshold = 15
 const promoDeleteThreshold = 25
 
 func NoPromoCmd(m *telegram.NewMessage) error {
+	var err error
 	args := strings.Fields(m.Args())
-	if _, err := m.Delete(); err != nil {
+	if _, err = m.Delete(); err != nil {
 		return err
 	}
 
 	if len(args) < 1 {
 		isEnabled, err := database.IsNoPromoEnabled(m.ChatID())
 		if err != nil {
-			_, err := m.Reply("⚠️ Usage:\n<code>/nopromo on</code> — Enable\n<code>/nopromo off</code> — Disable")
+			_, err = m.Reply("⚠️ Usage:\n<code>/nopromo on</code> — Enable\n<code>/nopromo off</code> — Disable")
 			return err
 		} else {
 			status := map[bool]string{true: "Enabled", false: "Disabled"}[isEnabled]
-			_, err := m.Reply(fmt.Sprintf("Currently NoPromo is %s for your chat.", status))
+			_, err = m.Reply(fmt.Sprintf("Currently NoPromo is %s for your chat.", status))
 			return err
 		}
 	}
 
-	arg := strings.ToLower(args[0])
-	enable := arg == "on"
-	if arg != "on" && arg != "off" {
-		_, err := m.Reply("❌ Invalid option.\nUse <code>/nopromo on</code> or <code>/nopromo off</code>")
+	enable, err := utils.ParseBool(args[0])
+	if err != nil {
+		_, err = m.Reply("❌ Invalid option.\nUse <code>/nopromo on</code> or <code>/nopromo off</code>")
 		return err
 	}
 
 	if err := database.SetNoPromoEnabled(m.ChatID(), enable); err != nil {
-		_, err := m.Reply("❌ Failed to update setting.")
+		_, err = m.Reply("❌ Failed to update setting.")
 		return err
 	}
 
@@ -120,12 +116,12 @@ func NoPromoCmd(m *telegram.NewMessage) error {
 	if !enable {
 		status = "✅ Promotional messages allowed ❌"
 	}
-	_, err := m.Reply(status)
+	_, err = m.Reply(status)
 	return err
 }
 
-func handlePromoMessages(m *telegram.NewMessage) error {
-	if !m.IsGroup() || m.Channel == nil || m.IsReply() || m.IsAnonymous() || m.IsChannelPost(){
+func NoPromoHandler(m *telegram.NewMessage) error {
+	if m.IsReply() || m.IsAnonymous() {
 		return nil
 	}
 
@@ -149,12 +145,12 @@ func handlePromoMessages(m *telegram.NewMessage) error {
 		}
 
 		mention := utils.MentionHTML(m.Sender)
-		_, err = m.Reply(fmt.Sprintf(
-			"🚫 %s, promoting bot usernames is not allowed in this group.",
+		_, _ = m.Reply(fmt.Sprintf(
+			"🤖 <b>No Bot Promo!</b>\n\n%s, <i>promoting other bots is not allowed in this group.</i> 🚫",
 			mention,
 		))
 
-		return err
+		return telegram.ErrEndGroup
 	}
 	// Calculate promo score
 	score := calculatePromoScore(m)
@@ -171,13 +167,14 @@ func handlePromoMessages(m *telegram.NewMessage) error {
 		if _, err := m.Delete(); err != nil {
 			return err
 		}
-		_, err = m.Reply(fmt.Sprintf("🚫 %s, promotional messages are not allowed in this group. (Score: %d)", mention, score))
+		_, _ = m.Reply(fmt.Sprintf("🚫 <b>Promotion Detected!</b>\n\n%s, <i>your message was removed because it appears to be promotional content.</i>\n\n📊 <b>Promo Score:</b> <code>%d</code>", mention, score))
+		return telegram.ErrEndGroup
 	} else {
 		// Medium score - Warning only
-		_, err = m.Reply(fmt.Sprintf("⚠️ %s, your message looks promotional. Please avoid excessive promotional content. (Score: %d)", mention, score))
+		_, _ = m.Reply(fmt.Sprintf("⚠️ <b>Warning: Promo Content!</b>\n\n%s, <i>your message looks highly promotional. Please avoid excessive promotions to stay in the group.</i>\n\n📊 <b>Promo Score:</b> <code>%d</code>", mention, score))
 	}
 
-	return err
+	return nil
 }
 
 func calculatePromoScore(m *telegram.NewMessage) int {

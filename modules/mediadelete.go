@@ -35,29 +35,26 @@ func init() {
 				Pattern: "command:setmediadelay",
 				Handler: RequirePermission("change_info", SetMediaDelayCmd),
 			},
-			{
-				Pattern: "message",
-				Handler: handleMediaDelete,
-			},
 		},
 	})
 }
 
 func MediaDeleteCmd(m *telegram.NewMessage) error {
+	var err error
 	args := strings.Fields(m.Args())
-	if _, err := m.Delete(); err != nil {
+	if _, err = m.Delete(); err != nil {
 		return err
 	}
 
 	if len(args) < 1 {
 		settings, err := database.GetMediaDeleteSettings(m.ChatID())
 		if err != nil {
-			_, err := m.Reply("⚠️ Usage:\n<code>/mediadelete on</code> — Enable\n<code>/mediadelete off</code> — Disable")
+			_, err = m.Reply("⚠️ Usage:\n<code>/mediadelete on</code> — Enable\n<code>/mediadelete off</code> — Disable")
 			return err
 		} else {
 			status := map[bool]string{true: "Enabled", false: "Disabled"}[settings.Enabled]
 
-			_, err := m.Reply(fmt.Sprintf(
+			_, err = m.Reply(fmt.Sprintf(
 				"📊 <b>MediaDelete Status:</b> %s\n⏱ <b>Delay:</b> %s\n🎯 <b>Scope:</b> All users & admins",
 				status,
 				utils.FormatDuration(settings.Delay),
@@ -66,15 +63,14 @@ func MediaDeleteCmd(m *telegram.NewMessage) error {
 		}
 	}
 
-	arg := strings.ToLower(args[0])
-	enable := arg == "on"
-	if arg != "on" && arg != "off" {
-		_, err := m.Reply("❌ Invalid option.\nUse <code>/mediadelete on</code> or <code>/mediadelete off</code>")
+	enable, err := utils.ParseBool(args[0])
+	if err != nil {
+		_, err = m.Reply("❌ Invalid option.\nUse <code>/mediadelete on</code> or <code>/mediadelete off</code>")
 		return err
 	}
 
 	if err := database.SetMediaDeleteEnabled(m.ChatID(), enable); err != nil {
-		_, err := m.Reply("❌ Failed to update setting.")
+		_, err = m.Reply("❌ Failed to update setting.")
 		return err
 	}
 
@@ -82,33 +78,34 @@ func MediaDeleteCmd(m *telegram.NewMessage) error {
 	if !enable {
 		status = "🚫 Media auto-delete disabled ❌"
 	}
-	_, err := m.Reply(status)
+	_, err = m.Reply(status)
 	return err
 }
 
 func SetMediaDelayCmd(m *telegram.NewMessage) error {
-	if _, err := m.Delete(); err != nil {
+	var err error
+	if _, err = m.Delete(); err != nil {
 		return err
 	}
 
 	if m.Args() == "" {
-		_, err := m.Reply("⚠️ Usage: <code>/setmediadelay 5m</code> or <code>/setmediadelay 2h</code>\n\nValid range: 1m to 24h")
+		_, err = m.Reply("⚠️ Usage: <code>/setmediadelay 5m</code> or <code>/setmediadelay 2h</code>\n\nValid range: 1m to 24h")
 		return err
 	}
 
 	duration, err := utils.ParseDuration(m.Args())
 	if err != nil {
-		_, err := m.Reply("❌ Invalid time format. Use: 5m, 1h, 12h, etc.\nRange: 1 minute to 24 hours")
+		_, err = m.Reply("❌ Invalid time format. Use: 5m, 1h, 12h, etc.\nRange: 1 minute to 24 hours")
 		return err
 	}
 
 	if duration < time.Minute || duration > 24*time.Hour {
-		_, err := m.Reply("❌ Delay must be between 1 minute and 24 hours.")
+		_, err = m.Reply("❌ Delay must be between 1 minute and 24 hours.")
 		return err
 	}
 
 	if err := database.SetMediaDeleteDelay(m.ChatID(), duration); err != nil {
-		_, err := m.Reply("❌ Failed to set delay.")
+		_, err = m.Reply("❌ Failed to set delay.")
 		return err
 	}
 
@@ -116,8 +113,8 @@ func SetMediaDelayCmd(m *telegram.NewMessage) error {
 	return err
 }
 
-func handleMediaDelete(m *telegram.NewMessage) error {
-	if !m.IsGroup() || m.Channel == nil || !m.IsMedia() {
+func MediaDeleteHandler(m *telegram.NewMessage) error {
+	if !m.IsMedia() || m.IsAnonymous() {
 		return nil
 	}
 

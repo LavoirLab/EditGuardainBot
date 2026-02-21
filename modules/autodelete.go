@@ -35,41 +35,37 @@ func init() {
 				Pattern: "command:setmsgdelay",
 				Handler: RequirePermission("change_info", SetMsgDelayCmd),
 			},
-			{
-				Pattern: "message",
-				Handler: handleMsgAutoDelete,
-			},
 		},
 	})
 }
 
 func MsgDeleteCmd(m *telegram.NewMessage) error {
+	var err error
 	args := strings.Fields(m.Args())
-	if _, err := m.Delete(); err != nil {
+	if _, err = m.Delete(); err != nil {
 		return err
 	}
 
 	if len(args) < 1 {
 		settings, err := database.GetMsgDeleteSettings(m.ChatID())
 		if err != nil {
-			_, err := m.Reply("⚠️ Usage:\n<code>/msgdelete on</code> — Enable\n<code>/msgdelete off</code> — Disable")
+			_, err = m.Reply("⚠️ Usage:\n<code>/msgdelete on</code> — Enable\n<code>/msgdelete off</code> — Disable")
 			return err
 		} else {
 			status := map[bool]string{true: "Enabled", false: "Disabled"}[settings.Enabled]
-			_, err := m.Reply(fmt.Sprintf("📊 <b>MsgDelete Status:</b> %s\n⏱ <b>Delay:</b> %s\n🛡️ <b>Note:</b> Admins are always exempt", status, utils.FormatDuration(settings.Delay)))
+			_, err = m.Reply(fmt.Sprintf("📊 <b>MsgDelete Status:</b> %s\n⏱ <b>Delay:</b> %s\n🛡️ <b>Note:</b> Admins are always exempt", status, utils.FormatDuration(settings.Delay)))
 			return err
 		}
 	}
 
-	arg := strings.ToLower(args[0])
-	enable := arg == "on"
-	if arg != "on" && arg != "off" {
-		_, err := m.Reply("❌ Invalid option.\nUse <code>/msgdelete on</code> or <code>/msgdelete off</code>")
+	enable, err := utils.ParseBool(args[0])
+	if err != nil {
+		_, err = m.Reply("❌ Invalid option.\nUse <code>/msgdelete on</code> or <code>/msgdelete off</code>")
 		return err
 	}
 
 	if err := database.SetMsgDeleteEnabled(m.ChatID(), enable); err != nil {
-		_, err := m.Reply("❌ Failed to update setting.")
+		_, err = m.Reply("❌ Failed to update setting.")
 		return err
 	}
 
@@ -77,33 +73,34 @@ func MsgDeleteCmd(m *telegram.NewMessage) error {
 	if !enable {
 		status = "🚫 Message auto-delete disabled ❌"
 	}
-	_, err := m.Reply(status)
+	_, err = m.Reply(status)
 	return err
 }
 
 func SetMsgDelayCmd(m *telegram.NewMessage) error {
-	if _, err := m.Delete(); err != nil {
+	var err error
+	if _, err = m.Delete(); err != nil {
 		return err
 	}
 
 	if m.Args() == "" {
-		_, err := m.Reply("⚠️ Usage: <code>/setmsgdelay 5m</code> or <code>/setmsgdelay 2h</code>\n\nValid range: 1m to 12h")
+		_, err = m.Reply("⚠️ Usage: <code>/setmsgdelay 5m</code> or <code>/setmsgdelay 2h</code>\n\nValid range: 1m to 12h")
 		return err
 	}
 
 	duration, err := utils.ParseDuration(m.Args())
 	if err != nil {
-		_, err := m.Reply("❌ Invalid time format. Use: 5m, 1h, 12h, etc.\nRange: 1 minute to 12 hours")
+		_, err = m.Reply("❌ Invalid time format. Use: 5m, 1h, 12h, etc.\nRange: 1 minute to 12 hours")
 		return err
 	}
 
 	if duration < time.Minute || duration > 12*time.Hour {
-		_, err := m.Reply("❌ Delay must be between 1 minute and 12 hours.")
+		_, err = m.Reply("❌ Delay must be between 1 minute and 12 hours.")
 		return err
 	}
 
 	if err := database.SetMsgDeleteDelay(m.ChatID(), duration); err != nil {
-		_, err := m.Reply("❌ Failed to set delay.")
+		_, err = m.Reply("❌ Failed to set delay.")
 		return err
 	}
 
@@ -111,11 +108,10 @@ func SetMsgDelayCmd(m *telegram.NewMessage) error {
 	return err
 }
 
-func handleMsgAutoDelete(m *telegram.NewMessage) error {
-	if !m.IsGroup() || m.Channel == nil {
+func AutoDeleteHandler(m *telegram.NewMessage) error {
+	if m.IsAnonymous() {
 		return nil
 	}
-
 	settings, err := database.GetMsgDeleteSettings(m.ChatID())
 	if err != nil || !settings.Enabled {
 		return nil
