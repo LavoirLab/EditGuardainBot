@@ -15,7 +15,7 @@ func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "nophone",
 		ModName: "📞 Phone",
-		Help: `📞 <b>ᴘʜᴏɴᴇ ɴᴜᴍʙᴇʀ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ</b> ʙʟᴏᴄᴋs ᴍᴇssᴀɢᴇs ᴄᴏɴᴛᴀɪɴɪɴɢ ᴘʜᴏɴᴇ ɴᴜᴍʙᴇʀs.
+		Help: `<emoji id='5318779098686826724'>📞</emoji> <b>ᴘʜᴏɴᴇ ɴᴜᴍʙᴇʀ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ</b> ʙʟᴏᴄᴋs ᴍᴇssᴀɢᴇs ᴄᴏɴᴛᴀɪɴɪɴɢ ᴘʜᴏɴᴇ ɴᴜᴍʙᴇʀs.
 
 <b>ᴄᴏᴍᴍᴀɴᴅs:</b>
 <blockquote>• <code>/nophone on</code> — ʙʟᴏᴄᴋ ᴘʜᴏɴᴇ ɴᴜᴍʙᴇʀs <emoji id='6084551628461967966'>✅</emoji>
