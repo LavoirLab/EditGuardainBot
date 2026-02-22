@@ -25,7 +25,10 @@ func init() {
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:setlonglimit",
-				Handler: RequirePermission("delete_messages", SetLongLimitHandler),
+				Handler: RequirePermission(
+					"delete_messages",
+					SetLongLimitHandler,
+				),
 			},
 			{
 				Pattern: "command:nolongmessage",
