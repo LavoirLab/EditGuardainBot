@@ -35,6 +35,10 @@ func init() {
 				Pattern: "command:setmsgdelay",
 				Handler: RequirePermission("change_info", SetMsgDelayCmd),
 			},
+			{
+				Pattern: "*",
+				Handler: updateReadChannelOutboxHandler,
+			},
 		},
 	})
 }
@@ -121,3 +125,25 @@ func AutoDeleteHandler(m *telegram.NewMessage) error {
 
 	return nil
 }
+
+
+func updateReadChannelOutboxHandler(m telegram.Update, c *telegram.Client) error {
+
+upd, ok := m.(*telegram.UpdateReadChannelOutbox)
+if !ok {
+
+return 
+}
+
+fmt.Println("Channel id got by updateReadChannelOutbox ", upd.ChannelID)
+
+	settings, err := database.GetMsgDeleteSettings(upd.ChannelID)
+	if err != nil || !settings.Enabled {
+		return nil
+	}
+
+	ScheduleMessageDeletion(c, upd.ChannelID, int32(upd.MaxID), settings.Delay)
+
+	return nil
+}
+
