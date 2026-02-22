@@ -12,7 +12,7 @@ func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "help",
 		ModName: "Help",
-		Help:    "Contact me in PM for help!",
+		Help:    "",
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:help",
@@ -81,7 +81,7 @@ func getFullHelp() telegram.ReplyMarkup {
 		buttons = append(buttons, button)
 	}
 
-	keyboard.NewColumn(2, buttons...)
+	keyboard.NewColumn(3, buttons...)
 	keyboard.AddRow(telegram.Button.Data("⬅️ Back", "start_callback"))
 
 	return keyboard.Build()
