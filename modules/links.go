@@ -21,7 +21,7 @@ var hostnameRegex = regexp.MustCompile(
 func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "links",
-		ModName: "🔗 LinkFilter",
+		ModName: "🔗 Links",
 		Help: "🔗 <b>LinkFilter</b> allows admins to restrict messages containing unapproved links.\n\n" +
 			"<b>Usage:</b>\n" +
 			"➤ <code>/nolinks</code> – See your current link filtering enabled or not.\n" +
