@@ -16,11 +16,11 @@ var startMsG string = `<b>🛡 Hello <a href="tg://user?id=%d">%s</a>!</b> 👋
 I'm <b><a href="tg://user?id=%d">%s</a></b>, your group’s advanced security and management bot.
 
 I can help you with:
-✨ <b>Auto-Cleanup</b> of unwanted messages
+<blockquote>✨ <b>Auto-Cleanup</b> of unwanted messages
 🚫 <b>Anti-Abuse</b> & Link Protection
 🔞 <b>NSFW Detection</b>
 🗑 <b>Bulk Purging</b>
-📝 <b>Long Message</b> handling
+📝 <b>Long Message</b> handling</blockquote>
 
 <b>How to use me?</b>
 1️⃣ Add me to your group
