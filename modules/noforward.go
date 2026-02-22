@@ -26,7 +26,7 @@ func init() {
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:noforward",
-				Handler: RequirePermission("change_info", NoForwardCmd),
+				Handler: RequirePermission("delete_messages", NoForwardCmd),
 			},
 		},
 	})

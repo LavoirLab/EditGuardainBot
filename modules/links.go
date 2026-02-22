@@ -37,23 +37,23 @@ func init() {
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:nolinks",
-				Handler: RequirePermission("change_info", NoLinksCmd),
+				Handler: RequirePermission("delete_messages", NoLinksCmd),
 			},
 			{
 				Pattern: "command:allowlink",
-				Handler: RequirePermission("change_info", AllowHostCmd),
+				Handler: RequirePermission("delete_messages", AllowHostCmd),
 			},
 			{
 				Pattern: "command:allowhost",
-				Handler: RequirePermission("change_info", AllowHostCmd),
+				Handler: RequirePermission("delete_messages", AllowHostCmd),
 			},
 			{
 				Pattern: "command:removelink",
-				Handler: RequirePermission("change_info", RemoveHostCmd),
+				Handler: RequirePermission("delete_messages", RemoveHostCmd),
 			},
 			{
 				Pattern: "command:listlinks",
-				Handler: RequirePermission("change_info", ListAllowedHosts),
+				Handler: RequirePermission("delete_messages", ListAllowedHosts),
 			},
 		},
 	})
@@ -77,7 +77,7 @@ func extractHostname(input string) string {
 }
 
 func LinkFilterHandler(m *telegram.NewMessage) error {
-	if m.IsAnonymous() {
+	if m.IsAnonymous() || m.IsChannelPost()) {
 		return nil
 	}
 

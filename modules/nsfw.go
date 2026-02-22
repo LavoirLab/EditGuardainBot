@@ -43,7 +43,7 @@ func init() {
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "/nonsfw",
-				Handler: RequirePermission("change_info", NsfwCmdHandler),
+				Handler: RequirePermission("delete_messages", NsfwCmdHandler),
 			},
 			{
 				Pattern: "album",

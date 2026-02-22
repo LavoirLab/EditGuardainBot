@@ -35,11 +35,11 @@ func init() {
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:msgdelete",
-				Handler: RequirePermission("change_info", MsgDeleteCmd),
+				Handler: RequirePermission("delete_messages", MsgDeleteCmd),
 			},
 			{
 				Pattern: "command:setmsgdelay",
-				Handler: RequirePermission("change_info", SetMsgDelayCmd),
+				Handler: RequirePermission("delete_messages", SetMsgDelayCmd),
 			},
 			{
 				Pattern: "*",
@@ -145,7 +145,7 @@ func SetMsgDelayCmd(m *telegram.NewMessage) error {
 }
 
 func AutoDeleteHandler(m *telegram.NewMessage) error {
-	if m.IsAnonymous() {
+	if m.IsChannelPost() {
 		return nil
 	}
 	settings, err := database.GetMsgDeleteSettings(m.ChatID())

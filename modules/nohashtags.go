@@ -23,11 +23,11 @@ func init() {
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:nohashtags",
-				Handler: RequirePermission("change_info", NoHashtagsCmd),
+				Handler: RequirePermission("delete_messages", NoHashtagsCmd),
 			},
 			{
 				Pattern: "command:nohashtag",
-				Handler: RequirePermission("change_info", NoHashtagsCmd),
+				Handler: RequirePermission("delete_messages", NoHashtagsCmd),
 			},
 		},
 	})

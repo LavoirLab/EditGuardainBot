@@ -27,7 +27,7 @@ func init() {
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:nophone",
-				Handler: RequirePermission("change_info", NoPhoneCmd),
+				Handler: RequirePermission("delete_messages", NoPhoneCmd),
 			},
 		},
 	})

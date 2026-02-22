@@ -41,11 +41,11 @@ func init() {
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:nopromo",
-				Handler: RequirePermission("change_info", NoPromoCmd),
+				Handler: RequirePermission("delete_messages", NoPromoCmd),
 			},
 			{
 				Pattern: "command:nopromotion",
-				Handler: RequirePermission("change_info", NoPromoCmd),
+				Handler: RequirePermission("delete_messages", NoPromoCmd),
 			},
 		},
 	})
@@ -149,7 +149,7 @@ func NoPromoCmd(m *telegram.NewMessage) error {
 }
 
 func NoPromoHandler(m *telegram.NewMessage) error {
-	if m.IsReply() || m.IsAnonymous() {
+	if m.IsReply() || m.IsAnonymous() || m.IsChannelPost() {
 		return nil
 	}
 

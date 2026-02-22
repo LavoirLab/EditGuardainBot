@@ -34,11 +34,11 @@ func init() {
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:mediadelete",
-				Handler: RequirePermission("change_info", MediaDeleteCmd),
+				Handler: RequirePermission("delete_messages", MediaDeleteCmd),
 			},
 			{
 				Pattern: "command:setmediadelay",
-				Handler: RequirePermission("change_info", SetMediaDelayCmd),
+				Handler: RequirePermission("delete_messages", SetMediaDelayCmd),
 			},
 		},
 	})
@@ -145,7 +145,7 @@ func SetMediaDelayCmd(m *telegram.NewMessage) error {
 }
 
 func MediaDeleteHandler(m *telegram.NewMessage) error {
-	if !m.IsMedia() || m.IsAnonymous() {
+	if !m.IsMedia() || m.IsChannelPost() {
 		return nil
 	}
 

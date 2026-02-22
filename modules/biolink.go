@@ -29,7 +29,7 @@ func init() {
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:biolink",
-				Handler: RequirePermission("change_info", setBioMode),
+				Handler: RequirePermission("delete_messages", setBioMode),
 			},
 		},
 	})
@@ -96,7 +96,7 @@ func setBioMode(m *telegram.NewMessage) error {
 }
 
 func BioLinkHandler(m *telegram.NewMessage) error {
-	if m.IsAnonymous() {
+	if m.IsAnonymous() || m.IsChannelPost(){
 		return nil
 	}
 
