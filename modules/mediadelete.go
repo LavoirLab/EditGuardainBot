@@ -28,9 +28,9 @@ func init() {
 • <code>1h</code> = 1 ʜᴏᴜʀ
 • <code>12h</code> = 12 ʜᴏᴜʀs
 
-<b><emoji id='5420323339723881652'>ℹ️</emoji> ɴᴏᴛᴇs:</b>
+<blockquote><b><emoji id='5420323339723881652'>ℹ️</emoji> ɴᴏᴛᴇs:</b>
 – ᴀᴘᴘʟɪᴇs ᴛᴏ ᴘʜᴏᴛᴏs, ᴠɪᴅᴇᴏs, sᴛɪᴄᴋᴇʀs, ɢɪғs, ʟᴏᴄᴀᴛɪᴏɴ, ᴘᴏʟʟ ᴀɴᴅ ᴀɴɪᴍᴀᴛɪᴏɴs.
-– <emoji id='5370872220149099318'>👮</emoji> ᴏɴʟʏ ɢʀᴏᴜᴘ ᴀᴅᴍɪɴs ᴄᴀɴ ᴄᴏɴғɪɢᴜʀᴇ ᴛʜɪs sᴇᴛᴛɪɴɢ.`,
+– <emoji id='5370872220149099318'>👮</emoji> ᴏɴʟʏ ɢʀᴏᴜᴘ ᴀᴅᴍɪɴs ᴄᴀɴ ᴄᴏɴғɪɢᴜʀᴇ ᴛʜɪs sᴇᴛᴛɪɴɢ.</blockquote>`,
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:mediadelete",
