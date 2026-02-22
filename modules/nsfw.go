@@ -35,11 +35,11 @@ func init() {
 		ModName: "🔞 NSFW",
 		Help: `<emoji id='5460873805297624194'>🔞</emoji> <b>ɴsғᴡ ᴅᴇᴛᴇᴄᴛɪᴏɴ</b>
 
+<i>sᴄᴀɴs ᴘʜᴏᴛᴏs ᴀɴᴅ sᴛɪᴄᴋᴇʀs (ᴡᴇʙᴘ, ᴡᴇʙᴍ). ᴅᴇʟᴇᴛᴇs ɴsғᴡ ᴄᴏɴᴛᴇɴᴛ ᴀɴᴅ ᴍᴜᴛᴇs ʀᴇᴘᴇᴀᴛ ᴏғғᴇɴᴅᴇʀs ᴀғᴛᴇʀ 5 ᴠɪᴏʟᴀᴛɪᴏɴs ɪɴ 1ʜ.</i>
+
 <b>ᴄᴏᴍᴍᴀɴᴅs:</b>
 <blockquote>• <code>/nonsfw on</code> — ᴇɴᴀʙʟᴇ <emoji id='6084551628461967966'>✅</emoji>
-• <code>/nonsfw off</code> — ᴅɪsᴀʙʟᴇ <emoji id='5465665476971471368'>❌</emoji></blockquote>
-
-sᴄᴀɴs ᴘʜᴏᴛᴏs ᴀɴᴅ sᴛɪᴄᴋᴇʀs (ᴡᴇʙᴘ, ᴡᴇʙᴍ). ᴅᴇʟᴇᴛᴇs ɴsғᴡ ᴄᴏɴᴛᴇɴᴛ ᴀɴᴅ ᴍᴜᴛᴇs ʀᴇᴘᴇᴀᴛ ᴏғғᴇɴᴅᴇʀs ᴀғᴛᴇʀ 5 ᴠɪᴏʟᴀᴛɪᴏɴs ɪɴ 1ʜ.`,
+• <code>/nonsfw off</code> — ᴅɪsᴀʙʟᴇ <emoji id='5465665476971471368'>❌</emoji></blockquote>`,
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "/nonsfw",
