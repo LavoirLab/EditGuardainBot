@@ -43,9 +43,12 @@ func handleHelp(m *telegram.NewMessage) error {
 		).
 			Build()
 
-		m.Reply("👋 <b>Need help?</b>\n\nTo see all available commands and how to use them, please contact me in private message.", &telegram.SendOptions{
-			ReplyMarkup: keyboard,
-		})
+		m.Reply(
+			"👋 <b>Need help?</b>\n\nTo see all available commands and how to use them, please contact me in private message.",
+			&telegram.SendOptions{
+				ReplyMarkup: keyboard,
+			},
+		)
 
 		return telegram.ErrEndGroup
 	}

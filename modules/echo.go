@@ -66,13 +66,17 @@ func EcoHandler(m *telegram.NewMessage) error {
 	}
 
 	if m.Args() == "" {
-		_, err := m.Reply("⚠️ <b>Usage:</b> <code>/echo &lt;text&gt;</code>\n\nPlease provide the long text you want to share via Telegraph.")
+		_, err := m.Reply(
+			"⚠️ <b>Usage:</b> <code>/echo &lt;text&gt;</code>\n\nPlease provide the long text you want to share via Telegraph.",
+		)
 		return err
 	}
 
 	settings, err := database.GetEchoSettings(m.ChatID())
 	if err != nil {
-		_, err := m.Reply("⚠️ <b>Oops! Something went wrong.</b>\n\nI couldn't retrieve the message limit settings for this chat. Please try again.")
+		_, err := m.Reply(
+			"⚠️ <b>Oops! Something went wrong.</b>\n\nI couldn't retrieve the message limit settings for this chat. Please try again.",
+		)
 		return err
 	}
 

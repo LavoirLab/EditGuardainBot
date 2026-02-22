@@ -72,7 +72,9 @@ func NoHashtagsCmd(m *telegram.NewMessage) error {
 	}
 
 	if err := database.SetNoHashtagsEnabled(m.ChatID(), enable); err != nil {
-		_, err = m.Reply("⚠️ <b>Update failed.</b>\n\nSomething went wrong while updating the setting. Please try again.")
+		_, err = m.Reply(
+			"⚠️ <b>Update failed.</b>\n\nSomething went wrong while updating the setting. Please try again.",
+		)
 		return err
 	}
 
@@ -82,7 +84,9 @@ func NoHashtagsCmd(m *telegram.NewMessage) error {
 		status = "disabled ❌"
 		next = "Use <code>/nohashtags on</code> to block hashtags."
 	}
-	_, err = m.Reply(fmt.Sprintf("🏷️ <b>Hashtag filter %s</b>\n\n%s", status, next))
+	_, err = m.Reply(
+		fmt.Sprintf("🏷️ <b>Hashtag filter %s</b>\n\n%s", status, next),
+	)
 	return err
 }
 

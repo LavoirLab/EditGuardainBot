@@ -76,7 +76,9 @@ func MsgDeleteCmd(m *telegram.NewMessage) error {
 	}
 
 	if err := database.SetMsgDeleteEnabled(m.ChatID(), enable); err != nil {
-		_, err = m.Reply("⚠️ <b>Update failed.</b>\n\nSomething went wrong while updating the setting. Please try again.")
+		_, err = m.Reply(
+			"⚠️ <b>Update failed.</b>\n\nSomething went wrong while updating the setting. Please try again.",
+		)
 		return err
 	}
 
@@ -86,7 +88,9 @@ func MsgDeleteCmd(m *telegram.NewMessage) error {
 		status = "disabled ❌"
 		next = "Use <code>/msgdelete on</code> to enable it again."
 	}
-	_, err = m.Reply(fmt.Sprintf("💬 <b>Message auto-delete %s</b>\n\n%s", status, next))
+	_, err = m.Reply(
+		fmt.Sprintf("💬 <b>Message auto-delete %s</b>\n\n%s", status, next),
+	)
 	return err
 }
 
@@ -112,12 +116,16 @@ func SetMsgDelayCmd(m *telegram.NewMessage) error {
 	}
 
 	if duration < time.Minute || duration > 12*time.Hour {
-		_, err = m.Reply("❌ <b>Out of range.</b>\n\nDelay must be between 1 minute and 12 hours.")
+		_, err = m.Reply(
+			"❌ <b>Out of range.</b>\n\nDelay must be between 1 minute and 12 hours.",
+		)
 		return err
 	}
 
 	if err := database.SetMsgDeleteDelay(m.ChatID(), duration); err != nil {
-		_, err = m.Reply("⚠️ <b>Failed to set delay.</b>\n\nSomething went wrong while saving the delay. Please try again.")
+		_, err = m.Reply(
+			"⚠️ <b>Failed to set delay.</b>\n\nSomething went wrong while saving the delay. Please try again.",
+		)
 		return err
 	}
 

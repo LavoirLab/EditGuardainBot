@@ -193,7 +193,8 @@ func handleStart(m *telegram.NewMessage) error {
 
 	btn := telegram.NewKeyboard().AddRow(
 		telegram.Button.URL("📖 Help & Commands", fmt.Sprintf("https://t.me/%s?start=help", m.Client.Me().Username)),
-	).Build()
+	).
+		Build()
 
 	caption := fmt.Sprintf(`<b>🛡️ Bot Activated!</b>
 

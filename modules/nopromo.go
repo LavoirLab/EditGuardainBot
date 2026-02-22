@@ -125,7 +125,9 @@ func NoPromoCmd(m *telegram.NewMessage) error {
 	}
 
 	if err := database.SetNoPromoEnabled(m.ChatID(), enable); err != nil {
-		_, err = m.Reply("⚠️ <b>Update failed.</b>\n\nSomething went wrong while updating the setting. Please try again.")
+		_, err = m.Reply(
+			"⚠️ <b>Update failed.</b>\n\nSomething went wrong while updating the setting. Please try again.",
+		)
 		return err
 	}
 
@@ -135,7 +137,9 @@ func NoPromoCmd(m *telegram.NewMessage) error {
 		status = "disabled ❌"
 		next = "Use <code>/nopromo on</code> to block promotional messages."
 	}
-	_, err = m.Reply(fmt.Sprintf("🚫 <b>Promo Filter %s</b>\n\n%s", status, next))
+	_, err = m.Reply(
+		fmt.Sprintf("🚫 <b>Promo Filter %s</b>\n\n%s", status, next),
+	)
 	return err
 }
 

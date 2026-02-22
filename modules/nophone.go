@@ -71,7 +71,9 @@ func NoPhoneCmd(m *telegram.NewMessage) error {
 	}
 
 	if err := database.SetNoPhoneEnabled(m.ChatID(), enable); err != nil {
-		_, err = m.Reply("⚠️ <b>Update failed.</b>\n\nSomething went wrong while updating the setting. Please try again.")
+		_, err = m.Reply(
+			"⚠️ <b>Update failed.</b>\n\nSomething went wrong while updating the setting. Please try again.",
+		)
 		return err
 	}
 
@@ -81,7 +83,9 @@ func NoPhoneCmd(m *telegram.NewMessage) error {
 		status = "disabled ❌"
 		next = "Use <code>/nophone on</code> to block phone numbers."
 	}
-	_, err = m.Reply(fmt.Sprintf("📞 <b>Phone number protection %s</b>\n\n%s", status, next))
+	_, err = m.Reply(
+		fmt.Sprintf("📞 <b>Phone number protection %s</b>\n\n%s", status, next),
+	)
 	return err
 }
 

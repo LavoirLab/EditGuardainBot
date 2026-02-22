@@ -172,7 +172,9 @@ func NoLinksCmd(m *telegram.NewMessage) error {
 	}
 	if err := database.SetLinkFilterEnabled(m.ChatID(), enable); err != nil {
 		log.Println("Links.DB error:", err)
-		_, err = m.Reply("⚠️ <b>Oops! Failed to update settings.</b>\n\nSomething went wrong while updating the link filter. Please try again.")
+		_, err = m.Reply(
+			"⚠️ <b>Oops! Failed to update settings.</b>\n\nSomething went wrong while updating the link filter. Please try again.",
+		)
 		return err
 	}
 	status := "enabled ✅"
@@ -181,7 +183,9 @@ func NoLinksCmd(m *telegram.NewMessage) error {
 		status = "disabled ❌"
 		next = "Use <code>/nolinks on</code> to enable it again."
 	}
-	_, err = m.Reply(fmt.Sprintf("🔗 <b>Link filtering %s</b>\n\n%s", status, next))
+	_, err = m.Reply(
+		fmt.Sprintf("🔗 <b>Link filtering %s</b>\n\n%s", status, next),
+	)
 	return err
 }
 
@@ -193,7 +197,9 @@ func AllowHostCmd(m *telegram.NewMessage) error {
 	}
 
 	if len(args) < 1 {
-		_, err = m.Reply("⚠️ <b>Usage:</b> <code>/allowlink &lt;domain&gt;</code>\n\n<b>Example:</b>\n• <code>/allowlink google.com</code>\n• <code>/allowlink github.com</code>")
+		_, err = m.Reply(
+			"⚠️ <b>Usage:</b> <code>/allowlink &lt;domain&gt;</code>\n\n<b>Example:</b>\n• <code>/allowlink google.com</code>\n• <code>/allowlink github.com</code>",
+		)
 		return err
 	}
 	host := extractHostname(args[0])
@@ -205,10 +211,18 @@ func AllowHostCmd(m *telegram.NewMessage) error {
 	}
 	if err := database.AddAllowedHostname(m.ChatID(), host); err != nil {
 		log.Println("AddAllowedHostname error:", err)
-		_, err = m.Reply("⚠️ <b>Failed to add domain.</b>\n\nSomething went wrong while adding the domain to the allow-list. Please try again.")
+		_, err = m.Reply(
+			"⚠️ <b>Failed to add domain.</b>\n\nSomething went wrong while adding the domain to the allow-list. Please try again.",
+		)
 		return err
 	}
-	_, err = m.Reply(fmt.Sprintf("✅ <b>Domain Allowed:</b> <code>%s</code>\n\nLinks from this domain will no longer be blocked. Use <code>/removelink %s</code> to remove it.", host, host))
+	_, err = m.Reply(
+		fmt.Sprintf(
+			"✅ <b>Domain Allowed:</b> <code>%s</code>\n\nLinks from this domain will no longer be blocked. Use <code>/removelink %s</code> to remove it.",
+			host,
+			host,
+		),
+	)
 	return err
 }
 
@@ -220,7 +234,9 @@ func RemoveHostCmd(m *telegram.NewMessage) error {
 	}
 
 	if len(args) < 1 {
-		_, err = m.Reply("⚠️ <b>Usage:</b> <code>/removelink &lt;domain&gt;</code>\n\n<b>Example:</b> <code>/removelink github.com</code>")
+		_, err = m.Reply(
+			"⚠️ <b>Usage:</b> <code>/removelink &lt;domain&gt;</code>\n\n<b>Example:</b> <code>/removelink github.com</code>",
+		)
 		return err
 	}
 	host := extractHostname(args[0])
@@ -231,10 +247,18 @@ func RemoveHostCmd(m *telegram.NewMessage) error {
 		return err
 	}
 	if err := database.RemoveAllowedHostname(m.ChatID(), host); err != nil {
-		_, err = m.Reply("⚠️ <b>Failed to remove domain.</b>\n\nSomething went wrong while removing the domain from the allow-list. Please try again.")
+		_, err = m.Reply(
+			"⚠️ <b>Failed to remove domain.</b>\n\nSomething went wrong while removing the domain from the allow-list. Please try again.",
+		)
 		return err
 	}
-	_, err = m.Reply(fmt.Sprintf("🚫 <b>Domain Removed:</b> <code>%s</code>\n\nLinks from this domain will now be filtered again. Use <code>/allowlink %s</code> to add it back.", host, host))
+	_, err = m.Reply(
+		fmt.Sprintf(
+			"🚫 <b>Domain Removed:</b> <code>%s</code>\n\nLinks from this domain will now be filtered again. Use <code>/allowlink %s</code> to add it back.",
+			host,
+			host,
+		),
+	)
 	return err
 }
 
@@ -249,7 +273,9 @@ func ListAllowedHosts(m *telegram.NewMessage) error {
 		return err
 	}
 	if len(hosts) == 0 {
-		_, err = m.Reply("ℹ️ <b>No allowed domains yet.</b>\n\nAll external links are currently being filtered. Use <code>/allowlink &lt;domain&gt;</code> to add your first exception!")
+		_, err = m.Reply(
+			"ℹ️ <b>No allowed domains yet.</b>\n\nAll external links are currently being filtered. Use <code>/allowlink &lt;domain&gt;</code> to add your first exception!",
+		)
 		return err
 	}
 	var text strings.Builder
