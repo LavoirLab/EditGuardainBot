@@ -14,7 +14,7 @@ import (
 func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "nophone",
-		ModName: "📞 NoPhone",
+		ModName: "📞 Phone",
 		Help: "📞 <b>Phone Number Protection</b> blocks messages containing phone numbers.\n\n" +
 			"<b>Commands:</b>\n" +
 			"• <code>/nophone on</code> — Block phone numbers ✅\n" +
