@@ -14,12 +14,15 @@ func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "noforward",
 		ModName: "📤 Forward",
-		Help: "📤 <b>Forward Control</b> blocks forwarded messages in the group.\n\n" +
-			"<b>Commands:</b>\n" +
-			"• <code>/noforward on</code> — Block forwarded messages ✅\n" +
-			"• <code>/noforward off</code> — Allow forwarded messages ❌\n\n" +
-			"<b>ℹ️ Note:</b> Forwarded messages will be automatically deleted.\n" +
-			"👮 Only group admins can configure this setting.",
+		Help: `<emoji id='5433614747381538714'>📤</emoji> <b>ғᴏʀᴡᴀʀᴅ ᴄᴏɴᴛʀᴏʟ</b> ʙʟᴏᴄᴋs ғᴏʀᴡᴀʀᴅᴇᴅ ᴍᴇssᴀɢᴇs ɪɴ ᴛʜᴇ ɢʀᴏᴜᴘ.
+
+<b>ᴄᴏᴍᴍᴀɴᴅs:</b>
+<blockquote>• <code>/noforward on</code> — ʙʟᴏᴄᴋ ғᴏʀᴡᴀʀᴅᴇᴅ ᴍᴇssᴀɢᴇs <emoji id='6084551628461967966'>✅</emoji>
+• <code>/noforward off</code> — ᴀʟʟᴏᴡ ғᴏʀᴡᴀʀᴅᴇᴅ ᴍᴇssᴀɢᴇs <emoji id='5465665476971471368'>❌</emoji></blockquote>
+
+<b><emoji id='5420323339723881652'>ℹ️</emoji> ɴᴏᴛᴇ:</b>
+<blockquote>– ғᴏʀᴡᴀʀᴅᴇᴅ ᴍᴇssᴀɢᴇs ᴡɪʟʟ ʙᴇ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ᴅᴇʟᴇᴛᴇᴅ.
+– <emoji id='5370872220149099318'>👮</emoji> ᴏɴʟʏ ɢʀᴏᴜᴘ ᴀᴅᴍɪɴs ᴄᴀɴ ᴄᴏɴғɪɢᴜʀᴇ ᴛʜɪs sᴇᴛᴛɪɴɢ.</blockquote>`,
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:noforward",
