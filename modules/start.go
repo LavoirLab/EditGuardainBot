@@ -12,22 +12,22 @@ import (
 	"main/database"
 )
 
-var startMsG string = `<emoji id='5251203410396458957'>🛡</emoji> Hello <a href="tg://user?id=%d">%s</a>!</b> 👋  
+var startMsG string = `<emoji id='5251203410396458957'>🛡</emoji> Hello <a href="tg://user?id=%d">%s</a>!</b> <emoji id='5440422734402173876'>👋</emoji>  
 I'm <b><a href="tg://user?id=%d">%s</a></b>, your group’s advanced security and management bot.
 
 I can help you with:
-<blockquote>✨ <b>Auto-Cleanup</b> of unwanted messages
-🚫 <b>Anti-Abuse</b> & Link Protection
-🔞 <b>NSFW Detection</b>
-🗑 <b>Bulk Purging</b>
-📝 <b>Long Message</b> handling</blockquote>
+<blockquote><emoji id='5201914481671682382'>✨</emoji> <b>Auto-Cleanup</b> of unwanted messages
+<emoji id='5462882007451185227'>🚫</emoji> <b>Anti-Abuse</b> & Link Protection
+<emoji id='5429139425818854423'>🔞</emoji> <b>NSFW Detection</b>
+<emoji id='5445267414562389170'>🗑</emoji> <b>Bulk Purging</b>
+<emoji id='5814427657609153890'>📝</emoji> <b>Long Message</b> handling</blockquote>
 
 <b>How to use me?</b>
-<blockquote>1️⃣ Add me to your group
-2️⃣ Grant me admin permissions
-3️⃣ I'll start protecting automatically!</blockquote>
+<blockquote><emoji id='5235776368905562305'>1️⃣</emoji> Add me to your group
+<emoji id='5381990043642502553'>2️⃣</emoji> Grant me admin permissions
+<emoji id='5381879959335738545'>3️⃣</emoji> I'll start protecting automatically!</blockquote>
 
-👇 <b>Need help?</b> Use the buttons below or send /help.`
+<emoji id='5411322793373477644'>👇</emoji> <b>Need help?</b> Use the buttons below or send /help.`
 
 func init() {
 	RegisterModule(&ModuleInfo{
