@@ -12,25 +12,7 @@ import (
 	"main/database"
 )
 
-/* var startMsG string = `<emoji id='5251203410396458957'>🛡</emoji> Hello <a href="tg://user?id=%d">%s</a>!</b> <emoji id='5440422734402173876'>👋</emoji>
-I'm <b><a href="tg://user?id=%d">%s</a></b>, your group’s advanced security and management bot.
-
-I can help you with:
-<blockquote><emoji id='5201914481671682382'>✨</emoji> <b>Auto-Cleanup</b> of unwanted messages
-<emoji id='5462882007451185227'>🚫</emoji> <b>Anti-Abuse</b> & Link Protection
-<emoji id='5429139425818854423'>🔞</emoji> <b>NSFW Detection</b>
-<emoji id='5445267414562389170'>🗑</emoji> <b>Bulk Purging</b>
-<emoji id='5814427657609153890'>📝</emoji> <b>Long Message</b> handling</blockquote>
-
-<b>How to use me?</b>
-<blockquote><emoji id='5235776368905562305'>1️⃣</emoji> Add me to your group
-<emoji id='5381990043642502553'>2️⃣</emoji> Grant me admin permissions
-<emoji id='5381879959335738545'>3️⃣</emoji> I'll start protecting automatically!</blockquote>
-
-<emoji id='5411322793373477644'>👇</emoji> <b>Need help?</b> Use the buttons below or send /help.`
-*/
-
-var startMsG string = `<emoji id='5251203410396458957'>🛡</emoji> ʜᴇʟʟᴏ <a href="tg://user?id=%d">%s</a>!</b> <emoji id='5440422734402173876'>👋</emoji>  
+var startMsG string = `<emoji id='5251203410396458957'>🛡</emoji> Hᴇʟʟᴏ <a href="tg://user?id=%d">%s</a>!</b> <emoji id='5440422734402173876'>👋</emoji>  
 ɪ'ᴍ <b><a href="tg://user?id=%d">%s</a></b>, ʏᴏᴜʀ ɢʀᴏᴜᴘ’ꜱ ᴀᴅᴠᴀɴᴄᴇᴅ ꜱᴇᴄᴜʀɪᴛʏ ᴀɴᴅ ᴍᴀɴᴀɢᴇᴍᴇɴᴛ ʙᴏᴛ.
 
 ɪ ᴄᴀɴ ʜᴇʟᴘ ʏᴏᴜ ᴡɪᴛʜ:
@@ -45,7 +27,7 @@ var startMsG string = `<emoji id='5251203410396458957'>🛡</emoji> ʜᴇʟʟᴏ
 <emoji id='5381990043642502553'>2️⃣</emoji> ɢʀᴀɴᴛ ᴍᴇ ᴀᴅᴍɪɴ ᴘᴇʀᴍɪꜱꜱɪᴏɴꜱ
 <emoji id='5381879959335738545'>3️⃣</emoji> ɪ'ʟʟ ꜱᴛᴀʀᴛ ᴘʀᴏᴛᴇᴄᴛɪɴɢ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ!</blockquote>
 
-<emoji id='5411322793373477644'>👇</emoji> <b>ɴᴇᴇᴅ ʜᴇʟᴘ?</b> ᴜꜱᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴꜱ ʙᴇʟᴏᴡ ᴏʀ ꜱᴇɴᴅ /ʜᴇʟᴘ.`
+<emoji id='5411322793373477644'>👇</emoji> <b>ɴᴇᴇᴅ ʜᴇʟᴘ?</b> ᴜꜱᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴꜱ ʙᴇʟᴏᴡ ᴏʀ ꜱᴇɴᴅ /help.`
 
 func init() {
 	RegisterModule(&ModuleInfo{
