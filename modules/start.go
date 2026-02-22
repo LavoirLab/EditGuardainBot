@@ -3,7 +3,6 @@ package modules
 import (
 	"fmt"
 	"html"
-	"strconv"
 	"strings"
 
 	"github.com/amarnathcjd/gogram/telegram"
@@ -20,8 +19,7 @@ var startMsG string = `<emoji id='5251203410396458957'>🛡</emoji> <b>Hᴇʟʟ�
 <blockquote><i><emoji id='5201914481671682382'>✨</emoji> <b>ᴀᴜᴛᴏ-ᴄʟᴇᴀɴᴜᴘ</b> ᴏꜰ ᴜɴᴡᴀɴᴛᴇᴅ ᴍᴇꜱꜱᴀɢᴇꜱ
 <emoji id='5462882007451185227'>🚫</emoji> <b>ᴀɴᴛɪ-ᴀʙᴜꜱᴇ</b> & ʟɪɴᴋ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ
 <emoji id='5429139425818854423'>🔞</emoji> <b>ɴꜱꜰᴡ ᴅᴇᴛᴇᴄᴛɪᴏɴ</b>
-<emoji id='5445267414562389170'>🗑</emoji> <b>ʙᴜʟᴋ ᴘᴜʀɢɪɴɢ</b>
-<emoji id='5814427657609153890'>📝</emoji> <b>ʟᴏɴɢ ᴍᴇꜱꜱᴀɢᴇ</b> ʜᴀɴᴅʟɪɴɢ</i></blockquote>
+<emoji id='5445267414562389170'>🗑</emoji> <b>ʙᴜʟᴋ ᴘᴜʀɢɪɴɢ</b></i></blockquote>
 
 <b>ʜᴏᴡ ᴛᴏ ᴜꜱᴇ ᴍᴇ?</b>
 <blockquote><i><emoji id='5382322671679708881'>1️⃣</emoji> ᴀᴅᴅ ᴍᴇ ᴛᴏ ʏᴏᴜʀ ɢʀᴏᴜᴘ
@@ -89,55 +87,6 @@ func handleStart(m *telegram.NewMessage) error {
 			modName := args[0]
 			if modName == "help" {
 				return handleHelp(m)
-			} else if strings.HasPrefix(modName, "info_") {
-				userIDStr := strings.TrimPrefix(modName, "info_")
-				userID, err := strconv.ParseInt(userIDStr, 10, 64)
-				if err == nil {
-					peer, err := m.Client.GetPeer(userID)
-					if err == nil {
-						var (
-							Name  string
-							ID    int64
-							Link1 string
-							Link2 string
-						)
-
-						switch p := peer.(type) {
-						case *telegram.UserObj:
-							ID = p.ID
-							Name = strings.TrimSpace(p.FirstName + " " + p.LastName)
-							Link2 = fmt.Sprintf("tg://openmessage?user_id=%d", ID)
-							if p.Username != "" {
-								Link1 = fmt.Sprintf("t.me/%s", p.Username)
-							} else {
-								Link1 = fmt.Sprintf("tg://user?id=%d", ID)
-							}
-						case *telegram.Channel:
-							ID = p.ID
-							Name = p.Title
-							if p.Username != "" {
-								Link1 = "https://t.me/" + p.Username
-								Link2 = Link1
-							} else {
-								Link1 = fmt.Sprintf("https://t.me/c/%d/%d", ID, m.ID)
-								Link2 = Link1
-							}
-						}
-
-						info := fmt.Sprintf(`<b>👤 Entity Information</b>
-
-🆔 <b>ID:</b> <code>%d</code>
-👤 <b>Name:</b> %s
-
-🔗 <b>Links:</b>
-• <a href="%s">Permanent Link</a>
-• <a href="%s">Profile Link</a>`,
-							ID, Name, Link1, Link2)
-
-						_, err = m.Reply(info)
-						return err
-					}
-				}
 			}
 
 			if module, exists := GetModule(modName); exists &&
