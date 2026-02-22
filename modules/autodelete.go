@@ -135,8 +135,6 @@ if !ok {
 return nil
 }
 
-fmt.Println("Channel id got by updateReadChannelOutbox ", upd.ChannelID)
-
 	settings, err := database.GetMsgDeleteSettings(upd.ChannelID)
 	if err != nil || !settings.Enabled {
 		return nil
