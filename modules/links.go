@@ -25,15 +25,15 @@ func init() {
 		Help: `🔗 <b>Lɪɴᴋғɪʟᴛᴇʀ</b> ᴀʟʟᴏᴡs ᴀᴅᴍɪɴs ᴛᴏ ʀᴇsᴛʀɪᴄᴛ ᴍᴇssᴀɢᴇs ᴄᴏɴᴛᴀɪɴɪɴɢ ᴜɴᴀᴘᴘʀᴏᴠᴇᴅ ʟɪɴᴋs.
 
 <b>ᴜsᴀɢᴇ:</b>
-➤ <code>/nolinks</code> – sᴇᴇ ʏᴏᴜʀ ᴄᴜʀʀᴇɴᴛ ʟɪɴᴋ ғɪʟᴛᴇʀɪɴɢ ᴇɴᴀʙʟᴇᴅ ᴏʀ ɴᴏᴛ.
+<blockquote>➤ <code>/nolinks</code> – sᴇᴇ ʏᴏᴜʀ ᴄᴜʀʀᴇɴᴛ ʟɪɴᴋ ғɪʟᴛᴇʀɪɴɢ ᴇɴᴀʙʟᴇᴅ ᴏʀ ɴᴏᴛ.
 ➤ <code>/nolinks on</code> – ᴇɴᴀʙʟᴇ ʟɪɴᴋ ғɪʟᴛᴇʀɪɴɢ
 ➤ <code>/nolinks off</code> – ᴅɪsᴀʙʟᴇ ʟɪɴᴋ ғɪʟᴛᴇʀɪɴɢ
 ➤ <code>/allowlink example.com</code> – ᴀʟʟᴏᴡ ʟɪɴᴋs ғʀᴏᴍ ᴀ ᴅᴏᴍᴀɪɴ
 ➤ <code>/removelink example.com</code> – ʀᴇᴍᴏᴠᴇ ᴀʟʟᴏᴡᴇᴅ ᴅᴏᴍᴀɪɴ
-➤ <code>/listlinks</code> – sʜᴏᴡ ᴀʟʟ ᴀʟʟᴏᴡᴇᴅ ᴅᴏᴍᴀɪɴs
+➤ <code>/listlinks</code> – sʜᴏᴡ ᴀʟʟ ᴀʟʟᴏᴡᴇᴅ ᴅᴏᴍᴀɪɴs</blockquote>
 
-<emoji id='5929345782560853059'>🚫</emoji> ᴍᴇssᴀɢᴇs ᴡɪᴛʜ ʟɪɴᴋs ɴᴏᴛ ɪɴ ᴛʜᴇ ᴀʟʟᴏᴡᴇᴅ ʟɪsᴛ ᴡɪʟʟ ʙᴇ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ᴅᴇʟᴇᴛᴇᴅ.
-<emoji id='5370872220149099318'>👮</emoji> ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴄᴏɴғɪɢᴜʀᴇ ᴛʜɪs ғɪʟᴛᴇʀ.`,
+<blockquote><emoji id='5929345782560853059'>🚫</emoji> ᴍᴇssᴀɢᴇs ᴡɪᴛʜ ʟɪɴᴋs ɴᴏᴛ ɪɴ ᴛʜᴇ ᴀʟʟᴏᴡᴇᴅ ʟɪsᴛ ᴡɪʟʟ ʙᴇ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ᴅᴇʟᴇᴛᴇᴅ.
+<emoji id='5370872220149099318'>👮</emoji> ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴄᴏɴғɪɢᴜʀᴇ ᴛʜɪs ғɪʟᴛᴇʀ.</blockquote>`,
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:nolinks",
