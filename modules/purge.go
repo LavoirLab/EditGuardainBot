@@ -11,16 +11,19 @@ func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "purge",
 		ModName: "🗑️ Purge",
-		Help: "🗑️ <b>Purge Messages</b> deletes multiple messages at once.\n\n" +
-			"<b>Usage:</b>\n" +
-			"• Reply to a message with <code>/purge</code>\n" +
-			"• All messages from that message to the current one will be deleted\n\n" +
-			"<b>Example:</b>\n" +
-			"1. Find the first message you want to delete\n" +
-			"2. Reply to it with <code>/purge</code>\n" +
-			"3. All messages after that (including the replied one) will be deleted\n\n" +
-			"<b>⚠️ Warning:</b> This action cannot be undone!\n" +
-			"👮 Only group admins can use this command.",
+		Help: `🗑️ <b>ᴘᴜʀɢᴇ ᴍᴇssᴀɢᴇs</b> ᴅᴇʟᴇᴛᴇs ᴍᴜʟᴛɪᴘʟᴇ ᴍᴇssᴀɢᴇs ᴀᴛ ᴏɴᴄᴇ.
+
+<b>ᴜsᴀɢᴇ:</b>
+<blockquote>• ʀᴇᴘʟʏ ᴛᴏ ᴀ ᴍᴇssᴀɢᴇ ᴡɪᴛʜ <code>/purge</code>
+• ᴀʟʟ ᴍᴇssᴀɢᴇs ғʀᴏᴍ ᴛʜᴀᴛ ᴍᴇssᴀɢᴇ ᴛᴏ ᴛʜᴇ ᴄᴜʀʀᴇɴᴛ ᴏɴᴇ ᴡɪʟʟ ʙᴇ ᴅᴇʟᴇᴛᴇᴅ</blockquote>
+
+<b>ᴇxᴀᴍᴘʟᴇ:</b>
+<blockquote>1. ғɪɴᴅ ᴛʜᴇ ғɪʀsᴛ ᴍᴇssᴀɢᴇ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ᴅᴇʟᴇᴛᴇ
+2. ʀᴇᴘʟʏ ᴛᴏ ɪᴛ ᴡɪᴛʜ <code>/purge</code>
+3. ᴀʟʟ ᴍᴇssᴀɢᴇs ᴀғᴛᴇʀ ᴛʜᴀᴛ (ɪɴᴄʟᴜᴅɪɴɢ ᴛʜᴇ ʀᴇᴘʟɪᴇᴅ ᴏɴᴇ) ᴡɪʟʟ ʙᴇ ᴅᴇʟᴇᴛᴇᴅ</blockquote>
+
+<b><emoji id='5447644880824181073'>⚠️</emoji> ᴡᴀʀɴɪɴɢ:</b> ᴛʜɪs ᴀᴄᴛɪᴏɴ ᴄᴀɴɴᴏᴛ ʙᴇ ᴜɴᴅᴏɴᴇ!
+– <emoji id='5370872220149099318'>👮</emoji> ᴏɴʟʏ ɢʀᴏᴜᴘ ᴀᴅᴍɪɴs ᴄᴀɴ ᴜsᴇ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ.`,
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:purge",
