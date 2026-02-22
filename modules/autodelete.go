@@ -24,10 +24,10 @@ func init() {
 • <code>/msgdelete off</code> — <b>ᴅɪsᴀʙʟᴇ ᴍᴇssᴀɢᴇ ᴀᴜᴛᴏ-ᴅᴇʟᴇᴛᴇ <emoji id='5465665476971471368'>❌</emoji></b>
 • <code>/setmsgdelay &lt;time&gt;</code> — <b>sᴇᴛ ᴅᴇʟᴀʏ (1m ᴛᴏ 12h)</b></blockquote>
 
-<b>ᴛɪᴍᴇ ғᴏʀᴍᴀᴛ:</b>
+<blockquote><b>ᴛɪᴍᴇ ғᴏʀᴍᴀᴛ:</b>
 • <code>5m</code> = 5 ᴍɪɴᴜᴛᴇs
 • <code>1h</code> = 1 ʜᴏᴜʀ
-• <code>12h</code> = 12 ʜᴏᴜʀs
+• <code>12h</code> = 12 ʜᴏᴜʀs</blockquote>
 
 <b><emoji id='5420323339723881652'>ℹ️</emoji> ɴᴏᴛᴇs:</b><blockquote>
 – ᴀᴘᴘʟɪᴇs ᴛᴏ ᴀʟʟ ᴛᴇxᴛ ᴀɴᴅ ᴍᴇᴅɪᴀ ᴍᴇssᴀɢᴇs ғʀᴏᴍ ʀᴇɢᴜʟᴀʀ ᴜsᴇʀs ᴏɴʟʏ.
