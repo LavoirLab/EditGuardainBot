@@ -20,12 +20,12 @@ func init() {
 		Help: `<i>ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ᴅᴇʟᴇᴛᴇs ᴍᴇssᴀɢᴇs ᴛʜᴀᴛ ᴇxᴄᴇᴇᴅ ᴛʜᴇ ᴀʟʟᴏᴡᴇᴅ ᴄʜᴀʀᴀᴄᴛᴇʀ ʟɪᴍɪᴛ ᴀɴᴅ ᴡᴀʀɴs ᴛʜᴇ ᴜsᴇʀ.<\i>
 
 <b>ᴄᴏᴍᴍᴀɴᴅs:</b>
-<blockquote>• <code>/setlonglimit &lt;number&gt;</code> – sᴇᴛ ᴄʜᴀʀᴀᴄᴛᴇʀ ʟɪᴍɪᴛ (200–4000).
-• <code>/nolongmessage &lt;on|off&gt;</code> – ᴇɴᴀʙʟᴇ ᴏʀ ᴅɪsᴀʙʟᴇ ʟᴏɴɢ ᴍᴇssᴀɢᴇ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ.</blockquote>`,
+<blockquote>• /setlonglimit &lt;number&gt; – sᴇᴛ ᴄʜᴀʀᴀᴄᴛᴇʀ ʟɪᴍɪᴛ (200–4000).
+• /nolongmessage &lt;on|off&gt; – ᴇɴᴀʙʟᴇ ᴏʀ ᴅɪsᴀʙʟᴇ ʟᴏɴɢ ᴍᴇssᴀɢᴇ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ.</blockquote>`,
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:setlonglimit",
-				Handler: RequirePermission("change_info", SetLongLimitHandler),
+				Handler: RequirePermission("delete_messages", SetLongLimitHandler),
 			},
 			{
 				Pattern: "command:nolongmessage",
@@ -153,7 +153,7 @@ func NoLongMessageCmd(m *telegram.NewMessage) error {
 }
 
 func LongMessageHandler(m *telegram.NewMessage) error {
-	if m.IsAnonymous() {
+	if m.IsAnonymous() || m.IsChannelPost() {
 		return nil
 	}
 
