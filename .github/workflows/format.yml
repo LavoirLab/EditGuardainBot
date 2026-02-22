@@ -36,7 +36,6 @@ jobs:
           go install mvdan.cc/gofumpt@latest
           go install github.com/segmentio/golines@latest
           go install github.com/daixiang0/gci@latest
-          go install honnef.co/go/tools/cmd/staticcheck@latest
 
       - name: Format Code
         run: |
