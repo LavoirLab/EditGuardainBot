@@ -82,7 +82,6 @@ func handleStartCallback(c *telegram.CallbackQuery) error {
 
 func handleStart(m *telegram.NewMessage) error {
 	if m.IsPrivate() {
-		m.Delete()
 
 		args := strings.Fields(m.Args())
 		if len(args) >= 1 {
