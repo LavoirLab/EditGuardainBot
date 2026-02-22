@@ -119,13 +119,20 @@ func NoLongMessageCmd(m *telegram.NewMessage) error {
 		if settings.Mode == "OFF" {
 			status = "Disabled"
 		}
-		_, err := m.Reply(fmt.Sprintf("📏 <b>Long Message Protection</b>\n<b>Status:</b> <i>%s</i>\n\nUsage: <code>/nolongmessage &lt;on|off&gt;</code>", status))
+		_, err := m.Reply(
+			fmt.Sprintf(
+				"📏 <b>Long Message Protection</b>\n<b>Status:</b> <i>%s</i>\n\nUsage: <code>/nolongmessage &lt;on|off&gt;</code>",
+				status,
+			),
+		)
 		return err
 	}
 
 	enable, err := utils.ParseBool(args[0])
 	if err != nil {
-		_, err := m.Reply("❌ <b>Invalid usage.</b>\n\nPlease use <code>/nolongmessage on</code> or <code>/nolongmessage off</code>.")
+		_, err := m.Reply(
+			"❌ <b>Invalid usage.</b>\n\nPlease use <code>/nolongmessage on</code> or <code>/nolongmessage off</code>.",
+		)
 		return err
 	}
 
@@ -140,7 +147,9 @@ func NoLongMessageCmd(m *telegram.NewMessage) error {
 		status = "disabled"
 	}
 
-	_, err = m.Reply(fmt.Sprintf("✅ <b>Long message protection %s!</b>", status))
+	_, err = m.Reply(
+		fmt.Sprintf("✅ <b>Long message protection %s!</b>", status),
+	)
 	return err
 }
 
