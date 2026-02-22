@@ -77,7 +77,7 @@ func extractHostname(input string) string {
 }
 
 func LinkFilterHandler(m *telegram.NewMessage) error {
-	if m.IsAnonymous() || m.IsChannelPost()) {
+	if m.IsAnonymous() || m.IsChannelPost() {
 		return nil
 	}
 
