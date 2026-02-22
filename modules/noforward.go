@@ -13,7 +13,7 @@ import (
 func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "noforward",
-		ModName: "📤 NoForward",
+		ModName: "📤 Forward",
 		Help: "📤 <b>Forward Control</b> blocks forwarded messages in the group.\n\n" +
 			"<b>Commands:</b>\n" +
 			"• <code>/noforward on</code> — Block forwarded messages ✅\n" +
