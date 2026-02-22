@@ -30,11 +30,11 @@ func init() {
 	})
 }
 
-const helpText = `📚 <b>Bot Command Help</b>
+const helpText = `<emoji id='5814427657609153890'>📚</emoji> <b>ʙᴏᴛ ᴄᴏᴍᴍᴀɴᴅ ʜᴇʟᴘ</b>
 
-Here you'll find details for all available plugins and features.
+ʜᴇʀᴇ ʏᴏᴜ'ʟʟ ꜰɪɴᴅ ᴅᴇᴛᴀɪʟꜱ ꜰᴏʀ ᴀʟʟ ᴀᴠᴀɪʟᴀʙʟᴇ ᴘʟᴜɢɪɴꜱ ᴀɴᴅ ꜰᴇᴀᴛᴜʀᴇꜱ.
 
-👇 Tap the buttons below to view help for each module:`
+<emoji id='5411322793373477644'>👇</emoji> ᴛᴀᴘ ᴛʜᴇ ʙᴜᴛᴛᴏɴꜱ ʙᴇʟᴏᴡ ᴛᴏ ᴠɪᴇᴡ ʜᴇʟᴘ ꜰᴏʀ ᴇᴀᴄʜ ᴍᴏᴅᴜʟᴇ:`
 
 func handleHelp(m *telegram.NewMessage) error {
 	if !m.IsPrivate() {
