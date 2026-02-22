@@ -15,15 +15,11 @@ func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "nohashtags",
 		ModName: "# Hashtags",
-		Help: "# <b>Hashtag Filter</b> blocks messages containing hashtags.\n\n" +
-			"<b>Commands:</b>\n" +
-			"• <code>/nohashtags on</code> — Block hashtags ✅\n" +
-			"• <code>/nohashtags off</code> — Allow hashtags ❌\n\n" +
-			"<b>Detection:</b>\n" +
-			"• Any word starting with # symbol\n" +
-			"• Example: #join, #promotion, #trending\n\n" +
-			"<b>ℹ️ Note:</b> Messages with hashtags will be deleted.\n" +
-			"👮 Only group admins can configure this setting.",
+		Help: `# <b>ʜᴀsʜᴛᴀɢ ғɪʟᴛᴇʀ</b> ʙʟᴏᴄᴋs ᴍᴇssᴀɢᴇs ᴄᴏɴᴛᴀɪɴɪɴɢ ʜᴀsʜᴛᴀɢs.
+
+<b>ᴄᴏᴍᴍᴀɴᴅs:</b>
+<blockquote>• <code>/nohashtags on</code> — ʙʟᴏᴄᴋ ʜᴀsʜᴛᴀɢs <emoji id='6084551628461967966'>✅</emoji>
+• <code>/nohashtags off</code> — ᴀʟʟᴏᴡ ʜᴀsʜᴛᴀɢs <emoji id='5465665476971471368'>❌</emoji></blockquote>`,
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:nohashtags",
