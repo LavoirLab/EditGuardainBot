@@ -15,17 +15,25 @@ func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "autodelete",
 		ModName: "💬 MsgDelete",
-		Help: "💬 <b>Message Auto-Delete</b> automatically removes all messages after a set delay.\n\n" +
-			"<b>Commands:</b>\n" +
-			"• <code>/msgdelete on</code> — Enable message auto-delete ✅\n" +
-			"• <code>/msgdelete off</code> — Disable message auto-delete ❌\n" +
-			"• <code>/setmsgdelay &lt;time&gt;</code> — Set delay (1m to 12h)\n\n" +
-			"<b>Time Format:</b>\n" +
-			"• <code>5m</code> = 5 minutes\n" +
-			"• <code>1h</code> = 1 hour\n" +
-			"• <code>12h</code> = 12 hours\n\n" +
-			"<b>ℹ️ Note:</b> Applies to all text and media messages from regular users only.\n" +
-			"👮 Only group admins can configure this setting.",
+		Help: `<emoji id='5443038326535759644'>💬</emoji> <b>Mᴇssᴀɢᴇ ᴀᴜᴛᴏ-ᴅᴇʟᴇᴛᴇ</b> 
+
+<b><i>ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ʀᴇᴍᴏᴠᴇs ᴀʟʟ ᴍᴇssᴀɢᴇs ᴀғᴛᴇʀ ᴀ sᴇᴛ ᴅᴇʟᴀʏ.</b></i>
+
+<b>ᴄᴏᴍᴍᴀɴᴅs:</b>
+<blockquote>• <code>/msgdelete on</code> — ᴇɴᴀʙʟᴇ ᴍᴇssᴀɢᴇ ᴀᴜᴛᴏ-ᴅᴇʟᴇᴛᴇ <emoji id='6084551628461967966'>✅</emoji>
+• <code>/msgdelete off</code> — ᴅɪsᴀʙʟᴇ ᴍᴇssᴀɢᴇ ᴀᴜᴛᴏ-ᴅᴇʟᴇᴛᴇ <emoji id='5465665476971471368'>❌</emoji>
+• <code>/setmsgdelay &lt;time&gt;</code> — sᴇᴛ ᴅᴇʟᴀʏ (1m ᴛᴏ 12h)
+
+<b>ᴛɪᴍᴇ ғᴏʀᴍᴀᴛ:</b>
+• <code>5m</code> = 5 ᴍɪɴᴜᴛᴇs
+• <code>1h</code> = 1 ʜᴏᴜʀ
+• <code>12h</code> = 12 ʜᴏᴜʀs
+</blockquote>
+
+<b><emoji id='5420323339723881652'>ℹ️</emoji> ɴᴏᴛᴇs:</b>
+<blockquote>
+– ᴀᴘᴘʟɪᴇs ᴛᴏ ᴀʟʟ ᴛᴇxᴛ ᴀɴᴅ ᴍᴇᴅɪᴀ ᴍᴇssᴀɢᴇs ғʀᴏᴍ ʀᴇɢᴜʟᴀʀ ᴜsᴇʀs ᴏɴʟʏ.
+– <emoji id='5370872220149099318'>👮</emoji> ᴏɴʟʏ ɢʀᴏᴜᴘ ᴀᴅᴍɪɴs ᴄᴀɴ ᴄᴏɴғɪɢᴜʀᴇ ᴛʜɪs sᴇᴛᴛɪɴɢ.</blockquote>`,
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:msgdelete",
