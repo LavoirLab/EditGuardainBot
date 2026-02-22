@@ -32,7 +32,7 @@ const nsfwViolationThreshold = 5
 func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "nsfw",
-		ModName: "🔞 NSFW Detection",
+		ModName: "🔞 NSFW",
 		Help: "🔞 <b>NSFW Detection</b>\n\n" +
 			"<b>Commands:</b>\n" +
 			"• <code>/nonsfw on</code> — Enable ✅\n" +
