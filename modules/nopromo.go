@@ -15,7 +15,7 @@ import (
 func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "nopromo",
-		ModName: "🚫 NoPromo",
+		ModName: "🚫 Promo",
 		Help: "🚫 <b>Promotional Message Filter</b> blocks spam and promotional content.\n\n" +
 			"<b>Commands:</b>\n" +
 			"• <code>/nopromo on</code> — Enable promo blocking ✅\n" +
