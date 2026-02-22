@@ -23,9 +23,9 @@ I can help you with:
 📝 <b>Long Message</b> handling</blockquote>
 
 <b>How to use me?</b>
-1️⃣ Add me to your group
+<blockquote>1️⃣ Add me to your group
 2️⃣ Grant me admin permissions
-3️⃣ I'll start protecting automatically!
+3️⃣ I'll start protecting automatically!</blockquote>
 
 👇 <b>Need help?</b> Use the buttons below or send /help.`
 
