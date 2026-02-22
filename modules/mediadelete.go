@@ -15,17 +15,22 @@ func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "mediadelete",
 		ModName: "🎬 Media",
-		Help: "🎬 <b>Media Auto-Delete</b> automatically removes media messages after a set delay.\n\n" +
-			"<b>Commands:</b>\n" +
-			"• <code>/mediadelete on</code> — Enable media auto-delete ✅\n" +
-			"• <code>/mediadelete off</code> — Disable media auto-delete ❌\n" +
-			"• <code>/setmediadelay &lt;time&gt;</code> — Set delay (1m to 24h)\n" +
-			"<b>Time Format:</b>\n" +
-			"• <code>5m</code> = 5 minutes\n" +
-			"• <code>1h</code> = 1 hour\n" +
-			"• <code>12h</code> = 12 hours\n\n" +
-			"<b>ℹ️ Note:</b> Applies to photos, videos, stickers, GIFs, Location, Poll and animations.\n" +
-			"👮 Only group admins can configure this setting.\n",
+		Help: `<emoji id='5368653135101310687'>🎬</emoji> <b>Mᴇᴅɪᴀ ᴀᴜᴛᴏ-ᴅᴇʟᴇᴛᴇ</b> ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ʀᴇᴍᴏᴠᴇs ᴍᴇᴅɪᴀ ᴍᴇssᴀɢᴇs ᴀғᴛᴇʀ ᴀ sᴇᴛ ᴅᴇʟᴀʏ.
+
+<b>ᴄᴏᴍᴍᴀɴᴅs:</b>
+<blockquote>• <code>/mediadelete on</code> — ᴇɴᴀʙʟᴇ ᴍᴇᴅɪᴀ ᴀᴜᴛᴏ-ᴅᴇʟᴇᴛᴇ <emoji id='6084551628461967966'>✅</emoji>
+• <code>/mediadelete off</code> — ᴅɪsᴀʙʟᴇ ᴍᴇᴅɪᴀ ᴀᴜᴛᴏ-ᴅᴇʟᴇᴛᴇ <emoji id='5465665476971471368'>❌</emoji>
+• <code>/setmediadelay &lt;time&gt;</code> — sᴇᴛ ᴅᴇʟᴀʏ (1m ᴛᴏ 24h)
+</blockquote>
+
+<b>ᴛɪᴍᴇ ғᴏʀᴍᴀᴛ:</b>
+• <code>5m</code> = 5 ᴍɪɴᴜᴛᴇs
+• <code>1h</code> = 1 ʜᴏᴜʀ
+• <code>12h</code> = 12 ʜᴏᴜʀs
+
+<b><emoji id='5420323339723881652'>ℹ️</emoji> ɴᴏᴛᴇs:</b>
+– ᴀᴘᴘʟɪᴇs ᴛᴏ ᴘʜᴏᴛᴏs, ᴠɪᴅᴇᴏs, sᴛɪᴄᴋᴇʀs, ɢɪғs, ʟᴏᴄᴀᴛɪᴏɴ, ᴘᴏʟʟ ᴀɴᴅ ᴀɴɪᴍᴀᴛɪᴏɴs.
+– <emoji id='5370872220149099318'>👮</emoji> ᴏɴʟʏ ɢʀᴏᴜᴘ ᴀᴅᴍɪɴs ᴄᴀɴ ᴄᴏɴғɪɢᴜʀᴇ ᴛʜɪs sᴇᴛᴛɪɴɢ.`,
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:mediadelete",
