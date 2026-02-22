@@ -16,23 +16,28 @@ func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "nopromo",
 		ModName: "🚫 Promo",
-		Help: "🚫 <b>Promotional Message Filter</b> blocks spam and promotional content.\n\n" +
-			"<b>Commands:</b>\n" +
-			"• <code>/nopromo on</code> — Enable promo blocking ✅\n" +
-			"• <code>/nopromo off</code> — Disable promo blocking ❌\n\n" +
-			"<b>Detected Patterns:</b>\n" +
-			"• Multiple repeated links (3+ URLs)\n" +
-			"• \"Join now\", \"Click here\" spam\n" +
-			"• 24/7 active, VC, chat group promotions\n" +
-			"• Excessive emojis (15+ unique emojis)\n" +
-			"• ALL-CAPS spam messages\n" +
-			"• Promotional text with multiple lines\n" +
-			"• \"Make new friends\", \"Safe for girls\" patterns\n\n" +
-			"<b>⚠️ Tiered Actions:</b>\n" +
-			"• Score 15-25: Warning message ⚠️\n" +
-			"• Score 25+: Message deleted 🚫\n\n" +
-			"<b>ℹ️ Note:</b> High-score promotional messages will be deleted.\n" +
-			"👮 Only group admins can configure this setting.",
+		Help: `<emoji id='5929345782560853059'>🚫</emoji> <b>ᴘʀᴏᴍᴏᴛɪᴏɴᴀʟ ᴍᴇssᴀɢᴇ ғɪʟᴛᴇʀ</b> ʙʟᴏᴄᴋs sᴘᴀᴍ ᴀɴᴅ ᴘʀᴏᴍᴏᴛɪᴏɴᴀʟ ᴄᴏɴᴛᴇɴᴛ.
+
+<b>ᴄᴏᴍᴍᴀɴᴅs:</b>
+<blockquote>• <code>/nopromo on</code> — ᴇɴᴀʙʟᴇ ᴘʀᴏᴍᴏ ʙʟᴏᴄᴋɪɴɢ <emoji id='6084551628461967966'>✅</emoji>
+• <code>/nopromo off</code> — ᴅɪsᴀʙʟᴇ ᴘʀᴏᴍᴏ ʙʟᴏᴄᴋɪɴɢ <emoji id='5465665476971471368'>❌</emoji></blockquote>
+
+<b>ᴅᴇᴛᴇᴄᴛᴇᴅ ᴘᴀᴛᴛᴇʀɴs:</b>
+<blockquote>• ᴍᴜʟᴛɪᴘʟᴇ ʀᴇᴘᴇᴀᴛᴇᴅ ʟɪɴᴋs (3+ ᴜʀʟs)
+• "ᴊᴏɪɴ ɴᴏᴡ", "ᴄʟɪᴄᴋ ʜᴇʀᴇ" sᴘᴀᴍ
+• 24/7 ᴀᴄᴛɪᴠᴇ, ᴠᴄ, ᴄʜᴀᴛ ɢʀᴏᴜᴘ ᴘʀᴏᴍᴏᴛɪᴏɴs
+• ᴇxᴄᴇssɪᴠᴇ ᴇᴍᴏᴊɪs (15+ ᴜɴɪǫᴜᴇ ᴇᴍᴏᴊɪs)
+• ᴀʟʟ-ᴄᴀᴘs sᴘᴀᴍ ᴍᴇssᴀɢᴇs
+• ᴘʀᴏᴍᴏᴛɪᴏɴᴀʟ ᴛᴇxᴛ ᴡɪᴛʜ ᴍᴜʟᴛɪᴘʟᴇ ʟɪɴᴇs
+• "ᴍᴀᴋᴇ ɴᴇᴡ ғʀɪᴇɴᴅs", "sᴀғᴇ ғᴏʀ ɢɪʀʟs" ᴘᴀᴛᴛᴇʀɴs</blockquote>
+
+<b>⚠️ ᴛɪᴇʀᴇᴅ ᴀᴄᴛɪᴏɴs:</b>
+• sᴄᴏʀᴇ 15-25: ᴡᴀʀɴɪɴɢ ᴍᴇssᴀɢᴇ ⚠️
+• sᴄᴏʀᴇ 25+: ᴍᴇssᴀɢᴇ ᴅᴇʟᴇᴛᴇᴅ <emoji id='5929345782560853059'>🚫</emoji>
+
+<b><emoji id='5420323339723881652'>ℹ️</emoji> ɴᴏᴛᴇ:</b>
+<blockquote>– ʜɪɢʜ-sᴄᴏʀᴇ ᴘʀᴏᴍᴏᴛɪᴏɴᴀʟ ᴍᴇssᴀɢᴇs ᴡɪʟʟ ʙᴇ ᴅᴇʟᴇᴛᴇᴅ.
+– <emoji id='5370872220149099318'>👮</emoji> ᴏɴʟʏ ɢʀᴏᴜᴘ ᴀᴅᴍɪɴs ᴄᴀɴ ᴄᴏɴғɪɢᴜʀᴇ ᴛʜɪs sᴇᴛᴛɪɴɢ.</blockquote>`,
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:nopromo",
