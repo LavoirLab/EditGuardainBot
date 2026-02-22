@@ -24,8 +24,8 @@ func init() {
 ➤ <code>/biolink on</code> - ᴇɴᴀʙʟᴇ ʙɪᴏᴍᴏᴅᴇ
 ➤ <code>/biolink off</code> - ᴅɪsᴀʙʟᴇ ʙɪᴏᴍᴏᴅᴇ
 
-<emoji id='5929345782560853059'>🚫</emoji> ᴡʜᴇɴ ᴇɴᴀʙʟᴇᴅ, ᴜsᴇʀs ᴡɪᴛʜ ʟɪɴᴋs ɪɴ ᴛʜᴇɪʀ ʙɪᴏs ᴡᴏɴ'ᴛ ʙᴇ ᴀʙʟᴇ ᴛᴏ sᴇɴᴅ ᴍᴇssᴀɢᴇs.
-<emoji id='5370872220149099318'>👮</emoji> ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴇɴᴀʙʟᴇ ᴏʀ ᴅɪsᴀʙʟᴇ ᴛʜɪs ғᴇᴀᴛᴜʀᴇ.`,
+<blockquote><emoji id='5929345782560853059'>🚫</emoji> ᴡʜᴇɴ ᴇɴᴀʙʟᴇᴅ, ᴜsᴇʀs ᴡɪᴛʜ ʟɪɴᴋs ɪɴ ᴛʜᴇɪʀ ʙɪᴏs ᴡᴏɴ'ᴛ ʙᴇ ᴀʙʟᴇ ᴛᴏ sᴇɴᴅ ᴍᴇssᴀɢᴇs.
+<emoji id='5370872220149099318'>👮</emoji> ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴇɴᴀʙʟᴇ ᴏʀ ᴅɪsᴀʙʟᴇ ᴛʜɪs ғᴇᴀᴛᴜʀᴇ.</blockquote>`,
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:biolink",
