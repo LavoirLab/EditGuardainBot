@@ -37,7 +37,7 @@ func init() {
 			"<b>Commands:</b>\n" +
 			"• <code>/nonsfw on</code> — Enable ✅\n" +
 			"• <code>/nonsfw off</code> — Disable ❌\n\n" +
-			"Scans photos and stickers (webp, webm). Deletes NSFW content and mutes repeat offenders after 5 violations in 1h.,
+			"Scans photos and stickers (webp, webm). Deletes NSFW content and mutes repeat offenders after 5 violations in 1h.",
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "/nonsfw",
