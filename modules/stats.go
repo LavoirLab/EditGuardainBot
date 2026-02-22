@@ -20,10 +20,6 @@ func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "stats",
 		ModName: "📊 Stats",
-		Help: "📊 <b>Stats</b> displays bot usage statistics and system information.\n\n" +
-			"<b>Usage:</b>\n" +
-			"• <code>/stats</code> – View total users, chats, and system resources.\n\n" +
-			"👮 <b>Note:</b> This command is restricted to bot owners.",
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:stats",
