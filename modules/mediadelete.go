@@ -14,7 +14,7 @@ import (
 func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "mediadelete",
-		ModName: "🎬 MediaDelete",
+		ModName: "🎬 Media",
 		Help: "🎬 <b>Media Auto-Delete</b> automatically removes media messages after a set delay.\n\n" +
 			"<b>Commands:</b>\n" +
 			"• <code>/mediadelete on</code> — Enable media auto-delete ✅\n" +
