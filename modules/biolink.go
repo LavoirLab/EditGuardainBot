@@ -18,12 +18,14 @@ func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "biolink",
 		ModName: "🛡️ BioMode",
-		Help: "🛡️ <b>BioMode</b> monitors user bios and deletes messages if they contain URLs.\n\n" +
-			"<b>Usage:</b>\n" +
-			"➤ <code>/biolink on</code> - Enable BioMode\n" +
-			"➤ <code>/biolink off</code> - Disable BioMode\n\n" +
-			"🚫 When enabled, users with links in their bios won't be able to send messages.\n" +
-			"👮 Only admins can enable or disable this feature.",
+		Help: `<emoji id='5465154440287757794'>🛡️</emoji> <b>ʙɪᴏᴍᴏᴅᴇ</b> ᴍᴏɴɪᴛᴏʀs ᴜsᴇʀ ʙɪᴏs ᴀɴᴅ ᴅᴇʟᴇᴛᴇs ᴍᴇssᴀɢᴇs ɪғ ᴛʜᴇʏ ᴄᴏɴᴛᴀɪɴ ᴜʀʟs.
+
+<b>ᴜsᴀɢᴇ:</b>
+➤ <code>/biolink on</code> - ᴇɴᴀʙʟᴇ ʙɪᴏᴍᴏᴅᴇ
+➤ <code>/biolink off</code> - ᴅɪsᴀʙʟᴇ ʙɪᴏᴍᴏᴅᴇ
+
+<emoji id='5929345782560853059'>🚫</emoji> ᴡʜᴇɴ ᴇɴᴀʙʟᴇᴅ, ᴜsᴇʀs ᴡɪᴛʜ ʟɪɴᴋs ɪɴ ᴛʜᴇɪʀ ʙɪᴏs ᴡᴏɴ'ᴛ ʙᴇ ᴀʙʟᴇ ᴛᴏ sᴇɴᴅ ᴍᴇssᴀɢᴇs.
+<emoji id='5370872220149099318'>👮</emoji> ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴇɴᴀʙʟᴇ ᴏʀ ᴅɪsᴀʙʟᴇ ᴛʜɪs ғᴇᴀᴛᴜʀᴇ.`,
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:biolink",
