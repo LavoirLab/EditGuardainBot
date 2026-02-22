@@ -102,7 +102,7 @@ func handleHelpModuleCallback(c *telegram.CallbackQuery) error {
 	module, exists := GetModule(moduleName)
 	modHelpText := "❌ No help found for this module."
 	if exists && module.Help != "" {
-		modHelpText = "📖 <b>Help for " + module.ModName + "</b>\n\n" + module.Help
+		modHelpText = module.Help
 	}
 
 	keyboard := telegram.NewKeyboard().AddRow(
