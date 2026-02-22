@@ -52,15 +52,19 @@ func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "abuse",
 		ModName: "🚫 Abuse",
-		Help: "<b>🚫 NoAbuse Filter</b>\n" +
-			"Automatically detects and filters abusive or offensive language in group messages.\n\n" +
-			"<b>🔧 Commands:</b>\n" +
-			"• <code>/noabuse on</code> – Enable abuse detection ✅\n" +
-			"• <code>/noabuse off</code> – Disable abuse detection ❌\n\n" +
-			"<b>ℹ️ Notes:</b>\n" +
-			"– Messages with offensive content will be censored or removed.\n" +
-			"– 👮 Only group admins can configure this setting.\n\n" +
-			"<blockquote>🔧 This feature is under development and may not work properly at this moment.</blockquote>",
+		Help: `<b><emoji id='5929345782560853059'>🚫</emoji> ɴᴏᴀʙᴜsᴇ ғɪʟᴛᴇʀ</b>
+ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ᴅᴇᴛᴇᴄᴛs ᴀɴᴅ ғɪʟᴛᴇʀs ᴀʙᴜsɪᴠᴇ ᴏʀ ᴏғғᴇɴsɪᴠᴇ ʟᴀɴɢᴜᴀɢᴇ ɪɴ ɢʀᴏᴜᴘ ᴍᴇssᴀɢᴇs.
+
+<b><emoji id='5341715473882955310'>🔧</emoji> ᴄᴏᴍᴍᴀɴᴅs:</b>
+• <code>/noabuse on</code> – ᴇɴᴀʙʟᴇ ᴀʙᴜsᴇ ᴅᴇᴛᴇᴄᴛɪᴏɴ <emoji id='6084551628461967966'>✅</emoji>
+• <code>/noabuse off</code> – ᴅɪsᴀʙʟᴇ ᴀʙᴜsᴇ ᴅᴇᴛᴇᴄᴛɪᴏɴ <emoji id='5465665476971471368'>❌</emoji>
+
+<b><emoji id='5443038326535759644'>ℹ️</emoji> ɴᴏᴛᴇs:</b>
+– ᴍᴇssᴀɢᴇs ᴡɪᴛʜ ᴏғғᴇɴsɪᴠᴇ ᴄᴏɴᴛᴇɴᴛ ᴡɪʟʟ ʙᴇ ᴄᴇɴsᴏʀᴇᴅ ᴏʀ ʀᴇᴍᴏᴠᴇᴅ.
+– <emoji id='5370872220149099318'>👮</emoji> ᴏɴʟʏ ɢʀᴏᴜᴘ ᴀᴅᴍɪɴs ᴄᴀɴ ᴄᴏɴғɪɢᴜʀᴇ ᴛʜɪs sᴇᴛᴛɪɴɢ.
+
+<blockquote><emoji id='5462921117423384478'>🔧</emoji> ᴛʜɪs ғᴇᴀᴛᴜʀᴇ ɪs ᴜɴᴅᴇʀ ᴅᴇᴠᴇʟᴏᴘᴍᴇɴᴛ ᴀɴᴅ ᴍᴀʏ ɴᴏᴛ ᴡᴏʀᴋ ᴘʀᴏᴘᴇʀʟʏ ᴀᴛ ᴛʜɪs ᴍᴏᴍᴇɴᴛ.</blockquote>`,
+
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:noabuse",
