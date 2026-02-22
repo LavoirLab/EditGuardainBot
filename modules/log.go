@@ -15,7 +15,7 @@ import (
 func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "log",
-		ModName: "Log",
+		ModName: "🪵 Log",
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "participant",

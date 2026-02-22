@@ -40,12 +40,15 @@ func NoForwardCmd(m *telegram.NewMessage) error {
 		isEnabled, err := database.IsNoForwardEnabled(m.ChatID())
 		if err != nil {
 			_, err = m.Reply(
-				"⚠️ Usage:\n<code>/noforward on</code> — Enable\n<code>/noforward off</code> — Disable",
+				"⚠️ <b>Usage:</b>\n• <code>/noforward on</code> — Block forwarded messages\n• <code>/noforward off</code> — Allow forwarded messages",
 			)
 			return err
 		} else {
-			status := map[bool]string{true: "Enabled", false: "Disabled"}[isEnabled]
-			_, err = m.Reply(fmt.Sprintf("Currently NoForward is %s for your chat.", status))
+			status := "Disabled ❌"
+			if isEnabled {
+				status = "Enabled ✅"
+			}
+			_, err = m.Reply(fmt.Sprintf("📤 <b>Forward Control Status:</b> %s\n\n<i>When enabled, forwarded messages from other chats will be automatically removed.</i>", status))
 			return err
 		}
 	}
@@ -53,21 +56,23 @@ func NoForwardCmd(m *telegram.NewMessage) error {
 	enable, err := utils.ParseBool(args[0])
 	if err != nil {
 		_, err = m.Reply(
-			"❌ Invalid option.\nUse <code>/noforward on</code> or <code>/noforward off</code>",
+			"❌ <b>Invalid option.</b>\n\nPlease use <code>/noforward on</code> or <code>/noforward off</code>.",
 		)
 		return err
 	}
 
 	if err := database.SetNoForwardEnabled(m.ChatID(), enable); err != nil {
-		_, err = m.Reply("❌ Failed to update setting.")
+		_, err = m.Reply("⚠️ <b>Update failed.</b>\n\nSomething went wrong while updating the setting. Please try again.")
 		return err
 	}
 
-	status := "📤 Forward blocking enabled ✅"
+	status := "enabled ✅"
+	next := "Use <code>/noforward off</code> to allow forwarded messages again."
 	if !enable {
-		status = "✅ Forwarding allowed ❌"
+		status = "disabled ❌"
+		next = "Use <code>/noforward on</code> to block forwarded messages."
 	}
-	_, err = m.Reply(status)
+	_, err = m.Reply(fmt.Sprintf("📤 <b>Forward control %s</b>\n\n%s", status, next))
 	return err
 }
 

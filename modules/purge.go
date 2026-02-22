@@ -36,7 +36,7 @@ func PurgeCmd(m *telegram.NewMessage) error {
 			return err
 		}
 		_, err := m.Reply(
-			"⚠️ Please reply to a message to start purging from that point.",
+			"⚠️ <b>Purge requires a reply!</b>\n\nPlease reply to the message where you want the purge to <b>start</b>. All messages between that and your command will be deleted.",
 		)
 		return err
 	}
@@ -48,7 +48,7 @@ func PurgeCmd(m *telegram.NewMessage) error {
 		if _, err := m.Delete(); err != nil {
 			return err
 		}
-		_, err := m.Reply("❌ Invalid message range. Reply to an older message.")
+		_, err := m.Reply("❌ <b>Invalid message range.</b>\n\nPlease reply to an <b>older</b> message to start the purge correctly.")
 		return err
 	}
 
@@ -63,14 +63,14 @@ func PurgeCmd(m *telegram.NewMessage) error {
 
 	// Send notification before deleting
 	notification, err := m.Reply(
-		fmt.Sprintf("🗑️ Purging %d messages...", messageCount),
+		fmt.Sprintf("⏳ <b>Purging %d messages...</b>\n\n<i>Please wait while I clean up the chat.</i>", messageCount),
 	)
 	if err != nil {
 		return err
 	}
 
 	// Delete messages in batches of 50
-	batchSize := 50
+	batchSize := 100
 	deletedCount := 0
 
 	for i := 0; i < len(messagesToDelete); i += batchSize {
@@ -85,11 +85,16 @@ func PurgeCmd(m *telegram.NewMessage) error {
 			continue
 		}
 		deletedCount += len(batch)
+
+		// Update progress for large purges
+		if len(messagesToDelete) > 200 && deletedCount%200 == 0 {
+			_, _ = notification.Edit(fmt.Sprintf("⏳ <b>Purging messages...</b>\n\n<i>Progress: %d / %d deleted.</i>", deletedCount, messageCount))
+		}
 	}
 
 	// Update notification with results
 	_, _ = notification.Edit(
-		fmt.Sprintf("✅ Successfully purged %d messages!", deletedCount),
+		fmt.Sprintf("✅ <b>Purge Complete!</b>\n\nSuccessfully removed <b>%d</b> messages. This message will auto-delete in 5 seconds.", deletedCount),
 	)
 
 	// Delete the notification after 5 seconds

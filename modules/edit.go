@@ -11,7 +11,7 @@ import (
 func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "edit",
-		ModName: "Edit",
+		ModName: "✏️ Edit",
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "edit",

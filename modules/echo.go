@@ -66,18 +66,13 @@ func EcoHandler(m *telegram.NewMessage) error {
 	}
 
 	if m.Args() == "" {
-		_, err := m.Reply("Usage: /echo &lt;long message&gt;")
+		_, err := m.Reply("⚠️ <b>Usage:</b> <code>/echo &lt;text&gt;</code>\n\nPlease provide the long text you want to share via Telegraph.")
 		return err
 	}
 
 	settings, err := database.GetEchoSettings(m.ChatID())
 	if err != nil {
-		_, err := m.Reply(
-			fmt.Sprintf(
-				"⚠️ Something went wrong while processing the limit.\nError: %v",
-				err,
-			),
-		)
+		_, err := m.Reply("⚠️ <b>Oops! Something went wrong.</b>\n\nI couldn't retrieve the message limit settings for this chat. Please try again.")
 		return err
 	}
 
@@ -86,8 +81,8 @@ func EcoHandler(m *telegram.NewMessage) error {
 		if isadmin {
 			_, err := m.Reply(
 				fmt.Sprintf(
-					"Oops! Your message is under %d characters. Since you're an admin, you're not required to use /echo. But if you’d like to, please send a message longer than %d characters.",
-					settings.Limit,
+					"📝 <b>Note:</b> Your message is only <code>%d</code> characters, which is under the <code>%d</code> character limit. As an admin, you can send it normally, but if you'd like a Telegraph link, please send a longer text.",
+					len(m.Text()),
 					settings.Limit,
 				),
 			)
@@ -95,7 +90,7 @@ func EcoHandler(m *telegram.NewMessage) error {
 		}
 		_, err := m.Reply(
 			fmt.Sprintf(
-				"Oops! Your message is under %d characters. You can send it without using /echo.",
+				"📝 <b>Note:</b> Your message is under the <code>%d</code> character limit. You can send it normally without using the <code>/echo</code> command!",
 				settings.Limit,
 			),
 		)

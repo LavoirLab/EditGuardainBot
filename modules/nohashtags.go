@@ -50,12 +50,15 @@ func NoHashtagsCmd(m *telegram.NewMessage) error {
 		isEnabled, err := database.IsNoHashtagsEnabled(m.ChatID())
 		if err != nil {
 			_, err = m.Reply(
-				"⚠️ Usage:\n<code>/nohashtags on</code> — Enable\n<code>/nohashtags off</code> — Disable",
+				"⚠️ <b>Usage:</b>\n• <code>/nohashtags on</code> — Block hashtags\n• <code>/nohashtags off</code> — Allow hashtags",
 			)
 			return err
 		} else {
-			status := map[bool]string{true: "Enabled", false: "Disabled"}[isEnabled]
-			_, err = m.Reply(fmt.Sprintf("Currently NoHashtags is %s for your chat.", status))
+			status := "Disabled ❌"
+			if isEnabled {
+				status = "Enabled ✅"
+			}
+			_, err = m.Reply(fmt.Sprintf("🏷️ <b>Hashtag Filter Status:</b> %s\n\n<i>When enabled, messages containing hashtags (#example) will be automatically removed.</i>", status))
 			return err
 		}
 	}
@@ -63,21 +66,23 @@ func NoHashtagsCmd(m *telegram.NewMessage) error {
 	enable, err := utils.ParseBool(args[0])
 	if err != nil {
 		_, err = m.Reply(
-			"❌ Invalid option.\nUse <code>/nohashtags on</code> or <code>/nohashtags off</code>",
+			"❌ <b>Invalid option.</b>\n\nPlease use <code>/nohashtags on</code> or <code>/nohashtags off</code>.",
 		)
 		return err
 	}
 
 	if err := database.SetNoHashtagsEnabled(m.ChatID(), enable); err != nil {
-		_, err = m.Reply("❌ Failed to update setting.")
+		_, err = m.Reply("⚠️ <b>Update failed.</b>\n\nSomething went wrong while updating the setting. Please try again.")
 		return err
 	}
 
-	status := "# Hashtag blocking enabled ✅"
+	status := "enabled ✅"
+	next := "Use <code>/nohashtags off</code> to allow hashtags again."
 	if !enable {
-		status = "✅ Hashtags allowed ❌"
+		status = "disabled ❌"
+		next = "Use <code>/nohashtags on</code> to block hashtags."
 	}
-	_, err = m.Reply(status)
+	_, err = m.Reply(fmt.Sprintf("🏷️ <b>Hashtag filter %s</b>\n\n%s", status, next))
 	return err
 }
 

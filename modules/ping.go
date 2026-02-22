@@ -13,7 +13,10 @@ import (
 func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "ping",
-		ModName: "Ping",
+		ModName: "🏓 Ping",
+		Help: "🏓 <b>Ping</b> checks the bot's response time and uptime.\n\n" +
+			"<b>Usage:</b>\n" +
+			"• <code>/ping</code> – Check bot latency and system uptime.",
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:ping",

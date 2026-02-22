@@ -50,14 +50,17 @@ func MediaDeleteCmd(m *telegram.NewMessage) error {
 		settings, err := database.GetMediaDeleteSettings(m.ChatID())
 		if err != nil {
 			_, err = m.Reply(
-				"⚠️ Usage:\n<code>/mediadelete on</code> — Enable\n<code>/mediadelete off</code> — Disable",
+				"⚠️ <b>Usage:</b>\n• <code>/mediadelete on</code> — Enable media auto-delete\n• <code>/mediadelete off</code> — Disable media auto-delete",
 			)
 			return err
 		} else {
-			status := map[bool]string{true: "Enabled", false: "Disabled"}[settings.Enabled]
+			status := "Disabled ❌"
+			if settings.Enabled {
+				status = "Enabled ✅"
+			}
 
 			_, err = m.Reply(fmt.Sprintf(
-				"📊 <b>MediaDelete Status:</b> %s\n⏱ <b>Delay:</b> %s\n🎯 <b>Scope:</b> All users & admins",
+				"🎬 <b>Media Auto-Delete Status:</b> %s\n⏱ <b>Delay:</b> %s\n\n<i>When enabled, all media messages will be automatically removed after the set delay.</i>",
 				status,
 				utils.FormatDuration(settings.Delay),
 			))
@@ -68,21 +71,23 @@ func MediaDeleteCmd(m *telegram.NewMessage) error {
 	enable, err := utils.ParseBool(args[0])
 	if err != nil {
 		_, err = m.Reply(
-			"❌ Invalid option.\nUse <code>/mediadelete on</code> or <code>/mediadelete off</code>",
+			"❌ <b>Invalid option.</b>\n\nPlease use <code>/mediadelete on</code> or <code>/mediadelete off</code>.",
 		)
 		return err
 	}
 
 	if err := database.SetMediaDeleteEnabled(m.ChatID(), enable); err != nil {
-		_, err = m.Reply("❌ Failed to update setting.")
+		_, err = m.Reply("⚠️ <b>Update failed.</b>\n\nSomething went wrong while updating the setting. Please try again.")
 		return err
 	}
 
-	status := "🎬 Media auto-delete enabled ✅"
+	status := "enabled ✅"
+	next := "Use <code>/mediadelete off</code> to allow media again."
 	if !enable {
-		status = "🚫 Media auto-delete disabled ❌"
+		status = "disabled ❌"
+		next = "Use <code>/mediadelete on</code> to block media."
 	}
-	_, err = m.Reply(status)
+	_, err = m.Reply(fmt.Sprintf("🎬 <b>Media auto-delete %s</b>\n\n%s", status, next))
 	return err
 }
 
@@ -94,7 +99,7 @@ func SetMediaDelayCmd(m *telegram.NewMessage) error {
 
 	if m.Args() == "" {
 		_, err = m.Reply(
-			"⚠️ Usage: <code>/setmediadelay 5m</code> or <code>/setmediadelay 2h</code>\n\nValid range: 1m to 24h",
+			"⚠️ <b>Usage:</b> <code>/setmediadelay &lt;time&gt;</code>\n\n<b>Examples:</b>\n• <code>/setmediadelay 5m</code>\n• <code>/setmediadelay 2h</code>\n\n<i>Valid range: 1 minute to 24 hours.</i>",
 		)
 		return err
 	}
@@ -102,24 +107,24 @@ func SetMediaDelayCmd(m *telegram.NewMessage) error {
 	duration, err := utils.ParseDuration(m.Args())
 	if err != nil {
 		_, err = m.Reply(
-			"❌ Invalid time format. Use: 5m, 1h, 12h, etc.\nRange: 1 minute to 24 hours",
+			"❌ <b>Invalid time format.</b>\n\nPlease use formats like: <code>5m</code>, <code>1h</code>, <code>12h</code>.\n<i>Range: 1 minute to 24 hours.</i>",
 		)
 		return err
 	}
 
 	if duration < time.Minute || duration > 24*time.Hour {
-		_, err = m.Reply("❌ Delay must be between 1 minute and 24 hours.")
+		_, err = m.Reply("❌ <b>Out of range.</b>\n\nDelay must be between 1 minute and 24 hours.")
 		return err
 	}
 
 	if err := database.SetMediaDeleteDelay(m.ChatID(), duration); err != nil {
-		_, err = m.Reply("❌ Failed to set delay.")
+		_, err = m.Reply("⚠️ <b>Failed to set delay.</b>\n\nSomething went wrong while saving the delay. Please try again.")
 		return err
 	}
 
 	_, err = m.Reply(
 		fmt.Sprintf(
-			"✅ Media auto-delete delay set to %s",
+			"✅ <b>Media auto-delete delay set to %s!</b>\n\nMedia will now be removed after this duration.",
 			utils.FormatDuration(duration),
 		),
 	)

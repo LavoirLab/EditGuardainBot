@@ -148,33 +148,40 @@ func NoLinksCmd(m *telegram.NewMessage) error {
 	}
 
 	if len(args) < 1 {
-		if isEn, err := database.IsLinkFilterEnabled(m.ChatID()); err != nil {
+		isEn, err := database.IsLinkFilterEnabled(m.ChatID())
+		if err != nil {
 			_, err = m.Reply(
-				"⚠️ Usage:\n<code>/nolinks on</code> – Enable link filtering\n<code>/nolinks off</code> – Disable link filtering",
+				"⚠️ <b>Usage:</b>\n• <code>/nolinks on</code> — Enable link filtering\n• <code>/nolinks off</code> — Disable link filtering",
 			)
 			return err
 		} else {
-			_, err = m.Reply("Currently Nolinks mode is " + map[bool]string{true: "Enabled", false: "Disabled"}[isEn] + " for your chat.")
+			status := "Disabled ❌"
+			if isEn {
+				status = "Enabled ✅"
+			}
+			_, err = m.Reply("🔗 <b>Link Filtering Status:</b> " + status + "\n\n<i>When enabled, only links from approved domains will be allowed. Use <code>/nolinks on</code> to enable.</i>")
 			return err
 		}
 	}
 	enable, err := utils.ParseBool(args[0])
 	if err != nil {
 		_, err = m.Reply(
-			"❌ Invalid option.\nUse <code>/nolinks on</code> or <code>/nolinks off</code>",
+			"❌ <b>Invalid option.</b>\n\nPlease use:\n• <code>/nolinks on</code> — To enable\n• <code>/nolinks off</code> — To disable",
 		)
 		return err
 	}
 	if err := database.SetLinkFilterEnabled(m.ChatID(), enable); err != nil {
 		log.Println("Links.DB error:", err)
-		_, err = m.Reply("❌ Failed to update link filter setting.")
+		_, err = m.Reply("⚠️ <b>Oops! Failed to update settings.</b>\n\nSomething went wrong while updating the link filter. Please try again.")
 		return err
 	}
-	status := "🔗 Link filter enabled ✅"
+	status := "enabled ✅"
+	next := "Use <code>/nolinks off</code> to disable it."
 	if !enable {
-		status = "🔕 Link filter disabled ❌"
+		status = "disabled ❌"
+		next = "Use <code>/nolinks on</code> to enable it again."
 	}
-	_, err = m.Reply(status)
+	_, err = m.Reply(fmt.Sprintf("🔗 <b>Link filtering %s</b>\n\n%s", status, next))
 	return err
 }
 
@@ -186,22 +193,22 @@ func AllowHostCmd(m *telegram.NewMessage) error {
 	}
 
 	if len(args) < 1 {
-		_, err = m.Reply("⚠️ Usage: <code>/allowlink github.com</code>")
+		_, err = m.Reply("⚠️ <b>Usage:</b> <code>/allowlink &lt;domain&gt;</code>\n\n<b>Example:</b>\n• <code>/allowlink google.com</code>\n• <code>/allowlink github.com</code>")
 		return err
 	}
 	host := extractHostname(args[0])
 	if host == "" {
 		_, err = m.Reply(
-			"❌ Invalid domain or URL.\nExample: <code>/allowlink github.com</code>",
+			"❌ <b>Invalid domain or URL.</b>\n\nPlease provide a valid domain.\n<b>Example:</b> <code>/allowlink github.com</code>",
 		)
 		return err
 	}
 	if err := database.AddAllowedHostname(m.ChatID(), host); err != nil {
 		log.Println("AddAllowedHostname error:", err)
-		_, err = m.Reply("❌ Failed to allow host.")
+		_, err = m.Reply("⚠️ <b>Failed to add domain.</b>\n\nSomething went wrong while adding the domain to the allow-list. Please try again.")
 		return err
 	}
-	_, err = m.Reply("✅ Allowed: <code>" + host + "</code>")
+	_, err = m.Reply(fmt.Sprintf("✅ <b>Domain Allowed:</b> <code>%s</code>\n\nLinks from this domain will no longer be blocked. Use <code>/removelink %s</code> to remove it.", host, host))
 	return err
 }
 
@@ -213,21 +220,21 @@ func RemoveHostCmd(m *telegram.NewMessage) error {
 	}
 
 	if len(args) < 1 {
-		_, err = m.Reply("⚠️ Usage: <code>/removelink example.com</code>")
+		_, err = m.Reply("⚠️ <b>Usage:</b> <code>/removelink &lt;domain&gt;</code>\n\n<b>Example:</b> <code>/removelink github.com</code>")
 		return err
 	}
 	host := extractHostname(args[0])
 	if host == "" {
 		_, err = m.Reply(
-			"❌ Invalid domain or URL.\nExample: <code>/removelink github.com</code>",
+			"❌ <b>Invalid domain or URL.</b>\n\nPlease provide a valid domain to remove.\n<b>Example:</b> <code>/removelink github.com</code>",
 		)
 		return err
 	}
 	if err := database.RemoveAllowedHostname(m.ChatID(), host); err != nil {
-		_, err = m.Reply("❌ Failed to remove host.")
+		_, err = m.Reply("⚠️ <b>Failed to remove domain.</b>\n\nSomething went wrong while removing the domain from the allow-list. Please try again.")
 		return err
 	}
-	_, err = m.Reply("🚫 Removed: <code>" + host + "</code>")
+	_, err = m.Reply(fmt.Sprintf("🚫 <b>Domain Removed:</b> <code>%s</code>\n\nLinks from this domain will now be filtered again. Use <code>/allowlink %s</code> to add it back.", host, host))
 	return err
 }
 
@@ -242,7 +249,7 @@ func ListAllowedHosts(m *telegram.NewMessage) error {
 		return err
 	}
 	if len(hosts) == 0 {
-		_, err = m.Reply("ℹ️ No allowed domains set for this chat.")
+		_, err = m.Reply("ℹ️ <b>No allowed domains yet.</b>\n\nAll external links are currently being filtered. Use <code>/allowlink &lt;domain&gt;</code> to add your first exception!")
 		return err
 	}
 	var text strings.Builder

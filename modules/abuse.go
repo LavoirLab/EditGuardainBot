@@ -28,16 +28,17 @@ const (
 
 	noAbuseEnabledMsg = `🛡️ <b>NoAbuse Enabled</b>
 
-<i>Abusive messages will now be deleted.</i>`
+<i>Abusive messages will now be deleted automatically. Use <code>/noabuse off</code> to disable this filter.</i>`
 
 	noAbuseDisabledMsg = `🚫 <b>NoAbuse Disabled</b>
 
-<i>Messages will no longer be filtered.</i>`
+<i>Messages will no longer be filtered for abusive language. Use <code>/noabuse on</code> to enable it again.</i>`
 
 	noAbuseInvalidMsg = `❌ <b>Invalid usage</b>
 
-<code>/noabuse on</code>
-<code>/noabuse off</code>`
+Please use one of the following formats:
+• <code>/noabuse on</code> — To enable the filter
+• <code>/noabuse off</code> — To disable the filter`
 
 	noAbuseRemovedMsg = `🚨 <b>Abuse Detected!</b>
 

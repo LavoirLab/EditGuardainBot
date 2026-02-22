@@ -64,27 +64,30 @@ func NsfwCmdHandler(m *tg.NewMessage) error {
 		if enabled {
 			status = "Enabled ✅"
 		}
-		_, err := m.Reply(fmt.Sprintf("🔞 <b>NSFW Detection:</b> %s", status))
+		_, err := m.Reply(fmt.Sprintf("🔞 <b>NSFW Detection Status:</b> %s\n\n<i>When enabled, I will scan photos and stickers for adult content.</i>", status))
 		return err
 	}
 
 	enable, err := utils.ParseBool(args[0])
 	if err != nil {
 		_, err = m.Reply(
-			"Use <code>/nonsfw on</code> or <code>/nonsfw off</code>",
+			"❗ <b>Invalid usage.</b>\n\nPlease use:\n• <code>/nonsfw on</code> — To enable scanning\n• <code>/nonsfw off</code> — To disable scanning",
 		)
 		return err
 	}
 
 	if err := database.SetNSFWFlag(m.ChatID(), enable); err != nil {
+		_, err = m.Reply("⚠️ <b>Oops! Update failed.</b>\n\nSomething went wrong while updating the NSFW settings. Please try again.")
 		return err
 	}
 
 	status := "disabled ❌"
+	next := "Use <code>/nonsfw on</code> to enable it again."
 	if enable {
 		status = "enabled ✅"
+		next = "Use <code>/nonsfw off</code> to disable it."
 	}
-	_, err = m.Reply(fmt.Sprintf("🔞 NSFW Detection %s", status))
+	_, err = m.Reply(fmt.Sprintf("🔞 <b>NSFW Detection %s</b>\n\n%s", status, next))
 	return err
 }
 
@@ -336,9 +339,9 @@ func trackViolationAndMute(client *tg.Client, chatID, userID int64) bool {
 }
 
 func buildNsfwWarnMsg(mention string, muted bool) string {
-	msg := fmt.Sprintf("🔞 %s NSFW content detected and removed.", mention)
+	msg := fmt.Sprintf("🔞 <b>NSFW Content Blocked!</b>\n\n%s, <i>your message was removed because it contained suggestive or adult content.</i>", mention)
 	if muted {
-		msg += " 🔇 Muted for 1h due to repeated violations."
+		msg += "\n\n🔇 <b>Note:</b> You have been muted for 1 hour due to repeated violations of the safety policy."
 	}
 	return msg
 }

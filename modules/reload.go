@@ -11,7 +11,7 @@ import (
 func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "reload",
-		ModName: "Reload",
+		ModName: "🔄 Reload",
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:reload",

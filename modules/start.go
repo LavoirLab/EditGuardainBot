@@ -2,6 +2,7 @@ package modules
 
 import (
 	"fmt"
+	"html"
 	"strconv"
 	"strings"
 
@@ -12,15 +13,26 @@ import (
 )
 
 var startMsG string = `<b>🛡 Hello <a href="tg://user?id=%d">%s</a>!</b> 👋  
-I'm <b><a href="tg://user?id=%d">%s</a></b>, your group’s security bot keeping chats clean and safe.
+I'm <b><a href="tg://user?id=%d">%s</a></b>, your group’s advanced security and management bot.
 
-📣 Stay informed with instant alerts.  
-✅ Add me now and I’ll start protecting your group!`
+I can help you with:
+✨ <b>Auto-Cleanup</b> of unwanted messages
+🚫 <b>Anti-Abuse</b> & Link Protection
+🔞 <b>NSFW Detection</b>
+🗑 <b>Bulk Purging</b>
+📝 <b>Long Message</b> handling
+
+<b>How to use me?</b>
+1️⃣ Add me to your group
+2️⃣ Grant me admin permissions
+3️⃣ I'll start protecting automatically!
+
+👇 <b>Need help?</b> Use the buttons below or send /help.`
 
 func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "start",
-		ModName: "Start",
+		ModName: "🚀 Start",
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:start",
@@ -50,7 +62,7 @@ func handleStartCallback(c *telegram.CallbackQuery) error {
 		telegram.Button.URL("💬 Update Group", config.SupportChat),
 	)
 	btn.AddRow(
-		telegram.Button.Data("❓ Help & Commands", "help"),
+		telegram.Button.Data("📖 Command Help", "help"),
 	)
 	btn.AddRow(
 		telegram.Button.URL(
@@ -112,11 +124,15 @@ func handleStart(m *telegram.NewMessage) error {
 							}
 						}
 
-						info := fmt.Sprintf(`
-Name: %s
-Id: %d
-Link: <a href="%s">Link 1</a> <a href="%s">Link 2</a>`,
-							Name, ID, Link1, Link2)
+						info := fmt.Sprintf(`<b>👤 Entity Information</b>
+
+🆔 <b>ID:</b> <code>%d</code>
+👤 <b>Name:</b> %s
+
+🔗 <b>Links:</b>
+• <a href="%s">Permanent Link</a>
+• <a href="%s">Profile Link</a>`,
+							ID, Name, Link1, Link2)
 
 						_, err = m.Reply(info)
 						return err
@@ -146,7 +162,7 @@ Link: <a href="%s">Link 1</a> <a href="%s">Link 2</a>`,
 			telegram.Button.URL("💬 Update Group", config.SupportChat),
 		)
 		btn.AddRow(
-			telegram.Button.Data("❓ Help & Commands", "help"),
+			telegram.Button.Data("📖 Command Help", "help"),
 		)
 		btn.AddRow(
 			telegram.Button.URL(
@@ -174,9 +190,20 @@ Link: <a href="%s">Link 1</a> <a href="%s">Link 2</a>`,
 	// Supergroup Chat
 	m.Delete()
 	database.AddServedChat(m.ChatID())
-	// In the new system, we don't need to manually check WarnIfLackOfPms here if we trust the watcher/registry
-	// but let's keep it for compatibility if desired.
-	// Actually, let's keep it simple as requested "old UI messages".
-	_, err := m.Reply("✅ I am active and ready to protect this supergroup!")
+
+	btn := telegram.NewKeyboard().AddRow(
+		telegram.Button.URL("📖 Help & Commands", fmt.Sprintf("https://t.me/%s?start=help", m.Client.Me().Username)),
+	).Build()
+
+	caption := fmt.Sprintf(`<b>🛡️ Bot Activated!</b>
+
+I am now active and ready to protect <b>%s</b>.
+
+💡 <b>Next Steps:</b>
+• Ensure I am an <b>Admin</b> with <i>Delete Messages</i> permissions.
+• Check the available commands by tapping the button below.
+• Visit <a href="%s">Support Channel</a> for updates.`, html.EscapeString(m.Chat.Title), config.SupportChannel)
+
+	_, err := m.Reply(caption, &telegram.SendOptions{ReplyMarkup: btn})
 	return err
 }

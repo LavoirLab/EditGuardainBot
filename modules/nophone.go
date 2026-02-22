@@ -49,12 +49,15 @@ func NoPhoneCmd(m *telegram.NewMessage) error {
 		isEnabled, err := database.IsNoPhoneEnabled(m.ChatID())
 		if err != nil {
 			_, err = m.Reply(
-				"⚠️ Usage:\n<code>/nophone on</code> — Enable\n<code>/nophone off</code> — Disable",
+				"⚠️ <b>Usage:</b>\n• <code>/nophone on</code> — Block phone numbers\n• <code>/nophone off</code> — Allow phone numbers",
 			)
 			return err
 		} else {
-			status := map[bool]string{true: "Enabled", false: "Disabled"}[isEnabled]
-			_, err = m.Reply(fmt.Sprintf("Currently NoPhone is %s for your chat.", status))
+			status := "Disabled ❌"
+			if isEnabled {
+				status = "Enabled ✅"
+			}
+			_, err = m.Reply(fmt.Sprintf("📞 <b>Phone Number Protection Status:</b> %s\n\n<i>When enabled, messages containing phone numbers will be automatically removed for privacy.</i>", status))
 			return err
 		}
 	}
@@ -62,21 +65,23 @@ func NoPhoneCmd(m *telegram.NewMessage) error {
 	enable, err := utils.ParseBool(args[0])
 	if err != nil {
 		_, err = m.Reply(
-			"❌ Invalid option.\nUse <code>/nophone on</code> or <code>/nophone off</code>",
+			"❌ <b>Invalid option.</b>\n\nPlease use <code>/nophone on</code> or <code>/nophone off</code>.",
 		)
 		return err
 	}
 
 	if err := database.SetNoPhoneEnabled(m.ChatID(), enable); err != nil {
-		_, err = m.Reply("❌ Failed to update setting.")
+		_, err = m.Reply("⚠️ <b>Update failed.</b>\n\nSomething went wrong while updating the setting. Please try again.")
 		return err
 	}
 
-	status := "📞 Phone number blocking enabled ✅"
+	status := "enabled ✅"
+	next := "Use <code>/nophone off</code> to allow phone numbers again."
 	if !enable {
-		status = "✅ Phone numbers allowed ❌"
+		status = "disabled ❌"
+		next = "Use <code>/nophone on</code> to block phone numbers."
 	}
-	_, err = m.Reply(status)
+	_, err = m.Reply(fmt.Sprintf("📞 <b>Phone number protection %s</b>\n\n%s", status, next))
 	return err
 }
 

@@ -11,7 +11,7 @@ import (
 func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "help",
-		ModName: "Help",
+		ModName: "📚 Help",
 		Help:    "",
 		Handlers: []HandlerConfig{
 			{
@@ -39,11 +39,11 @@ Here you'll find details for all available plugins and features.
 func handleHelp(m *telegram.NewMessage) error {
 	if !m.IsPrivate() {
 		keyboard := telegram.NewKeyboard().AddRow(
-			telegram.Button.URL("🗒 Command", fmt.Sprintf("https://t.me/%s?start=help", m.Client.Me().Username)),
+			telegram.Button.URL("📖 Open Help in PM", fmt.Sprintf("https://t.me/%s?start=help", m.Client.Me().Username)),
 		).
 			Build()
 
-		m.Reply("Contact me in PM for help!", &telegram.SendOptions{
+		m.Reply("👋 <b>Need help?</b>\n\nTo see all available commands and how to use them, please contact me in private message.", &telegram.SendOptions{
 			ReplyMarkup: keyboard,
 		})
 
@@ -99,7 +99,7 @@ func handleHelpModuleCallback(c *telegram.CallbackQuery) error {
 	module, exists := GetModule(moduleName)
 	modHelpText := "❌ No help found for this module."
 	if exists && module.Help != "" {
-		modHelpText = "<i>Here is the available help of " + module.ModName + "\n\n</i>" + module.Help
+		modHelpText = "📖 <b>Help for " + module.ModName + "</b>\n\n" + module.Help
 	}
 
 	keyboard := telegram.NewKeyboard().AddRow(

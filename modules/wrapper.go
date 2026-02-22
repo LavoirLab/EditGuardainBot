@@ -23,7 +23,7 @@ func RequirePermission(
 
 		if m.IsPrivate() {
 			_, err := m.Reply(
-				"This command is made to be used in group chats, not in PM!",
+				"👋 <b>Group Only!</b>\n\nThis command is designed for group chats. Please use it inside a group where I am an admin.",
 				&telegram.SendOptions{},
 			)
 			if err != nil {
@@ -62,7 +62,7 @@ func RequirePermission(
 
 		if !userIsAdmin {
 			_, err = m.Reply(
-				"Who dis non-admin telling me what to do?",
+				"👤 <b>Admin Access Required</b>\n\nSorry, only group administrators can use this command.",
 				&telegram.SendOptions{},
 			)
 			if err != nil {
@@ -74,7 +74,7 @@ func RequirePermission(
 		if !userHasPerm {
 			_, err = m.Reply(
 				fmt.Sprintf(
-					"You don't have permission to %s.",
+					"🚫 <b>Permission Denied</b>\n\nYou need the <code>%s</code> permission to use this command.",
 					utils.PrettifyPermission(permission),
 				),
 				&telegram.SendOptions{},
@@ -93,7 +93,7 @@ func RequirePermission(
 				fmt.Sprintf("Failed to check bot permission: %v", err),
 			)
 			_, err = m.Reply(
-				"Failed to verify my permissions.",
+				"⚠️ <b>Verification Failed</b>\n\nI couldn't verify my own permissions in this chat. Please try again.",
 				&telegram.SendOptions{},
 			)
 			return err
@@ -101,10 +101,7 @@ func RequirePermission(
 
 		if !botIsAdmin {
 			_, err = m.Reply(
-				fmt.Sprintf(
-					"I'm not an admin, how do you expect me to %s?",
-					utils.PrettifyPermission(permission),
-				),
+				"🤖 <b>I am not an Admin!</b>\n\nI need administrator rights to perform this action. Please promote me and try again.",
 				&telegram.SendOptions{},
 			)
 			if err != nil {
@@ -116,7 +113,7 @@ func RequirePermission(
 		if !botHasPerm {
 			_, err = m.Reply(
 				fmt.Sprintf(
-					"I don't have permission to %s.",
+					"🚫 <b>Missing Bot Permission</b>\n\nI don't have the <code>%s</code> permission. Please grant it to me so I can help you.",
 					utils.PrettifyPermission(permission),
 				),
 				&telegram.SendOptions{},
@@ -244,9 +241,9 @@ func HandleAnonVerification(cb *telegram.CallbackQuery) error {
 		delete(anonVerifyCache, key)
 		anonVerifyCacheMu.Unlock()
 
-		cb.Answer("I'm not an admin!", &telegram.CallbackOptions{Alert: true})
+		cb.Answer("I am not an admin!", &telegram.CallbackOptions{Alert: true})
 		_, err := cb.Edit(fmt.Sprintf(
-			"I'm not an admin, how do you expect me to %s?",
+			"🤖 <b>I am not an Admin!</b>\n\nI need administrator rights to %s. Please promote me and try again.",
 			utils.PrettifyPermission(verify.Permission),
 		))
 		if err != nil {
