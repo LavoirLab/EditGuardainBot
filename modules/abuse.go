@@ -57,8 +57,8 @@ func init() {
 <i>ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ᴅᴇᴛᴇᴄᴛs ᴀɴᴅ ғɪʟᴛᴇʀs ᴀʙᴜsɪᴠᴇ ᴏʀ ᴏғғᴇɴsɪᴠᴇ ʟᴀɴɢᴜᴀɢᴇ ɪɴ ɢʀᴏᴜᴘ ᴍᴇssᴀɢᴇs.</i>
 
 <b><emoji id='5341715473882955310'>🔧</emoji> ᴄᴏᴍᴍᴀɴᴅs:</b>
-<blockquote>• <code>/noabuse on</code> – ᴇɴᴀʙʟᴇ ᴀʙᴜsᴇ ᴅᴇᴛᴇᴄᴛɪᴏɴ <emoji id='6084551628461967966'>✅</emoji>
-• <code>/noabuse off</code> – ᴅɪsᴀʙʟᴇ ᴀʙᴜsᴇ ᴅᴇᴛᴇᴄᴛɪᴏɴ <emoji id='5465665476971471368'>❌</emoji></blockquote>
+<blockquote>• /noabuse on – ᴇɴᴀʙʟᴇ ᴀʙᴜsᴇ ᴅᴇᴛᴇᴄᴛɪᴏɴ <emoji id='6084551628461967966'>✅</emoji>
+• /noabuse off – ᴅɪsᴀʙʟᴇ ᴀʙᴜsᴇ ᴅᴇᴛᴇᴄᴛɪᴏɴ <emoji id='5465665476971471368'>❌</emoji></blockquote>
 
 <b><emoji id='5443038326535759644'>ℹ️</emoji> ɴᴏᴛᴇs:</b>
 <blockquote>– ᴍᴇssᴀɢᴇs ᴡɪᴛʜ ᴏғғᴇɴsɪᴠᴇ ᴄᴏɴᴛᴇɴᴛ ᴡɪʟʟ ʙᴇ ᴄᴇɴsᴏʀᴇᴅ ᴏʀ ʀᴇᴍᴏᴠᴇᴅ.
@@ -115,7 +115,7 @@ func NoAbuseCmd(m *telegram.NewMessage) error {
 }
 
 func AbuseHandler(m *telegram.NewMessage) error {
-	if m.IsAnonymous() {
+	if m.IsAnonymous() || m.IsChannelPost() {
 		return nil
 	}
 
