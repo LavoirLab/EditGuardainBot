@@ -11,7 +11,7 @@ func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "purge",
 		ModName: "🗑️ Purge",
-		Help: `🗑️ <b>ᴘᴜʀɢᴇ ᴍᴇssᴀɢᴇs</b> ᴅᴇʟᴇᴛᴇs ᴍᴜʟᴛɪᴘʟᴇ ᴍᴇssᴀɢᴇs ᴀᴛ ᴏɴᴄᴇ.
+		Help: `<emoji id='5445267414562389170'>🗑️</emoji> <b>ᴘᴜʀɢᴇ ᴍᴇssᴀɢᴇs</b> ᴅᴇʟᴇᴛᴇs ᴍᴜʟᴛɪᴘʟᴇ ᴍᴇssᴀɢᴇs ᴀᴛ ᴏɴᴄᴇ.
 
 <b>ᴜsᴀɢᴇ:</b>
 <blockquote>• ʀᴇᴘʟʏ ᴛᴏ ᴀ ᴍᴇssᴀɢᴇ ᴡɪᴛʜ <code>/purge</code>
