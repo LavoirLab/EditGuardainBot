@@ -89,7 +89,8 @@ Leaving... 👋`
 	}
 
 	if isAdded {
-		if admin, ok := m.New.(*telegram.ChannelParticipantAdmin); !ok || !admin.AdminRights.DeleteMessages {
+		if admin, ok := m.New.(*telegram.ChannelParticipantAdmin); !ok ||
+			!admin.AdminRights.DeleteMessages {
 			warnMsg := `⚠️ <b>I was added but lack the required admin rights!</b>
 
 I need:

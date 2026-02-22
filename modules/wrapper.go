@@ -22,7 +22,10 @@ func RequirePermission(
 		}
 
 		if m.IsPrivate() {
-			_, err := m.Reply("This command is made to be used in group chats, not in PM!", &telegram.SendOptions{})
+			_, err := m.Reply(
+				"This command is made to be used in group chats, not in PM!",
+				&telegram.SendOptions{},
+			)
 			if err != nil {
 				return err
 			}
@@ -50,12 +53,18 @@ func RequirePermission(
 		)
 		if err != nil {
 			log.Printf("Failed to check user permission: %v", err)
-			_, err = m.Reply("Failed to verify your permissions.", &telegram.SendOptions{})
+			_, err = m.Reply(
+				"Failed to verify your permissions.",
+				&telegram.SendOptions{},
+			)
 			return err
 		}
 
 		if !userIsAdmin {
-			_, err = m.Reply("Who dis non-admin telling me what to do?", &telegram.SendOptions{})
+			_, err = m.Reply(
+				"Who dis non-admin telling me what to do?",
+				&telegram.SendOptions{},
+			)
 			if err != nil {
 				return err
 			}
@@ -80,8 +89,13 @@ func RequirePermission(
 			m.Client, chatID, m.Client.Me().ID, permission,
 		)
 		if err != nil {
-			m.Client.Log.Error(fmt.Sprintf("Failed to check bot permission: %v", err))
-			_, err = m.Reply("Failed to verify my permissions.", &telegram.SendOptions{})
+			m.Client.Log.Error(
+				fmt.Sprintf("Failed to check bot permission: %v", err),
+			)
+			_, err = m.Reply(
+				"Failed to verify my permissions.",
+				&telegram.SendOptions{},
+			)
 			return err
 		}
 
@@ -202,7 +216,9 @@ func HandleAnonVerification(cb *telegram.CallbackQuery) error {
 
 	if !ok {
 		cb.Answer("")
-		_, err := cb.Edit("This button has expired. Please use the command again.")
+		_, err := cb.Edit(
+			"This button has expired. Please use the command again.",
+		)
 		if err != nil {
 			return err
 		}
@@ -276,7 +292,6 @@ func HandleAnonVerification(cb *telegram.CallbackQuery) error {
 				"I don't have permission to %s.",
 				utils.PrettifyPermission(verify.Permission),
 			),
-			
 		)
 		if err != nil {
 			return err

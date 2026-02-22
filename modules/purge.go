@@ -33,9 +33,11 @@ func init() {
 func PurgeCmd(m *telegram.NewMessage) error {
 	if !m.IsReply() {
 		if _, err := m.Delete(); err != nil {
-		return err
-	}
-		_, err := m.Reply("⚠️ Please reply to a message to start purging from that point.")
+			return err
+		}
+		_, err := m.Reply(
+			"⚠️ Please reply to a message to start purging from that point.",
+		)
 		return err
 	}
 
@@ -44,8 +46,8 @@ func PurgeCmd(m *telegram.NewMessage) error {
 
 	if startMsgID >= endMsgID {
 		if _, err := m.Delete(); err != nil {
-		return err
-	}
+			return err
+		}
 		_, err := m.Reply("❌ Invalid message range. Reply to an older message.")
 		return err
 	}
@@ -60,7 +62,9 @@ func PurgeCmd(m *telegram.NewMessage) error {
 	}
 
 	// Send notification before deleting
-	notification, err := m.Reply(fmt.Sprintf("🗑️ Purging %d messages...", messageCount))
+	notification, err := m.Reply(
+		fmt.Sprintf("🗑️ Purging %d messages...", messageCount),
+	)
 	if err != nil {
 		return err
 	}
@@ -84,7 +88,9 @@ func PurgeCmd(m *telegram.NewMessage) error {
 	}
 
 	// Update notification with results
-	_, _ = notification.Edit(fmt.Sprintf("✅ Successfully purged %d messages!", deletedCount))
+	_, _ = notification.Edit(
+		fmt.Sprintf("✅ Successfully purged %d messages!", deletedCount),
+	)
 
 	// Delete the notification after 5 seconds
 	go func(n *telegram.NewMessage) {

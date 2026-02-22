@@ -30,30 +30,30 @@ func init() {
 	})
 }
 
-const 	helpText = `📚 <b>Bot Command Help</b>
+const helpText = `📚 <b>Bot Command Help</b>
 
 Here you'll find details for all available plugins and features.
 
 👇 Tap the buttons below to view help for each module:`
 
 func handleHelp(m *telegram.NewMessage) error {
-
 	if !m.IsPrivate() {
 		keyboard := telegram.NewKeyboard().AddRow(
 			telegram.Button.URL("🗒 Command", fmt.Sprintf("https://t.me/%s?start=help", m.Client.Me().Username)),
-		).Build()
-		
+		).
+			Build()
+
 		m.Reply("Contact me in PM for help!", &telegram.SendOptions{
 			ReplyMarkup: keyboard,
 		})
-		
+
 		return telegram.ErrEndGroup
 	}
 
-  m.Reply(helpText, &telegram.SendOptions{
-			ReplyMarkup: getFullHelp(),
-		})
-		return telegram.ErrEndGroup
+	m.Reply(helpText, &telegram.SendOptions{
+		ReplyMarkup: getFullHelp(),
+	})
+	return telegram.ErrEndGroup
 }
 
 func handleHelpCallback(c *telegram.CallbackQuery) error {
@@ -82,7 +82,7 @@ func getFullHelp() telegram.ReplyMarkup {
 	}
 
 	keyboard.NewColumn(2, buttons...)
-		keyboard.AddRow(telegram.Button.Data("⬅️ Back", "start_callback"))
+	keyboard.AddRow(telegram.Button.Data("⬅️ Back", "start_callback"))
 
 	return keyboard.Build()
 }
@@ -99,7 +99,7 @@ func handleHelpModuleCallback(c *telegram.CallbackQuery) error {
 	module, exists := GetModule(moduleName)
 	modHelpText := "❌ No help found for this module."
 	if exists && module.Help != "" {
-		modHelpText = "<i>Here is the available help of " + module.ModName + "\n\n</i>"+ module.Help
+		modHelpText = "<i>Here is the available help of " + module.ModName + "\n\n</i>" + module.Help
 	}
 
 	keyboard := telegram.NewKeyboard().AddRow(

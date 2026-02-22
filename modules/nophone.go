@@ -34,7 +34,9 @@ func init() {
 	})
 }
 
-var phoneRegex = regexp.MustCompile(`(?:(?:\+|00)[1-9]\d{0,3}[\s.-]?)?\(?\d{1,4}\)?[\s.-]?\d{1,4}[\s.-]?\d{1,9}`)
+var phoneRegex = regexp.MustCompile(
+	`(?:(?:\+|00)[1-9]\d{0,3}[\s.-]?)?\(?\d{1,4}\)?[\s.-]?\d{1,4}[\s.-]?\d{1,9}`,
+)
 
 func NoPhoneCmd(m *telegram.NewMessage) error {
 	var err error
@@ -46,7 +48,9 @@ func NoPhoneCmd(m *telegram.NewMessage) error {
 	if len(args) < 1 {
 		isEnabled, err := database.IsNoPhoneEnabled(m.ChatID())
 		if err != nil {
-			_, err = m.Reply("⚠️ Usage:\n<code>/nophone on</code> — Enable\n<code>/nophone off</code> — Disable")
+			_, err = m.Reply(
+				"⚠️ Usage:\n<code>/nophone on</code> — Enable\n<code>/nophone off</code> — Disable",
+			)
 			return err
 		} else {
 			status := map[bool]string{true: "Enabled", false: "Disabled"}[isEnabled]
@@ -57,7 +61,9 @@ func NoPhoneCmd(m *telegram.NewMessage) error {
 
 	enable, err := utils.ParseBool(args[0])
 	if err != nil {
-		_, err = m.Reply("❌ Invalid option.\nUse <code>/nophone on</code> or <code>/nophone off</code>")
+		_, err = m.Reply(
+			"❌ Invalid option.\nUse <code>/nophone on</code> or <code>/nophone off</code>",
+		)
 		return err
 	}
 
@@ -104,7 +110,12 @@ func NoPhoneHandler(m *telegram.NewMessage) error {
 	}
 
 	mention := utils.MentionHTML(m.Sender)
-	_, _ = m.Reply(fmt.Sprintf("📞 <b>Privacy Protection!</b>\n\n%s, <i>sharing phone numbers is not allowed here for safety and privacy reasons.</i> 🚫", mention))
+	_, _ = m.Reply(
+		fmt.Sprintf(
+			"📞 <b>Privacy Protection!</b>\n\n%s, <i>sharing phone numbers is not allowed here for safety and privacy reasons.</i> 🚫",
+			mention,
+		),
+	)
 	return telegram.ErrEndGroup
 }
 

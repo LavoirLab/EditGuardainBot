@@ -6,7 +6,10 @@ import (
 	"github.com/amarnathcjd/gogram/telegram"
 )
 
-func GetFullChannel(c *telegram.Client, chatId any) (*telegram.ChannelFull, error) {
+func GetFullChannel(
+	c *telegram.Client,
+	chatId any,
+) (*telegram.ChannelFull, error) {
 	resolvedPeer, err := c.ResolvePeer(chatId)
 	if err != nil {
 		return nil, err
@@ -54,7 +57,10 @@ func GetUser(client *telegram.Client, userID int64) (*telegram.UserObj, error) {
 
 	user, ok := users[0].(*telegram.UserObj)
 	if !ok {
-		return nil, fmt.Errorf("expected UserObj for id '%d', but got different type", userID)
+		return nil, fmt.Errorf(
+			"expected UserObj for id '%d', but got different type",
+			userID,
+		)
 	}
 
 	return user, nil

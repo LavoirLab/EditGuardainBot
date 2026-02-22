@@ -22,8 +22,8 @@ func MigrateData() {
 	db := client.Database("EditGuardainBot")
 	legacy := struct {
 		userDB, chatDB, editModeDB, echoDB, loggerDB, linksDB, bioLinkDB, nsfwFlagsDB *mongo.Collection
-		mediaDeleteDB, fileDeleteDB, msgDeleteDB                                     *mongo.Collection
-		noForwardDB, noPhoneDB, noHashtagsDB, noPromoDB                              *mongo.Collection
+		mediaDeleteDB, fileDeleteDB, msgDeleteDB                                      *mongo.Collection
+		noForwardDB, noPhoneDB, noHashtagsDB, noPromoDB                               *mongo.Collection
 	}{
 		userDB:        db.Collection("userstats"),
 		chatDB:        db.Collection("chats"),
@@ -43,7 +43,21 @@ func MigrateData() {
 	}
 
 	migrateBotState(ctx, state, legacy.userDB, legacy.chatDB, legacy.loggerDB)
-	migrateChatSettings(ctx, legacy.editModeDB, legacy.echoDB, legacy.linksDB, legacy.mediaDeleteDB, legacy.fileDeleteDB, legacy.msgDeleteDB, legacy.nsfwFlagsDB, legacy.noForwardDB, legacy.noPhoneDB, legacy.noHashtagsDB, legacy.noPromoDB, legacy.bioLinkDB)
+	migrateChatSettings(
+		ctx,
+		legacy.editModeDB,
+		legacy.echoDB,
+		legacy.linksDB,
+		legacy.mediaDeleteDB,
+		legacy.fileDeleteDB,
+		legacy.msgDeleteDB,
+		legacy.nsfwFlagsDB,
+		legacy.noForwardDB,
+		legacy.noPhoneDB,
+		legacy.noHashtagsDB,
+		legacy.noPromoDB,
+		legacy.bioLinkDB,
+	)
 
 	state, _ = getBotState()
 	state.Migrated = true
@@ -52,7 +66,11 @@ func MigrateData() {
 	log.Println("Data migration completed.")
 }
 
-func migrateBotState(ctx context.Context, state *BotState, userDB, chatDB, loggerDB *mongo.Collection) {
+func migrateBotState(
+	ctx context.Context,
+	state *BotState,
+	userDB, chatDB, loggerDB *mongo.Collection,
+) {
 	// Migrate Served Users
 	var userDoc struct {
 		UserIDs []int64 `bson:"users"`
@@ -109,7 +127,10 @@ func migrateBotState(ctx context.Context, state *BotState, userDB, chatDB, logge
 	updateBotState(state)
 }
 
-func migrateChatSettings(ctx context.Context, editModeDB, echoDB, linksDB, mediaDeleteDB, fileDeleteDB, msgDeleteDB, nsfwFlagsDB, noForwardDB, noPhoneDB, noHashtagsDB, noPromoDB, bioLinkDB *mongo.Collection) {
+func migrateChatSettings(
+	ctx context.Context,
+	editModeDB, echoDB, linksDB, mediaDeleteDB, fileDeleteDB, msgDeleteDB, nsfwFlagsDB, noForwardDB, noPhoneDB, noHashtagsDB, noPromoDB, bioLinkDB *mongo.Collection,
+) {
 	chatIDs := make(map[int64]bool)
 
 	collectIDs := func(coll *mongo.Collection, filter bson.M, key string) {

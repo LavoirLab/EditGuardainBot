@@ -37,7 +37,9 @@ func init() {
 func handleStartCallback(c *telegram.CallbackQuery) error {
 	c.Answer("")
 	cl := c.Client.Me()
-	userFullName := strings.TrimSpace(c.Sender.FirstName + " " + c.Sender.LastName)
+	userFullName := strings.TrimSpace(
+		c.Sender.FirstName + " " + c.Sender.LastName,
+	)
 	caption := fmt.Sprintf(startMsG,
 		c.Sender.ID, userFullName,
 		cl.ID, cl.FirstName)
@@ -51,8 +53,12 @@ func handleStartCallback(c *telegram.CallbackQuery) error {
 		telegram.Button.Data("❓ Help & Commands", "help"),
 	)
 	btn.AddRow(
-		telegram.Button.URL("➕ Add me to Your Group",
-			fmt.Sprintf("https://t.me/%s?startgroup=s&admin=delete_messages+invite_users", c.Client.Me().Username),
+		telegram.Button.URL(
+			"➕ Add me to Your Group",
+			fmt.Sprintf(
+				"https://t.me/%s?startgroup=s&admin=delete_messages+invite_users",
+				c.Client.Me().Username,
+			),
 		),
 	)
 
@@ -118,13 +124,16 @@ Link: <a href="%s">Link 1</a> <a href="%s">Link 2</a>`,
 				}
 			}
 
-			if module, exists := GetModule(modName); exists && module.Help != "" {
+			if module, exists := GetModule(modName); exists &&
+				module.Help != "" {
 				_, err := m.Reply(module.Help)
 				return err
 			}
 		}
 
-		userFullName := strings.TrimSpace(m.Sender.FirstName + " " + m.Sender.LastName)
+		userFullName := strings.TrimSpace(
+			m.Sender.FirstName + " " + m.Sender.LastName,
+		)
 		botName := strings.TrimSpace(m.Client.Me().FirstName)
 
 		caption := fmt.Sprintf(startMsG,
@@ -140,13 +149,20 @@ Link: <a href="%s">Link 1</a> <a href="%s">Link 2</a>`,
 			telegram.Button.Data("❓ Help & Commands", "help"),
 		)
 		btn.AddRow(
-			telegram.Button.URL("➕ Add me to Your Group",
-				fmt.Sprintf("https://t.me/%s?startgroup=s&admin=delete_messages+invite_users", m.Client.Me().Username),
+			telegram.Button.URL(
+				"➕ Add me to Your Group",
+				fmt.Sprintf(
+					"https://t.me/%s?startgroup=s&admin=delete_messages+invite_users",
+					m.Client.Me().Username,
+				),
 			),
 		)
 
 		database.AddServedUser(m.Sender.ID)
-		_, err := m.ReplyMedia(config.StartImage, &telegram.MediaOptions{Caption: caption, ReplyMarkup: btn.Build()})
+		_, err := m.ReplyMedia(
+			config.StartImage,
+			&telegram.MediaOptions{Caption: caption, ReplyMarkup: btn.Build()},
+		)
 		return err
 	}
 

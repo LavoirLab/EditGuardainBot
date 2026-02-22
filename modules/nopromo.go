@@ -57,7 +57,12 @@ var promoPatterns = []struct {
 
 	// Medium priority patterns (8-12 points)
 	{regexp.MustCompile(`(?i)(join\s*(now|us|today|right\s*now))`), 10},
-	{regexp.MustCompile(`(?i)(24\s*x?\s*7|24/7)\s*(active|chatting|vc|voice)`), 12},
+	{
+		regexp.MustCompile(
+			`(?i)(24\s*x?\s*7|24/7)\s*(active|chatting|vc|voice)`,
+		),
+		12,
+	},
 	{regexp.MustCompile(`(?i)(make\s*new\s*(friends|fantasy))`), 8},
 	{regexp.MustCompile(`(?i)(safe\s*for\s*girls)`), 9},
 	{regexp.MustCompile(`(?i)(no\s*abuse|respectful\s*environment)`), 7},
@@ -68,7 +73,12 @@ var promoPatterns = []struct {
 	{regexp.MustCompile(`(?i)(real\s*(people|friendship))`), 6},
 	{regexp.MustCompile(`(?i)(late\s*night\s*talks?)`), 6},
 	{regexp.MustCompile(`(?i)(feel\s*the\s*(madness|vibe))`), 7},
-	{regexp.MustCompile(`(?i)(looking\s*for\s*(a|the)\s*(best|right)?.*group)`), 8},
+	{
+		regexp.MustCompile(
+			`(?i)(looking\s*for\s*(a|the)\s*(best|right)?.*group)`,
+		),
+		8,
+	},
 	{regexp.MustCompile(`(?i)(welcome\s*to|join\s*our\s*channel)`), 8},
 	{regexp.MustCompile(`(?i)(group\s*owner|group\s*link)`), 7},
 
@@ -92,7 +102,9 @@ func NoPromoCmd(m *telegram.NewMessage) error {
 	if len(args) < 1 {
 		isEnabled, err := database.IsNoPromoEnabled(m.ChatID())
 		if err != nil {
-			_, err = m.Reply("⚠️ Usage:\n<code>/nopromo on</code> — Enable\n<code>/nopromo off</code> — Disable")
+			_, err = m.Reply(
+				"⚠️ Usage:\n<code>/nopromo on</code> — Enable\n<code>/nopromo off</code> — Disable",
+			)
 			return err
 		} else {
 			status := map[bool]string{true: "Enabled", false: "Disabled"}[isEnabled]
@@ -103,7 +115,9 @@ func NoPromoCmd(m *telegram.NewMessage) error {
 
 	enable, err := utils.ParseBool(args[0])
 	if err != nil {
-		_, err = m.Reply("❌ Invalid option.\nUse <code>/nopromo on</code> or <code>/nopromo off</code>")
+		_, err = m.Reply(
+			"❌ Invalid option.\nUse <code>/nopromo on</code> or <code>/nopromo off</code>",
+		)
 		return err
 	}
 
@@ -167,7 +181,13 @@ func NoPromoHandler(m *telegram.NewMessage) error {
 		if _, err := m.Delete(); err != nil {
 			return err
 		}
-		_, _ = m.Reply(fmt.Sprintf("🚫 <b>Promotion Detected!</b>\n\n%s, <i>your message was removed because it appears to be promotional content.</i>\n\n📊 <b>Promo Score:</b> <code>%d</code>", mention, score))
+		_, _ = m.Reply(
+			fmt.Sprintf(
+				"🚫 <b>Promotion Detected!</b>\n\n%s, <i>your message was removed because it appears to be promotional content.</i>\n\n📊 <b>Promo Score:</b> <code>%d</code>",
+				mention,
+				score,
+			),
+		)
 		return telegram.ErrEndGroup
 	} else {
 		// Medium score - Warning only

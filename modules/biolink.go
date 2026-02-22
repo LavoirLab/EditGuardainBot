@@ -49,7 +49,9 @@ func setBioMode(m *telegram.NewMessage) error {
 
 	if len(args) < 1 {
 		if isEn, err := database.GetBioMode(m.ChatID()); err != nil {
-			_, err = m.Reply("📚 Usage: <code>/biolink on</code> | <code>/biolink off</code>")
+			_, err = m.Reply(
+				"📚 Usage: <code>/biolink on</code> | <code>/biolink off</code>",
+			)
 			return err
 		} else {
 			_, err = m.Reply("Currently bioLink mode is " + map[bool]string{true: "Enabled", false: "Disabled"}[isEn] + " for your chat")
@@ -59,7 +61,9 @@ func setBioMode(m *telegram.NewMessage) error {
 
 	enable, err := utils.ParseBool(args[0])
 	if err != nil {
-		_, err = m.Reply("❗ Invalid option. Use <code>on</code> or <code>off</code>.")
+		_, err = m.Reply(
+			"❗ Invalid option. Use <code>on</code> or <code>off</code>.",
+		)
 		return err
 	}
 
@@ -67,7 +71,10 @@ func setBioMode(m *telegram.NewMessage) error {
 	if enable {
 		err := database.SetBioMode(m.ChatID())
 		if err != nil {
-			msg = fmt.Sprintf("⚠️ <b>Oops! Failed to enable BioMode.</b>\n\n🚫 An error occurred while trying to turn it on.\n\n<b>Error:</b> <code>%v</code>\n\n🔁 Please try again later.", err)
+			msg = fmt.Sprintf(
+				"⚠️ <b>Oops! Failed to enable BioMode.</b>\n\n🚫 An error occurred while trying to turn it on.\n\n<b>Error:</b> <code>%v</code>\n\n🔁 Please try again later.",
+				err,
+			)
 		} else {
 			msg = "✅ <b>BioMode enabled successfully!</b>\n\n🔍 I will now monitor bios for any links and automatically delete messages if found.\n\n🛡 Stay safe!"
 		}
@@ -147,7 +154,10 @@ func BioLinkHandler(m *telegram.NewMessage) error {
 	}
 
 	mention := utils.MentionHTML(m.Sender)
-	msg := fmt.Sprintf("🛡️ <b>BioLink Protected!</b>\n\n%s, <i>your message was removed because your profile bio contains a link. To prevent spam, links in bios are not allowed here.</i> 🚫", mention)
+	msg := fmt.Sprintf(
+		"🛡️ <b>BioLink Protected!</b>\n\n%s, <i>your message was removed because your profile bio contains a link. To prevent spam, links in bios are not allowed here.</i> 🚫",
+		mention,
+	)
 	_, _ = m.Reply(msg)
 	return telegram.ErrEndGroup
 }

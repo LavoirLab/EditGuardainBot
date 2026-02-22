@@ -53,7 +53,9 @@ func MsgDeleteCmd(m *telegram.NewMessage) error {
 	if len(args) < 1 {
 		settings, err := database.GetMsgDeleteSettings(m.ChatID())
 		if err != nil {
-			_, err = m.Reply("⚠️ Usage:\n<code>/msgdelete on</code> — Enable\n<code>/msgdelete off</code> — Disable")
+			_, err = m.Reply(
+				"⚠️ Usage:\n<code>/msgdelete on</code> — Enable\n<code>/msgdelete off</code> — Disable",
+			)
 			return err
 		} else {
 			status := map[bool]string{true: "Enabled", false: "Disabled"}[settings.Enabled]
@@ -64,7 +66,9 @@ func MsgDeleteCmd(m *telegram.NewMessage) error {
 
 	enable, err := utils.ParseBool(args[0])
 	if err != nil {
-		_, err = m.Reply("❌ Invalid option.\nUse <code>/msgdelete on</code> or <code>/msgdelete off</code>")
+		_, err = m.Reply(
+			"❌ Invalid option.\nUse <code>/msgdelete on</code> or <code>/msgdelete off</code>",
+		)
 		return err
 	}
 
@@ -88,13 +92,17 @@ func SetMsgDelayCmd(m *telegram.NewMessage) error {
 	}
 
 	if m.Args() == "" {
-		_, err = m.Reply("⚠️ Usage: <code>/setmsgdelay 5m</code> or <code>/setmsgdelay 2h</code>\n\nValid range: 1m to 12h")
+		_, err = m.Reply(
+			"⚠️ Usage: <code>/setmsgdelay 5m</code> or <code>/setmsgdelay 2h</code>\n\nValid range: 1m to 12h",
+		)
 		return err
 	}
 
 	duration, err := utils.ParseDuration(m.Args())
 	if err != nil {
-		_, err = m.Reply("❌ Invalid time format. Use: 5m, 1h, 12h, etc.\nRange: 1 minute to 12 hours")
+		_, err = m.Reply(
+			"❌ Invalid time format. Use: 5m, 1h, 12h, etc.\nRange: 1 minute to 12 hours",
+		)
 		return err
 	}
 
@@ -108,7 +116,12 @@ func SetMsgDelayCmd(m *telegram.NewMessage) error {
 		return err
 	}
 
-	_, err = m.Reply(fmt.Sprintf("✅ Message auto-delete delay set to %s", utils.FormatDuration(duration)))
+	_, err = m.Reply(
+		fmt.Sprintf(
+			"✅ Message auto-delete delay set to %s",
+			utils.FormatDuration(duration),
+		),
+	)
 	return err
 }
 
@@ -126,14 +139,14 @@ func AutoDeleteHandler(m *telegram.NewMessage) error {
 	return nil
 }
 
-
-func updateReadChannelOutboxHandler(m telegram.Update, c *telegram.Client) error {
-
-upd, ok := m.(*telegram.UpdateReadChannelOutbox)
-if !ok {
-
-return nil
-}
+func updateReadChannelOutboxHandler(
+	m telegram.Update,
+	c *telegram.Client,
+) error {
+	upd, ok := m.(*telegram.UpdateReadChannelOutbox)
+	if !ok {
+		return nil
+	}
 
 	settings, err := database.GetMsgDeleteSettings(upd.ChannelID)
 	if err != nil || !settings.Enabled {
@@ -144,4 +157,3 @@ return nil
 
 	return nil
 }
-

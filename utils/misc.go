@@ -9,7 +9,8 @@ import (
 
 func LoadTyped[T any](cache interface {
 	Get(string) (any, bool)
-}, key string) (T, bool) {
+}, key string,
+) (T, bool) {
 	var zero T
 	if val, ok := cache.Get(key); ok {
 		if typed, ok := val.(T); ok {

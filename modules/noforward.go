@@ -39,7 +39,9 @@ func NoForwardCmd(m *telegram.NewMessage) error {
 	if len(args) < 1 {
 		isEnabled, err := database.IsNoForwardEnabled(m.ChatID())
 		if err != nil {
-			_, err = m.Reply("⚠️ Usage:\n<code>/noforward on</code> — Enable\n<code>/noforward off</code> — Disable")
+			_, err = m.Reply(
+				"⚠️ Usage:\n<code>/noforward on</code> — Enable\n<code>/noforward off</code> — Disable",
+			)
 			return err
 		} else {
 			status := map[bool]string{true: "Enabled", false: "Disabled"}[isEnabled]
@@ -50,7 +52,9 @@ func NoForwardCmd(m *telegram.NewMessage) error {
 
 	enable, err := utils.ParseBool(args[0])
 	if err != nil {
-		_, err = m.Reply("❌ Invalid option.\nUse <code>/noforward on</code> or <code>/noforward off</code>")
+		_, err = m.Reply(
+			"❌ Invalid option.\nUse <code>/noforward on</code> or <code>/noforward off</code>",
+		)
 		return err
 	}
 
@@ -93,6 +97,11 @@ func NoForwardHandler(m *telegram.NewMessage) error {
 	}
 
 	mention := utils.MentionHTML(m.Sender)
-	_, _ = m.Reply(fmt.Sprintf("📤 <b>NoForward Enabled!</b>\n\n%s, <i>forwarding messages is restricted in this group to maintain original conversations.</i> 🚫", mention))
+	_, _ = m.Reply(
+		fmt.Sprintf(
+			"📤 <b>NoForward Enabled!</b>\n\n%s, <i>forwarding messages is restricted in this group to maintain original conversations.</i> 🚫",
+			mention,
+		),
+	)
 	return telegram.ErrEndGroup
 }

@@ -42,7 +42,10 @@ func main() {
 
 	if config.NsfwApiUrl != "" {
 		if err := utils.CheckNsfwApi(config.NsfwApiUrl); err != nil {
-			log.Printf("⚠️ NSFW API check failed: %v. NSFW features will be disabled.", err)
+			log.Printf(
+				"⚠️ NSFW API check failed: %v. NSFW features will be disabled.",
+				err,
+			)
 			config.NsfwApiEnabled = false
 		} else {
 			log.Println("✅ NSFW API is online and working.")

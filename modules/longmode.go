@@ -50,7 +50,9 @@ func SetLongLimitHandler(m *telegram.NewMessage) error {
 		return err
 	}
 
-	_, err = m.Reply(fmt.Sprintf("✅ Long message limit set to %d characters.", limit))
+	_, err = m.Reply(
+		fmt.Sprintf("✅ Long message limit set to %d characters.", limit),
+	)
 	return err
 }
 
@@ -64,8 +66,11 @@ func SetLongModeHandler(m *telegram.NewMessage) error {
 		return err
 	}
 	mode := strings.ToLower(strings.Fields(m.Args())[0])
-	if mode != "off" && mode != "manual" && mode != "automatic" && mode != "auto" {
-		_, err := m.Reply("Invalid mode. Use one of: <code>off</code>, <code>manual</code>, <code>automatic</code>.")
+	if mode != "off" && mode != "manual" && mode != "automatic" &&
+		mode != "auto" {
+		_, err := m.Reply(
+			"Invalid mode. Use one of: <code>off</code>, <code>manual</code>, <code>automatic</code>.",
+		)
 		return err
 	}
 

@@ -31,7 +31,12 @@ func init() {
 	go globalScheduler.Run()
 }
 
-func (cs *CleanupScheduler) Schedule(client *telegram.Client, chatID int64, messageID int32, delay time.Duration) {
+func (cs *CleanupScheduler) Schedule(
+	client *telegram.Client,
+	chatID int64,
+	messageID int32,
+	delay time.Duration,
+) {
 	key := makeKey(chatID, messageID)
 
 	cs.mu.Lock()
@@ -95,7 +100,10 @@ func (cs *CleanupScheduler) processScheduled() {
 	// Group deletions by chat for batch processing
 	chatMessages := make(map[int64][]int32)
 	for _, deletion := range deletions {
-		chatMessages[deletion.ChatID] = append(chatMessages[deletion.ChatID], deletion.MessageID)
+		chatMessages[deletion.ChatID] = append(
+			chatMessages[deletion.ChatID],
+			deletion.MessageID,
+		)
 	}
 
 	// Delete messages in batches
@@ -149,7 +157,12 @@ func makeKey(chatID int64, messageID int32) string {
 }
 
 // Helper function to schedule a message for deletion
-func ScheduleMessageDeletion(client *telegram.Client, chatID int64, messageID int32, delay time.Duration) {
+func ScheduleMessageDeletion(
+	client *telegram.Client,
+	chatID int64,
+	messageID int32,
+	delay time.Duration,
+) {
 	globalScheduler.Schedule(client, chatID, messageID, delay)
 }
 

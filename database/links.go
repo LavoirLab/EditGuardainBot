@@ -29,7 +29,9 @@ func RemoveAllowedHostname(chatID int64, hostname string) error {
 	}
 	for i, h := range settings.Links.Hostnames {
 		if h == hostname {
-			settings.Links.Hostnames = append(settings.Links.Hostnames[:i], settings.Links.Hostnames[i+1:]...)
+			settings.Links.Hostnames = append(
+				settings.Links.Hostnames[:i],
+				settings.Links.Hostnames[i+1:]...)
 			return updateChatSettings(settings)
 		}
 	}

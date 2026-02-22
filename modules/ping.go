@@ -38,7 +38,11 @@ func pingHandler(m *telegram.NewMessage) error {
 	uptime := time.Since(config.StartTime)
 	uptimeStr := utils.FormatUptime(uptime)
 
-	text := fmt.Sprintf("🏓 Pong!\nLatency: %dms\n🤖 I've been running for %s without rest!", latency, uptimeStr)
+	text := fmt.Sprintf(
+		"🏓 Pong!\nLatency: %dms\n🤖 I've been running for %s without rest!",
+		latency,
+		uptimeStr,
+	)
 
 	_, err = reply.Edit(text)
 	return err

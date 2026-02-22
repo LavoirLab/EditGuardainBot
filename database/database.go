@@ -138,7 +138,8 @@ func getChatSettings(chatID int64) (*ChatSettings, error) {
 	defer cancel()
 
 	var settings ChatSettings
-	err := chatSettingsColl.FindOne(ctx, bson.M{"_id": chatID}).Decode(&settings)
+	err := chatSettingsColl.FindOne(ctx, bson.M{"_id": chatID}).
+		Decode(&settings)
 	if err == mongo.ErrNoDocuments {
 		def := defaultChatSettings(chatID)
 		dbCache.Set(cacheKey, def)
@@ -173,7 +174,12 @@ func updateChatSettings(newSettings *ChatSettings) error {
 
 // Utility
 
-func CreateIndex(ctx context.Context, coll *mongo.Collection, keys bson.D, unique bool) {
+func CreateIndex(
+	ctx context.Context,
+	coll *mongo.Collection,
+	keys bson.D,
+	unique bool,
+) {
 	indexModel := mongo.IndexModel{
 		Keys:    keys,
 		Options: options.Index().SetUnique(unique),
@@ -182,7 +188,11 @@ func CreateIndex(ctx context.Context, coll *mongo.Collection, keys bson.D, uniqu
 	if err != nil {
 		if strings.Contains(err.Error(), "IndexOptionsConflict") {
 			if errDrop := DropAllIndexes(ctx, coll); errDrop != nil {
-				log.Printf("❌ Failed to drop indexes on %s: %v\n", coll.Name(), errDrop)
+				log.Printf(
+					"❌ Failed to drop indexes on %s: %v\n",
+					coll.Name(),
+					errDrop,
+				)
 				return
 			}
 			_, err = coll.Indexes().CreateOne(ctx, indexModel)

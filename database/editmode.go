@@ -6,7 +6,8 @@ func SetEditMode(chatID int64, mode string, duration int) (bool, error) {
 		return false, err
 	}
 
-	if settings.EditMode.Mode == mode && settings.EditMode.Duration == duration {
+	if settings.EditMode.Mode == mode &&
+		settings.EditMode.Duration == duration {
 		return true, nil
 	}
 

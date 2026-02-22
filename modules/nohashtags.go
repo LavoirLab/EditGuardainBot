@@ -49,7 +49,9 @@ func NoHashtagsCmd(m *telegram.NewMessage) error {
 	if len(args) < 1 {
 		isEnabled, err := database.IsNoHashtagsEnabled(m.ChatID())
 		if err != nil {
-			_, err = m.Reply("⚠️ Usage:\n<code>/nohashtags on</code> — Enable\n<code>/nohashtags off</code> — Disable")
+			_, err = m.Reply(
+				"⚠️ Usage:\n<code>/nohashtags on</code> — Enable\n<code>/nohashtags off</code> — Disable",
+			)
 			return err
 		} else {
 			status := map[bool]string{true: "Enabled", false: "Disabled"}[isEnabled]
@@ -60,7 +62,9 @@ func NoHashtagsCmd(m *telegram.NewMessage) error {
 
 	enable, err := utils.ParseBool(args[0])
 	if err != nil {
-		_, err = m.Reply("❌ Invalid option.\nUse <code>/nohashtags on</code> or <code>/nohashtags off</code>")
+		_, err = m.Reply(
+			"❌ Invalid option.\nUse <code>/nohashtags on</code> or <code>/nohashtags off</code>",
+		)
 		return err
 	}
 
@@ -106,6 +110,11 @@ func NoHashtagsHandler(m *telegram.NewMessage) error {
 	}
 
 	mention := utils.MentionHTML(m.Sender)
-	_, _ = m.Reply(fmt.Sprintf("🏷️ <b>No Hashtags!</b>\n\n%s, <i>hashtags are not permitted in this group to prevent spamming and maintain clarity.</i> 🚫", mention))
+	_, _ = m.Reply(
+		fmt.Sprintf(
+			"🏷️ <b>No Hashtags!</b>\n\n%s, <i>hashtags are not permitted in this group to prevent spamming and maintain clarity.</i> 🚫",
+			mention,
+		),
+	)
 	return telegram.ErrEndGroup
 }

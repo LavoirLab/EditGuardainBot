@@ -73,10 +73,19 @@ var (
 
 	LoggerId = getEnv("LOGGER_ID", "-1003892389769").Int64()
 
-	MongoUri = getEnv("MONGO_DB_URI", "mongodb+srv://bikash:bikash@bikash.3jkvhp7.mongodb.net/?retryWrites=true&w=majority").String()
+	MongoUri = getEnv(
+		"MONGO_DB_URI",
+		"mongodb+srv://bikash:bikash@bikash.3jkvhp7.mongodb.net/?retryWrites=true&w=majority",
+	).String()
 
-	SupportChannel = getEnv("SUPPORT_CHANNEL", "https://t.me/Team_Dns_Network").String()
-	SupportChat    = getEnv("SUPPORT_CHAT", "https://t.me/dns_support_group").String()
+	SupportChannel = getEnv(
+		"SUPPORT_CHANNEL",
+		"https://t.me/Team_Dns_Network",
+	).String()
+	SupportChat = getEnv(
+		"SUPPORT_CHAT",
+		"https://t.me/dns_support_group",
+	).String()
 
 	OwnerId = getEnv("OWNER_ID", "6119285647").Int64Slice()
 

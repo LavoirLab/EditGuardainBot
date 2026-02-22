@@ -43,7 +43,11 @@ func createAccount(shortName string) (string, error) {
 		return "", err
 	}
 
-	req, err := http.NewRequest("POST", TelegraphApi+"createAccount", bytes.NewReader(jsonData))
+	req, err := http.NewRequest(
+		"POST",
+		TelegraphApi+"createAccount",
+		bytes.NewReader(jsonData),
+	)
 	if err != nil {
 		return "", err
 	}
@@ -95,7 +99,9 @@ func getAvailableToken() (string, error) {
 
 	newToken, err := createAccount("EcoBot" + strconv.Itoa(len(AccountMap)+1))
 	if err != nil {
-		return "", errors.New("no available accounts and failed to create new account")
+		return "", errors.New(
+			"no available accounts and failed to create new account",
+		)
 	}
 
 	AccountMap[newToken] = 0
@@ -141,7 +147,11 @@ func CreateTelegraphPage(content, firstName, authorURL string) (string, error) {
 
 		}
 
-		req, err := http.NewRequest("POST", TelegraphApi+"createPage", bytes.NewReader(jsonData))
+		req, err := http.NewRequest(
+			"POST",
+			TelegraphApi+"createPage",
+			bytes.NewReader(jsonData),
+		)
 		if err != nil {
 			return "", err
 		}

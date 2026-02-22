@@ -72,17 +72,33 @@ func EcoHandler(m *telegram.NewMessage) error {
 
 	settings, err := database.GetEchoSettings(m.ChatID())
 	if err != nil {
-		_, err := m.Reply(fmt.Sprintf("⚠️ Something went wrong while processing the limit.\nError: %v", err))
+		_, err := m.Reply(
+			fmt.Sprintf(
+				"⚠️ Something went wrong while processing the limit.\nError: %v",
+				err,
+			),
+		)
 		return err
 	}
 
 	if len(m.Text()) < settings.Limit {
 		isadmin, _ := utils.IsAdmin(m.Client, m.ChatID(), m.SenderID())
 		if isadmin {
-			_, err := m.Reply(fmt.Sprintf("Oops! Your message is under %d characters. Since you're an admin, you're not required to use /echo. But if you’d like to, please send a message longer than %d characters.", settings.Limit, settings.Limit))
+			_, err := m.Reply(
+				fmt.Sprintf(
+					"Oops! Your message is under %d characters. Since you're an admin, you're not required to use /echo. But if you’d like to, please send a message longer than %d characters.",
+					settings.Limit,
+					settings.Limit,
+				),
+			)
 			return err
 		}
-		_, err := m.Reply(fmt.Sprintf("Oops! Your message is under %d characters. You can send it without using /echo.", settings.Limit))
+		_, err := m.Reply(
+			fmt.Sprintf(
+				"Oops! Your message is under %d characters. You can send it without using /echo.",
+				settings.Limit,
+			),
+		)
 		return err
 	}
 
@@ -163,7 +179,9 @@ func LongMessageHandler(m *telegram.NewMessage) error {
 
 func sendEchoMessage(m *telegram.NewMessage, text string) error {
 	var authorURL string
-	userFullName := strings.TrimSpace(m.Sender.FirstName + " " + m.Sender.LastName)
+	userFullName := strings.TrimSpace(
+		m.Sender.FirstName + " " + m.Sender.LastName,
+	)
 	if um := m.Sender.Username; um != "" {
 		authorURL = fmt.Sprintf("https://t.me/%s", um)
 	} else {
@@ -183,7 +201,9 @@ func sendEchoMessage(m *telegram.NewMessage, text string) error {
 	if m.IsReply() {
 		rmsg, err := m.Client.GetMessageByID(m.ChatID(), m.ReplyID())
 		if err == nil && rmsg.Sender != nil {
-			replyUserFullName := strings.TrimSpace(rmsg.Sender.FirstName + " " + rmsg.Sender.LastName)
+			replyUserFullName := strings.TrimSpace(
+				rmsg.Sender.FirstName + " " + rmsg.Sender.LastName,
+			)
 
 			// Use the full template with both names
 			msg = fmt.Sprintf(
@@ -206,7 +226,9 @@ func sendEchoMessage(m *telegram.NewMessage, text string) error {
 			`👋 <a href="tg://user?id=%d">%s</a> <b>wanted to share a long message.</b> 📝
 
 📖 <b>View full message on:</b> <a href="%s">Telegraph</a>`,
-			m.SenderID(), html.EscapeString(userFullName), url,
+			m.SenderID(),
+			html.EscapeString(userFullName),
+			url,
 		)
 	}
 

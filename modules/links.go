@@ -14,7 +14,9 @@ import (
 	"main/utils"
 )
 
-var hostnameRegex = regexp.MustCompile(`(?i)(?:https?://)?(?:www\.)?([a-z0-9.-]+\.[a-z]{2,})`)
+var hostnameRegex = regexp.MustCompile(
+	`(?i)(?:https?://)?(?:www\.)?([a-z0-9.-]+\.[a-z]{2,})`,
+)
 
 func init() {
 	RegisterModule(&ModuleInfo{
@@ -61,7 +63,8 @@ func extractHostname(input string) string {
 	if len(matches) >= 2 {
 		return strings.ToLower(matches[1])
 	}
-	if !strings.HasPrefix(input, "http://") && !strings.HasPrefix(input, "https://") {
+	if !strings.HasPrefix(input, "http://") &&
+		!strings.HasPrefix(input, "https://") {
 		input = "http://" + input
 	}
 	u, err := url.Parse(input)
@@ -76,7 +79,8 @@ func LinkFilterHandler(m *telegram.NewMessage) error {
 		return nil
 	}
 
-	if isEn, err := database.IsLinkFilterEnabled(m.ChatID()); err != nil || !isEn {
+	if isEn, err := database.IsLinkFilterEnabled(m.ChatID()); err != nil ||
+		!isEn {
 		return nil
 	}
 
@@ -119,7 +123,12 @@ func LinkFilterHandler(m *telegram.NewMessage) error {
 				return err
 			}
 			mention := utils.MentionHTML(m.Sender)
-			_, _ = m.Reply(fmt.Sprintf("🚫 <b>Link Blocked!</b>\n\n%s, <i>unapproved link detected. Only allowed domains are permitted in this group.</i>\n\n💡 <b>Tip:</b> Contact an admin if you think this is a mistake.\n\n🔗 <a href='%s'>Learn how to format links</a>", mention, config.SupportChannel),
+			_, _ = m.Reply(
+				fmt.Sprintf(
+					"🚫 <b>Link Blocked!</b>\n\n%s, <i>unapproved link detected. Only allowed domains are permitted in this group.</i>\n\n💡 <b>Tip:</b> Contact an admin if you think this is a mistake.\n\n🔗 <a href='%s'>Learn how to format links</a>",
+					mention,
+					config.SupportChannel,
+				),
 				&telegram.SendOptions{
 					ParseMode:   "HTML",
 					LinkPreview: false,
@@ -140,7 +149,9 @@ func NoLinksCmd(m *telegram.NewMessage) error {
 
 	if len(args) < 1 {
 		if isEn, err := database.IsLinkFilterEnabled(m.ChatID()); err != nil {
-			_, err = m.Reply("⚠️ Usage:\n<code>/nolinks on</code> – Enable link filtering\n<code>/nolinks off</code> – Disable link filtering")
+			_, err = m.Reply(
+				"⚠️ Usage:\n<code>/nolinks on</code> – Enable link filtering\n<code>/nolinks off</code> – Disable link filtering",
+			)
 			return err
 		} else {
 			_, err = m.Reply("Currently Nolinks mode is " + map[bool]string{true: "Enabled", false: "Disabled"}[isEn] + " for your chat.")
@@ -149,7 +160,9 @@ func NoLinksCmd(m *telegram.NewMessage) error {
 	}
 	enable, err := utils.ParseBool(args[0])
 	if err != nil {
-		_, err = m.Reply("❌ Invalid option.\nUse <code>/nolinks on</code> or <code>/nolinks off</code>")
+		_, err = m.Reply(
+			"❌ Invalid option.\nUse <code>/nolinks on</code> or <code>/nolinks off</code>",
+		)
 		return err
 	}
 	if err := database.SetLinkFilterEnabled(m.ChatID(), enable); err != nil {
@@ -178,7 +191,9 @@ func AllowHostCmd(m *telegram.NewMessage) error {
 	}
 	host := extractHostname(args[0])
 	if host == "" {
-		_, err = m.Reply("❌ Invalid domain or URL.\nExample: <code>/allowlink github.com</code>")
+		_, err = m.Reply(
+			"❌ Invalid domain or URL.\nExample: <code>/allowlink github.com</code>",
+		)
 		return err
 	}
 	if err := database.AddAllowedHostname(m.ChatID(), host); err != nil {
@@ -203,7 +218,9 @@ func RemoveHostCmd(m *telegram.NewMessage) error {
 	}
 	host := extractHostname(args[0])
 	if host == "" {
-		_, err = m.Reply("❌ Invalid domain or URL.\nExample: <code>/removelink github.com</code>")
+		_, err = m.Reply(
+			"❌ Invalid domain or URL.\nExample: <code>/removelink github.com</code>",
+		)
 		return err
 	}
 	if err := database.RemoveAllowedHostname(m.ChatID(), host); err != nil {

@@ -37,7 +37,9 @@ func DeleteServedUser(userID int64) error {
 	}
 	for i, id := range state.ServedUsers {
 		if id == userID {
-			state.ServedUsers = append(state.ServedUsers[:i], state.ServedUsers[i+1:]...)
+			state.ServedUsers = append(
+				state.ServedUsers[:i],
+				state.ServedUsers[i+1:]...)
 			return updateBotState(state)
 		}
 	}

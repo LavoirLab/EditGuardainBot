@@ -27,8 +27,10 @@ type HandlerConfig struct {
 	Group   int
 }
 
-var registeredModules = make(map[string]*ModuleInfo)
-var BotInfo *tg.UserObj
+var (
+	registeredModules = make(map[string]*ModuleInfo)
+	BotInfo           *tg.UserObj
+)
 
 func RegisterModule(info *ModuleInfo) {
 	if _, exists := registeredModules[info.Name]; exists {
@@ -165,7 +167,6 @@ func safeAlbumHandler(
 		}()
 
 		err = handler(a)
-
 		if err != nil {
 			if errors.Is(err, tg.ErrEndGroup) {
 				return err

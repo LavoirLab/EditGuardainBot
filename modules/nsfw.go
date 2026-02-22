@@ -15,6 +15,7 @@ import (
 	"time"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
+
 	"main/config"
 	"main/database"
 	"main/utils"
@@ -70,7 +71,9 @@ func NsfwCmdHandler(m *tg.NewMessage) error {
 
 	enable, err := utils.ParseBool(args[0])
 	if err != nil {
-		_, err = m.Reply("Use <code>/nonsfw on</code> or <code>/nonsfw off</code>")
+		_, err = m.Reply(
+			"Use <code>/nonsfw on</code> or <code>/nonsfw off</code>",
+		)
 		return err
 	}
 
@@ -153,7 +156,9 @@ func AlbumNsfwHandler(a *tg.Album) error {
 		chatID := a.Messages[0].ChatID()
 		userID := a.Messages[0].SenderID()
 		muted := trackViolationAndMute(a.Client, chatID, userID)
-		_, err := a.Messages[0].Respond(buildNsfwWarnMsg(utils.MentionHTML(a.Messages[0].Sender), muted))
+		_, err := a.Messages[0].Respond(
+			buildNsfwWarnMsg(utils.MentionHTML(a.Messages[0].Sender), muted),
+		)
 		if err != nil {
 			return err
 		}
@@ -291,7 +296,7 @@ func sendFileToNsfwApi(filePath string) (bool, error) {
 		return false, err
 	}
 
-fmt.Println("The confidence level is ", result.Confidence)
+	fmt.Println("The confidence level is ", result.Confidence)
 	return strings.ToLower(result.Label) == "nsfw", nil
 }
 
@@ -314,7 +319,14 @@ func trackViolationAndMute(client *tg.Client, chatID, userID int64) bool {
 			TillDate: muteUntil,
 		})
 		if err != nil {
-			client.Log.Error(fmt.Sprintf("NSFW mute failed for user %d in chat %d: %v", userID, chatID, err))
+			client.Log.Error(
+				fmt.Sprintf(
+					"NSFW mute failed for user %d in chat %d: %v",
+					userID,
+					chatID,
+					err,
+				),
+			)
 			return false
 		}
 		nsfwViolations.Set(key, 0)
