@@ -33,11 +33,13 @@ func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "nsfw",
 		ModName: "🔞 NSFW",
-		Help: "🔞 <b>NSFW Detection</b>\n\n" +
-			"<b>Commands:</b>\n" +
-			"• <code>/nonsfw on</code> — Enable ✅\n" +
-			"• <code>/nonsfw off</code> — Disable ❌\n\n" +
-			"Scans photos and stickers (webp, webm). Deletes NSFW content and mutes repeat offenders after 5 violations in 1h.",
+		Help: `<emoji id='5460873805297624194'>🔞</emoji> <b>ɴsғᴡ ᴅᴇᴛᴇᴄᴛɪᴏɴ</b>
+
+<b>ᴄᴏᴍᴍᴀɴᴅs:</b>
+<blockquote>• <code>/nonsfw on</code> — ᴇɴᴀʙʟᴇ <emoji id='6084551628461967966'>✅</emoji>
+• <code>/nonsfw off</code> — ᴅɪsᴀʙʟᴇ <emoji id='5465665476971471368'>❌</emoji></blockquote>
+
+sᴄᴀɴs ᴘʜᴏᴛᴏs ᴀɴᴅ sᴛɪᴄᴋᴇʀs (ᴡᴇʙᴘ, ᴡᴇʙᴍ). ᴅᴇʟᴇᴛᴇs ɴsғᴡ ᴄᴏɴᴛᴇɴᴛ ᴀɴᴅ ᴍᴜᴛᴇs ʀᴇᴘᴇᴀᴛ ᴏғғᴇɴᴅᴇʀs ᴀғᴛᴇʀ 5 ᴠɪᴏʟᴀᴛɪᴏɴs ɪɴ 1ʜ.`,
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "/nonsfw",
