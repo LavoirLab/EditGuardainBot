@@ -15,16 +15,15 @@ func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "nophone",
 		ModName: "📞 Phone",
-		Help: "📞 <b>Phone Number Protection</b> blocks messages containing phone numbers.\n\n" +
-			"<b>Commands:</b>\n" +
-			"• <code>/nophone on</code> — Block phone numbers ✅\n" +
-			"• <code>/nophone off</code> — Allow phone numbers ❌\n\n" +
-			"<b>Detection:</b>\n" +
-			"• International format: +91 9876543210\n" +
-			"• With spaces/dashes: +1-234-567-8900\n" +
-			"• Without plus: 919876543210\n\n" +
-			"<b>ℹ️ Note:</b> Messages with phone numbers will be deleted.\n" +
-			"👮 Only group admins can configure this setting.",
+		Help: `📞 <b>ᴘʜᴏɴᴇ ɴᴜᴍʙᴇʀ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ</b> ʙʟᴏᴄᴋs ᴍᴇssᴀɢᴇs ᴄᴏɴᴛᴀɪɴɪɴɢ ᴘʜᴏɴᴇ ɴᴜᴍʙᴇʀs.
+
+<b>ᴄᴏᴍᴍᴀɴᴅs:</b>
+<blockquote>• <code>/nophone on</code> — ʙʟᴏᴄᴋ ᴘʜᴏɴᴇ ɴᴜᴍʙᴇʀs <emoji id='6084551628461967966'>✅</emoji>
+• <code>/nophone off</code> — ᴀʟʟᴏᴡ ᴘʜᴏɴᴇ ɴᴜᴍʙᴇʀs <emoji id='5465665476971471368'>❌</emoji></blockquote>
+
+<b><emoji id='5420323339723881652'>ℹ️</emoji> ɴᴏᴛᴇ:</b>
+<blockquote>– ᴍᴇssᴀɢᴇs ᴡɪᴛʜ ᴘʜᴏɴᴇ ɴᴜᴍʙᴇʀs ᴡɪʟʟ ʙᴇ ᴅᴇʟᴇᴛᴇᴅ.
+– <emoji id='5370872220149099318'>👮</emoji> ᴏɴʟʏ ɢʀᴏᴜᴘ ᴀᴅᴍɪɴs ᴄᴀɴ ᴄᴏɴғɪɢᴜʀᴇ ᴛʜɪs sᴇᴛᴛɪɴɢ.</blockquote>`,
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:nophone",
