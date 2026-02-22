@@ -132,7 +132,7 @@ func updateReadChannelOutboxHandler(m telegram.Update, c *telegram.Client) error
 upd, ok := m.(*telegram.UpdateReadChannelOutbox)
 if !ok {
 
-return 
+return nil
 }
 
 fmt.Println("Channel id got by updateReadChannelOutbox ", upd.ChannelID)
