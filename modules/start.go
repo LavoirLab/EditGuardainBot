@@ -12,7 +12,7 @@ import (
 	"main/database"
 )
 
-/* var startMsG string = `<emoji id='5251203410396458957'>🛡</emoji> Hello <a href="tg://user?id=%d">%s</a>!</b> <emoji id='5440422734402173876'>👋</emoji>  
+/* var startMsG string = `<emoji id='5251203410396458957'>🛡</emoji> Hello <a href="tg://user?id=%d">%s</a>!</b> <emoji id='5440422734402173876'>👋</emoji>
 I'm <b><a href="tg://user?id=%d">%s</a></b>, your group’s advanced security and management bot.
 
 I can help you with:
