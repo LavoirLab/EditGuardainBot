@@ -22,16 +22,18 @@ func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "links",
 		ModName: "🔗 Links",
-		Help: "🔗 <b>LinkFilter</b> allows admins to restrict messages containing unapproved links.\n\n" +
-			"<b>Usage:</b>\n" +
-			"➤ <code>/nolinks</code> – See your current link filtering enabled or not.\n" +
-			"➤ <code>/nolinks on</code> – Enable link filtering\n" +
-			"➤ <code>/nolinks off</code> – Disable link filtering\n" +
-			"➤ <code>/allowlink example.com</code> – Allow links from a domain\n" +
-			"➤ <code>/removelink example.com</code> – Remove allowed domain\n" +
-			"➤ <code>/listlinks</code> – Show all allowed domains\n\n" +
-			"🚫 Messages with links not in the allowed list will be automatically deleted.\n" +
-			"👮 Only admins can configure this filter.",
+		Help: `🔗 <b>Lɪɴᴋғɪʟᴛᴇʀ</b> ᴀʟʟᴏᴡs ᴀᴅᴍɪɴs ᴛᴏ ʀᴇsᴛʀɪᴄᴛ ᴍᴇssᴀɢᴇs ᴄᴏɴᴛᴀɪɴɪɴɢ ᴜɴᴀᴘᴘʀᴏᴠᴇᴅ ʟɪɴᴋs.
+
+<b>ᴜsᴀɢᴇ:</b>
+➤ <code>/nolinks</code> – sᴇᴇ ʏᴏᴜʀ ᴄᴜʀʀᴇɴᴛ ʟɪɴᴋ ғɪʟᴛᴇʀɪɴɢ ᴇɴᴀʙʟᴇᴅ ᴏʀ ɴᴏᴛ.
+➤ <code>/nolinks on</code> – ᴇɴᴀʙʟᴇ ʟɪɴᴋ ғɪʟᴛᴇʀɪɴɢ
+➤ <code>/nolinks off</code> – ᴅɪsᴀʙʟᴇ ʟɪɴᴋ ғɪʟᴛᴇʀɪɴɢ
+➤ <code>/allowlink example.com</code> – ᴀʟʟᴏᴡ ʟɪɴᴋs ғʀᴏᴍ ᴀ ᴅᴏᴍᴀɪɴ
+➤ <code>/removelink example.com</code> – ʀᴇᴍᴏᴠᴇ ᴀʟʟᴏᴡᴇᴅ ᴅᴏᴍᴀɪɴ
+➤ <code>/listlinks</code> – sʜᴏᴡ ᴀʟʟ ᴀʟʟᴏᴡᴇᴅ ᴅᴏᴍᴀɪɴs
+
+<emoji id='5929345782560853059'>🚫</emoji> ᴍᴇssᴀɢᴇs ᴡɪᴛʜ ʟɪɴᴋs ɴᴏᴛ ɪɴ ᴛʜᴇ ᴀʟʟᴏᴡᴇᴅ ʟɪsᴛ ᴡɪʟʟ ʙᴇ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ᴅᴇʟᴇᴛᴇᴅ.
+<emoji id='5370872220149099318'>👮</emoji> ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴄᴏɴғɪɢᴜʀᴇ ᴛʜɪs ғɪʟᴛᴇʀ.`,
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:nolinks",
