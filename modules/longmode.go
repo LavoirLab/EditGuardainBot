@@ -17,12 +17,11 @@ func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "longmode",
 		ModName: "📏 LongMode",
-		Help: `<b>Commands:</b>
-• /setlonglimit <code>&lt;number&gt;</code> – Set character limit (200–4000).
-• /nolongmessage <code>&lt;on|off&gt;</code> – Enable or disable long message protection.
+		Help: `<i>ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ᴅᴇʟᴇᴛᴇs ᴍᴇssᴀɢᴇs ᴛʜᴀᴛ ᴇxᴄᴇᴇᴅ ᴛʜᴇ ᴀʟʟᴏᴡᴇᴅ ᴄʜᴀʀᴀᴄᴛᴇʀ ʟɪᴍɪᴛ ᴀɴᴅ ᴡᴀʀɴs ᴛʜᴇ ᴜsᴇʀ.<\i>
 
-<b>Description:</b>
-Automatically deletes messages that exceed the allowed character limit and warns the user.`,
+<b>ᴄᴏᴍᴍᴀɴᴅs:</b>
+<blockquote>• <code>/setlonglimit &lt;number&gt;</code> – sᴇᴛ ᴄʜᴀʀᴀᴄᴛᴇʀ ʟɪᴍɪᴛ (200–4000).
+• <code>/nolongmessage &lt;on|off&gt;</code> – ᴇɴᴀʙʟᴇ ᴏʀ ᴅɪsᴀʙʟᴇ ʟᴏɴɢ ᴍᴇssᴀɢᴇ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ.</blockquote>`,
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:setlonglimit",
@@ -203,10 +202,7 @@ func LongMessageHandler(m *telegram.NewMessage) error {
 		text := fmt.Sprintf(`
 📏 <b>Message Too Long!</b>
 
-⚠️ <a href="tg://user?id=%d">%s</a>, <i>your message exceeds the %d-character limit allowed in this group.</i> 🚫
-
-💡 <b>Tip:</b> Please shorten your message or send it in multiple parts to stay within the limit. 📜
-`, id, name, settings.Limit)
+⚠️ <a href="tg://user?id=%d">%s</a>, <i>your message exceeds the %d-character limit allowed in this group.</i> 🚫`, id, name, settings.Limit)
 
 		_, _ = m.Reply(text)
 		deleteWarningTracker.chats[chatID] = time.Now()
