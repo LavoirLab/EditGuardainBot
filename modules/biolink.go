@@ -96,7 +96,7 @@ func setBioMode(m *telegram.NewMessage) error {
 }
 
 func BioLinkHandler(m *telegram.NewMessage) error {
-	if m.IsAnonymous() || m.IsChannelPost(){
+	if m.IsAnonymous() || m.IsChannelPost() {
 		return nil
 	}
 
