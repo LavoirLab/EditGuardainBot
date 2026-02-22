@@ -14,7 +14,7 @@ import (
 func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "nohashtags",
-		ModName: "# NoHashtags",
+		ModName: "# Hashtags",
 		Help: "# <b>Hashtag Filter</b> blocks messages containing hashtags.\n\n" +
 			"<b>Commands:</b>\n" +
 			"• <code>/nohashtags on</code> — Block hashtags ✅\n" +
