@@ -57,6 +57,18 @@ func (e EnvValue) Int64Slice() []int64 {
 	return out
 }
 
+func (e EnvValue) Bool() bool {
+	switch strings.ToLower(strings.TrimSpace(e.value)) {
+	case "true", "1", "yes", "on", "enable", "enabled":
+		return true
+	case "false", "0", "no", "off", "disable", "disabled":
+		return false
+	default:
+		log.Fatalf("Invalid bool for %s: %s", e.key, e.value)
+		return false
+	}
+}
+
 /* ---------- CONFIG VARS ---------- */
 
 var (
@@ -91,4 +103,6 @@ var (
 
 	NsfwApiUrl     = getEnv("NSFW_API_URL", "").String()
 	NsfwApiEnabled = false
+NsfwOnLocalHost = getEnv("NSFW_ON_LOCAL_HOST", "false").Bool()
+
 )
