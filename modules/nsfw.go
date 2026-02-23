@@ -8,10 +8,10 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
@@ -21,13 +21,27 @@ import (
 	"main/utils"
 )
 
-var (
-	nsfwFileCache   = utils.NewCache[string, bool](48 * time.Hour)
-	nsfwViolations  = utils.NewCache[string, int](24 * time.Hour)
-	nsfwViolationMu sync.Mutex
+var httpClient = &http.Client{
+	Timeout: 90 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:        20,
+		MaxIdleConnsPerHost: 10,
+		IdleConnTimeout:     90 * time.Second,
+	},
+}
+
+const (
+	nsfwViolationThreshold = 5
+	nsfwMaxConcurrent      = 8
 )
 
-const nsfwViolationThreshold = 5
+var (
+	nsfwFileCache    = utils.NewCache[string, bool](48 * time.Hour)
+	nsfwViolations   = utils.NewCache[string, int](24 * time.Hour)
+	nsfwViolationsMu sync.Map
+	nsfwSemaphore    = make(chan struct{}, nsfwMaxConcurrent)
+	nsfwInflight     int64
+)
 
 func init() {
 	RegisterModule(&ModuleInfo{
@@ -35,7 +49,7 @@ func init() {
 		ModName: "🔞 NSFW",
 		Help: `<emoji id='5460873805297624194'>🔞</emoji> <b>ɴsғᴡ ᴅᴇᴛᴇᴄᴛɪᴏɴ</b>
 
-<i>sᴄᴀɴs ᴘʜᴏᴛᴏs ᴀɴᴅ sᴛɪᴄᴋᴇʀs (ᴡᴇʙᴘ, ᴡᴇʙᴍ). ᴅᴇʟᴇᴛᴇs ɴsғᴡ ᴄᴏɴᴛᴇɴᴛ ᴀɴᴅ ᴍᴜᴛᴇs ʀᴇᴘᴇᴀᴛ ᴏғғᴇɴᴅᴇʀs ᴀғᴛᴇʀ 5 ᴠɪᴏʟᴀᴛɪᴏɴs ɪɴ 1ʜ.</i>
+<i>sᴄᴀɴs ᴘʜᴏᴛᴏs, ᴠɪᴅᴇᴏs ᴀɴᴅ sᴛɪᴄᴋᴇʀs (ᴡᴇʙᴘ, ᴡᴇʙᴍ). ᴅᴇʟᴇᴛᴇs ɴsғᴡ ᴄᴏɴᴛᴇɴᴛ ᴀɴᴅ ᴍᴜᴛᴇs ʀᴇᴘᴇᴀᴛ ᴏғғᴇɴᴅᴇʀs ᴀғᴛᴇʀ 5 ᴠɪᴏʟᴀᴛɪᴏɴs ɪɴ 1ʜ.</i>
 
 <b>ᴄᴏᴍᴍᴀɴᴅs:</b>
 <blockquote>• <code>/nonsfw on</code> — ᴇɴᴀʙʟᴇ <emoji id='6084551628461967966'>✅</emoji>
@@ -66,12 +80,10 @@ func NsfwCmdHandler(m *tg.NewMessage) error {
 		if enabled {
 			status = "Enabled ✅"
 		}
-		_, err := m.Reply(
-			fmt.Sprintf(
-				"🔞 <b>NSFW Detection Status:</b> %s\n\n<i>When enabled, I will scan photos and stickers for adult content.</i>",
-				status,
-			),
-		)
+		_, err := m.Reply(fmt.Sprintf(
+			"🔞 <b>NSFW Detection Status:</b> %s\n\n<i>When enabled, I will scan photos, videos and stickers for adult content.</i>",
+			status,
+		))
 		return err
 	}
 
@@ -96,9 +108,7 @@ func NsfwCmdHandler(m *tg.NewMessage) error {
 		status = "enabled ✅"
 		next = "Use <code>/nonsfw off</code> to disable it."
 	}
-	_, err = m.Reply(
-		fmt.Sprintf("🔞 <b>NSFW Detection %s</b>\n\n%s", status, next),
-	)
+	_, err = m.Reply(fmt.Sprintf("🔞 <b>NSFW Detection %s</b>\n\n%s", status, next))
 	return err
 }
 
@@ -113,8 +123,10 @@ func NsfwHandler(m *tg.NewMessage) error {
 
 	isPhoto := m.Photo() != nil
 	isSticker := m.Sticker() != nil
+	isVideo := m.Video() != nil
+	isAnimation := m.Animation() != nil
 
-	if !isPhoto && !isSticker {
+	if !isPhoto && !isSticker && !isVideo && !isAnimation {
 		return nil
 	}
 
@@ -122,15 +134,22 @@ func NsfwHandler(m *tg.NewMessage) error {
 		return nil
 	}
 
-	isNsfw, err := getOrCheckNsfw(m)
-	if err != nil {
-		m.Client.Log.Error(fmt.Sprintf("NSFW Check Error: %v", err))
-		return nil
-	}
+	go func() {
+		atomic.AddInt64(&nsfwInflight, 1)
+		defer atomic.AddInt64(&nsfwInflight, -1)
 
-	if isNsfw {
-		return handleNsfwDetected(m)
-	}
+		nsfwSemaphore <- struct{}{}
+		defer func() { <-nsfwSemaphore }()
+
+		isNsfw, err := getOrCheckNsfw(m)
+		if err != nil {
+			m.Client.Log.Error(fmt.Sprintf("NSFW check error: %v", err))
+			return
+		}
+		if isNsfw {
+			handleNsfwDetected(m)
+		}
+	}()
 
 	return nil
 }
@@ -146,37 +165,76 @@ func AlbumNsfwHandler(a *tg.Album) error {
 		}
 	}
 
-	isNsfwDetected := false
-	for _, m := range a.Messages {
-		if m.Photo() == nil && m.Sticker() == nil {
-			continue
-		}
-		isNsfw, err := getOrCheckNsfw(m)
-		if err != nil {
-			m.Client.Log.Error(fmt.Sprintf("NSFW album check error: %v", err))
-			continue
-		}
-		if isNsfw {
-			isNsfwDetected = true
-			break
-		}
-	}
+	go func() {
+		atomic.AddInt64(&nsfwInflight, 1)
+		defer atomic.AddInt64(&nsfwInflight, -1)
 
-	if isNsfwDetected {
-		if _, err := a.Delete(); err != nil {
-			return err
-		}
-		chatID := a.Messages[0].ChatID()
-		userID := a.Messages[0].SenderID()
-		muted := trackViolationAndMute(a.Client, chatID, userID)
-		_, err := a.Messages[0].Respond(
-			buildNsfwWarnMsg(utils.MentionHTML(a.Messages[0].Sender), muted),
+		nsfwSemaphore <- struct{}{}
+		defer func() { <-nsfwSemaphore }()
+
+		var (
+			mediaToProcess []*tg.NewMessage
+			filePaths      []string
 		)
-		if err != nil {
-			return err
+		defer func() {
+			for _, p := range filePaths {
+				os.Remove(p)
+			}
+		}()
+
+		isNsfwDetected := false
+
+		for _, m := range a.Messages {
+			if m.Photo() == nil && m.Sticker() == nil && m.Video() == nil && m.Animation() == nil {
+				continue
+			}
+
+			if m.File != nil {
+				if cached, ok := nsfwFileCache.Get(m.File.FileID); ok {
+					if cached {
+						isNsfwDetected = true
+						break
+					}
+					continue
+				}
+			}
+
+			path, err := m.Download()
+			if err != nil {
+				a.Client.Log.Error(fmt.Sprintf("NSFW album download error for msg %d: %v", m.ID, err))
+				continue
+			}
+			filePaths = append(filePaths, path)
+			mediaToProcess = append(mediaToProcess, m)
 		}
-		return tg.ErrEndGroup
-	}
+
+		if !isNsfwDetected && len(filePaths) > 0 {
+			batchResults, err := sendBatchToNsfwApi(filePaths)
+			if err != nil {
+				a.Client.Log.Error(fmt.Sprintf("NSFW album batch API error: %v", err))
+			} else {
+				for i, res := range batchResults {
+					isNsfw := strings.ToLower(res.Label) == "nsfw"
+					if i < len(mediaToProcess) && mediaToProcess[i].File != nil {
+						nsfwFileCache.Set(mediaToProcess[i].File.FileID, isNsfw)
+					}
+					if isNsfw {
+						isNsfwDetected = true
+					}
+				}
+			}
+		}
+
+		if isNsfwDetected {
+			if _, err := a.Delete(); err != nil {
+				return
+			}
+			chatID := a.Messages[0].ChatID()
+			userID := a.Messages[0].SenderID()
+			muted := trackViolationAndMute(a.Client, chatID, userID)
+			a.Messages[0].Respond(buildNsfwWarnMsg(utils.MentionHTML(a.Messages[0].Sender), muted))
+		}
+	}()
 
 	return nil
 }
@@ -193,17 +251,13 @@ func getOrCheckNsfw(m *tg.NewMessage) (bool, error) {
 		}
 	}
 
-	var (
-		isNsfw bool
-		err    error
-	)
-
-	if sticker := m.Sticker(); sticker != nil {
-		isNsfw, err = checkStickerNsfw(m, sticker)
-	} else {
-		isNsfw, err = checkImageNsfw(m)
+	path, err := m.Download()
+	if err != nil {
+		return false, err
 	}
+	defer os.Remove(path)
 
+	isNsfw, err := sendFileToNsfwApi(path)
 	if err != nil {
 		return false, err
 	}
@@ -214,65 +268,10 @@ func getOrCheckNsfw(m *tg.NewMessage) (bool, error) {
 	return isNsfw, nil
 }
 
-func checkStickerNsfw(m *tg.NewMessage, doc *tg.DocumentObj) (bool, error) {
-	switch doc.MimeType {
-	case "image/webp":
-		return checkWebpSticker(m)
-	case "video/webm":
-		return checkWebmSticker(m)
-	default:
-		return false, nil
-	}
-}
-
-func checkWebpSticker(m *tg.NewMessage) (bool, error) {
-	webpPath, err := m.Download()
-	if err != nil {
-		return false, err
-	}
-	defer os.Remove(webpPath)
-
-	pngPath := webpPath + ".png"
-	defer os.Remove(pngPath)
-
-	if out, err := exec.Command("ffmpeg", "-y", "-i", webpPath, pngPath).CombinedOutput(); err != nil {
-		return false, fmt.Errorf("webp→png: %w\n%s", err, out)
-	}
-
-	return sendFileToNsfwApi(pngPath)
-}
-
-func checkWebmSticker(m *tg.NewMessage) (bool, error) {
-	webmPath, err := m.Download()
-	if err != nil {
-		return false, err
-	}
-	defer os.Remove(webmPath)
-
-	pngPath := webmPath + "_frame.png"
-	defer os.Remove(pngPath)
-
-	if out, err := exec.Command("ffmpeg", "-y", "-i", webmPath, "-vframes", "1", "-f", "image2", pngPath).CombinedOutput(); err != nil {
-		return false, fmt.Errorf("webm→frame: %w\n%s", err, out)
-	}
-
-	return sendFileToNsfwApi(pngPath)
-}
-
-func checkImageNsfw(m *tg.NewMessage) (bool, error) {
-	path, err := m.Download()
-	if err != nil {
-		return false, err
-	}
-	defer os.Remove(path)
-
-	return sendFileToNsfwApi(path)
-}
-
 func sendFileToNsfwApi(filePath string) (bool, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("open %s: %w", filePath, err)
 	}
 	defer file.Close()
 
@@ -287,21 +286,22 @@ func sendFileToNsfwApi(filePath string) (bool, error) {
 	}
 	writer.Close()
 
-	apiUrl := strings.TrimRight(config.NsfwApiUrl, "/") + "/detect"
-	req, err := http.NewRequest("POST", apiUrl, body)
+	apiURL := strings.TrimRight(config.NsfwApiUrl, "/") + "/detect"
+	req, err := http.NewRequest(http.MethodPost, apiURL, body)
 	if err != nil {
 		return false, err
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return false, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return false, fmt.Errorf("API status %d", resp.StatusCode)
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return false, fmt.Errorf("API status %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var result NsfwApiResponse
@@ -309,15 +309,74 @@ func sendFileToNsfwApi(filePath string) (bool, error) {
 		return false, err
 	}
 
-	fmt.Println("The confidence level is ", result.Confidence)
 	return strings.ToLower(result.Label) == "nsfw", nil
 }
 
-func trackViolationAndMute(client *tg.Client, chatID, userID int64) bool {
-	nsfwViolationMu.Lock()
-	defer nsfwViolationMu.Unlock()
+func sendBatchToNsfwApi(filePaths []string) ([]NsfwApiResponse, error) {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
 
+	for _, path := range filePaths {
+		file, err := os.Open(path)
+		if err != nil {
+			writer.Close()
+			return nil, fmt.Errorf("open %s: %w", path, err)
+		}
+		part, err := writer.CreateFormFile("files", filepath.Base(path))
+		if err != nil {
+			file.Close()
+			writer.Close()
+			return nil, fmt.Errorf("create form file for %s: %w", path, err)
+		}
+		if _, err = io.Copy(part, file); err != nil {
+			file.Close()
+			writer.Close()
+			return nil, fmt.Errorf("copy %s: %w", path, err)
+		}
+		file.Close()
+	}
+	writer.Close()
+
+	apiURL := strings.TrimRight(config.NsfwApiUrl, "/") + "/detect/batch"
+	req, err := http.NewRequest(http.MethodPost, apiURL, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API status %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var response struct {
+		Results []NsfwApiResponse `json:"results"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return nil, err
+	}
+
+	if len(response.Results) != len(filePaths) {
+		return nil, fmt.Errorf("API returned %d results for %d files", len(response.Results), len(filePaths))
+	}
+
+	return response.Results, nil
+}
+
+func trackViolationAndMute(client *tg.Client, chatID, userID int64) bool {
 	key := fmt.Sprintf("%d_%d", chatID, userID)
+
+	muI, _ := nsfwViolationsMu.LoadOrStore(key, &sync.Mutex{})
+	mu := muI.(*sync.Mutex)
+	mu.Lock()
+	defer mu.Unlock()
+
 	count := 0
 	if cached, ok := nsfwViolations.Get(key); ok {
 		count = cached
@@ -332,14 +391,7 @@ func trackViolationAndMute(client *tg.Client, chatID, userID int64) bool {
 			TillDate: muteUntil,
 		})
 		if err != nil {
-			client.Log.Error(
-				fmt.Sprintf(
-					"NSFW mute failed for user %d in chat %d: %v",
-					userID,
-					chatID,
-					err,
-				),
-			)
+			client.Log.Error(fmt.Sprintf("NSFW mute failed for user %d in chat %d: %v", userID, chatID, err))
 			return false
 		}
 		nsfwViolations.Set(key, 0)
@@ -360,20 +412,18 @@ func buildNsfwWarnMsg(mention string, muted bool) string {
 	return msg
 }
 
-type NsfwApiResponse struct {
-	Label      string  `json:"label"`
-	Confidence float64 `json:"confidence"`
-}
-
 func handleNsfwDetected(m *tg.NewMessage) error {
 	if _, err := m.Delete(); err != nil {
 		return err
 	}
-
 	muted := trackViolationAndMute(m.Client, m.ChatID(), m.SenderID())
-	_, err := m.Respond(buildNsfwWarnMsg(utils.MentionHTML(m.Sender), muted))
-	if err != nil {
+	if _, err := m.Respond(buildNsfwWarnMsg(utils.MentionHTML(m.Sender), muted)); err != nil {
 		return err
 	}
 	return tg.ErrEndGroup
+}
+
+type NsfwApiResponse struct {
+	Label      string  `json:"label"`
+	Confidence float64 `json:"confidence"`
 }
