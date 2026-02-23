@@ -103,5 +103,5 @@ var (
 
 	NsfwApiUrl      = getEnv("NSFW_API_URL", "").String()
 	NsfwApiEnabled  = false
-	NsfwOnLocalHost = getEnv("NSFW_ON_LOCAL_HOST", "false").Bool()
+	NsfwOnLocalhost = getEnv("NSFW_ON_LOCAL_HOST", "false").Bool()
 )
