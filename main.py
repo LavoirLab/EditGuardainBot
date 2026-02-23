@@ -12,7 +12,7 @@ import uvloop
 import cv2
 import torch
 from PIL import Image
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -24,6 +24,14 @@ BATCH_SIZE = 16
 BATCH_TIMEOUT = 0.04
 MAX_FILE_SIZE_MB = 50
 MAX_BATCH_FILES = 20
+
+VALID_MEDIA_TYPES = {
+    "photo",
+    "sticker_static",
+    "sticker_video",
+    "animation",
+    "video",
+}
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("nsfw_api")
@@ -57,11 +65,9 @@ async def lifespan(app: FastAPI):
     model.eval()
 
     processor = ViTImageProcessor.from_pretrained(MODEL_NAME)
-
     logger.info(f"Model loaded in {time.time() - start:.2f}s on {device}")
 
     worker_task = asyncio.create_task(batch_worker())
-
     yield
 
     worker_task.cancel()
@@ -164,21 +170,35 @@ def _run_inference(images: List[Image.Image]) -> List[Dict[str, Any]]:
 def _aggregate_frames(frame_results: List[Dict[str, Any]]) -> Dict[str, Any]:
     if not frame_results:
         return {"label": "error", "confidence": 0.0, "scores": {}}
-
     nsfw = [r for r in frame_results if r["label"].lower() == "nsfw"]
     best = max(nsfw if nsfw else frame_results, key=lambda x: x["confidence"])
     best["frames_analyzed"] = len(frame_results)
     return best
 
 
-def extract_frames(contents: bytes, filename: str) -> List[Image.Image]:
-    name = (filename or "").lower()
-    ext = os.path.splitext(name)[1]
+def decode_by_media_type(contents: bytes, media_type: str) -> List[Image.Image]:
+    """
+    Decode media into PIL frames based on the exact type reported by Go.
+    No guessing — Go has already resolved what this is from Telegram metadata.
 
-    if ext in (".mp4", ".webm", ".mov", ".avi", ".mkv"):
+    photo          → single JPEG/PNG image
+    sticker_static → static WebP image
+    sticker_video  → WebM video, extract up to 3 frames via cv2
+    animation      → GIF or animated WebP, extract up to 4 frames via Pillow
+    video          → MP4/WebM video, extract up to 3 frames via cv2
+    """
+    if media_type == "photo" or media_type == "sticker_static":
+        try:
+            return [Image.open(io.BytesIO(contents)).convert("RGB")]
+        except Exception as e:
+            logger.error(f"Failed to decode {media_type}: {e}")
+            return []
+
+    if media_type == "sticker_video" or media_type == "video":
+        ext = ".webm" if media_type == "sticker_video" else ".mp4"
         return _extract_video_frames(contents, ext)
 
-    if ext in (".gif", ".webp"):
+    if media_type == "animation":
         try:
             img = Image.open(io.BytesIO(contents))
             if getattr(img, "is_animated", False):
@@ -195,13 +215,11 @@ def extract_frames(contents: bytes, filename: str) -> List[Image.Image]:
             else:
                 return [img.convert("RGB")]
         except Exception as e:
-            logger.error(f"Failed to open animated image {filename}: {e}")
+            logger.error(f"Failed to decode animation: {e}")
+            return []
 
-    try:
-        return [Image.open(io.BytesIO(contents)).convert("RGB")]
-    except Exception as e:
-        logger.error(f"Failed to open image {filename}: {e}")
-        return []
+    logger.warning(f"Unknown media_type: {media_type!r}")
+    return []
 
 
 def _extract_video_frames(contents: bytes, suffix: str) -> List[Image.Image]:
@@ -213,6 +231,7 @@ def _extract_video_frames(contents: bytes, suffix: str) -> List[Image.Image]:
 
         cap = cv2.VideoCapture(tmp_path)
         if not cap.isOpened():
+            logger.error(f"cv2 could not open video file (suffix={suffix})")
             return []
 
         total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -269,14 +288,23 @@ async def health_check():
 
 
 @app.post("/detect")
-async def detect_nsfw(file: UploadFile = File(...)):
+async def detect_nsfw(
+    file: UploadFile = File(...),
+    media_type: str = Form(...),
+):
+    if media_type not in VALID_MEDIA_TYPES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid media_type {media_type!r}. Must be one of: {sorted(VALID_MEDIA_TYPES)}",
+        )
+
     start = time.time()
     contents = await file.read()
     _check_file_size(contents, file.filename)
 
-    frames = extract_frames(contents, file.filename or "upload")
+    frames = decode_by_media_type(contents, media_type)
     if not frames:
-        raise HTTPException(status_code=400, detail="Could not extract frames from media.")
+        raise HTTPException(status_code=400, detail=f"Could not decode media of type {media_type!r}.")
 
     req = InferenceRequest(frames)
     await request_queue.put(req)
@@ -287,22 +315,39 @@ async def detect_nsfw(file: UploadFile = File(...)):
         raise HTTPException(status_code=504, detail="Inference timed out.")
 
     result["processing_time_ms"] = round((time.time() - start) * 1000, 2)
+    result["media_type"] = media_type
     return JSONResponse(content=result)
 
 
 @app.post("/detect/batch")
-async def detect_nsfw_batch(files: List[UploadFile] = File(...)):
+async def detect_nsfw_batch(
+    files: List[UploadFile] = File(...),
+    media_types: List[str] = Form(...),
+):
     if len(files) > MAX_BATCH_FILES:
         raise HTTPException(
             status_code=400,
             detail=f"Maximum {MAX_BATCH_FILES} files per batch.",
         )
 
+    if len(files) != len(media_types):
+        raise HTTPException(
+            status_code=422,
+            detail=f"files count ({len(files)}) must match media_types count ({len(media_types)}).",
+        )
+
+    for mt in media_types:
+        if mt not in VALID_MEDIA_TYPES:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid media_type {mt!r}. Must be one of: {sorted(VALID_MEDIA_TYPES)}",
+            )
+
     start = time.time()
     futures: List[asyncio.Future] = []
     filenames: List[str] = []
 
-    for file in files:
+    for file, mt in zip(files, media_types):
         contents = await file.read()
         try:
             _check_file_size(contents, file.filename)
@@ -313,10 +358,16 @@ async def detect_nsfw_batch(files: List[UploadFile] = File(...)):
             filenames.append(file.filename or "unknown")
             continue
 
-        frames = extract_frames(contents, file.filename or "upload")
+        frames = decode_by_media_type(contents, mt)
         if not frames:
             fut = asyncio.get_event_loop().create_future()
-            fut.set_result({"label": "error", "confidence": 0.0, "scores": {}, "frames_analyzed": 0})
+            fut.set_result({
+                "label": "error",
+                "confidence": 0.0,
+                "scores": {},
+                "frames_analyzed": 0,
+                "media_type": mt,
+            })
             futures.append(fut)
         else:
             req = InferenceRequest(frames)
@@ -329,7 +380,13 @@ async def detect_nsfw_batch(files: List[UploadFile] = File(...)):
         try:
             res = await asyncio.wait_for(asyncio.shield(fut), timeout=60.0)
         except Exception as e:
-            res = {"label": "error", "confidence": 0.0, "error": str(e), "frames_analyzed": 0}
+            res = {
+                "label": "error",
+                "confidence": 0.0,
+                "error": str(e),
+                "frames_analyzed": 0,
+                "media_type": media_types[i],
+            }
         res["filename"] = filenames[i]
         res["image_index"] = i
         results.append(res)
