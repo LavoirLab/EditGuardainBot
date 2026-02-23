@@ -266,8 +266,9 @@ async def health_check():
 
 @app.post("/detect")
 async def detect_nsfw(
-    file: UploadFile = File(...),
     media_type: str = Form(...),
+    file: Optional[UploadFile] = File(default=None),
+    file_path: Optional[str] = Form(default=None),
 ):
     if media_type not in VALID_MEDIA_TYPES:
         raise HTTPException(
@@ -276,12 +277,23 @@ async def detect_nsfw(
         )
 
     start = time.time()
-    contents = await file.read()
-    _check_file_size(contents, file.filename)
+
+    if file_path is not None:
+        if not os.path.isfile(file_path):
+            raise HTTPException(status_code=400, detail=f"file_path does not exist: {file_path!r}")
+        with open(file_path, "rb") as f:
+            contents = f.read()
+        fname = os.path.basename(file_path)
+    elif file is not None:
+        contents = await file.read()
+        _check_file_size(contents, file.filename)
+        fname = file.filename or "upload"
+    else:
+        raise HTTPException(status_code=422, detail="Either 'file' or 'file_path' must be provided.")
 
     frames = decode_by_media_type(contents, media_type)
     if not frames:
-        raise HTTPException(status_code=400, detail=f"Could not decode media of type {media_type!r}.")
+        raise HTTPException(status_code=400, detail=f"Could not decode media of type {media_type!r} from {fname!r}.")
 
     req = InferenceRequest(frames)
     await request_queue.put(req)
@@ -298,19 +310,21 @@ async def detect_nsfw(
 
 @app.post("/detect/batch")
 async def detect_nsfw_batch(
-    files: List[UploadFile] = File(...),
     media_types: List[str] = Form(...),
+    files: Optional[List[UploadFile]] = File(default=None),
+    file_paths: Optional[List[str]] = Form(default=None),
 ):
-    if len(files) > MAX_BATCH_FILES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Maximum {MAX_BATCH_FILES} files per batch.",
-        )
+    localhost_mode = file_paths is not None and len(file_paths) > 0
+    source_count = len(file_paths) if localhost_mode else (len(files) if files else 0)
 
-    if len(files) != len(media_types):
+    if source_count == 0:
+        raise HTTPException(status_code=422, detail="Either 'files' or 'file_paths' must be provided.")
+    if source_count > MAX_BATCH_FILES:
+        raise HTTPException(status_code=400, detail=f"Maximum {MAX_BATCH_FILES} files per batch.")
+    if source_count != len(media_types):
         raise HTTPException(
             status_code=422,
-            detail=f"files count ({len(files)}) must match media_types count ({len(media_types)}).",
+            detail=f"Source count ({source_count}) must match media_types count ({len(media_types)}).",
         )
 
     for mt in media_types:
@@ -324,46 +338,58 @@ async def detect_nsfw_batch(
     futures: List[asyncio.Future] = []
     filenames: List[str] = []
 
-    for file, mt in zip(files, media_types):
-        contents = await file.read()
-        try:
-            _check_file_size(contents, file.filename)
-        except HTTPException as e:
-            fut: asyncio.Future = asyncio.get_event_loop().create_future()
-            fut.set_exception(e)
-            futures.append(fut)
-            filenames.append(file.filename or "unknown")
-            continue
+    if localhost_mode:
+        for fp, mt in zip(file_paths, media_types):
+            fname = os.path.basename(fp)
+            if not os.path.isfile(fp):
+                fut: asyncio.Future = asyncio.get_event_loop().create_future()
+                fut.set_result({"label": "error", "confidence": 0.0, "scores": {}, "frames_analyzed": 0, "media_type": mt, "error": f"file_path not found: {fp!r}"})
+                futures.append(fut)
+                filenames.append(fname)
+                continue
 
-        frames = decode_by_media_type(contents, mt)
-        if not frames:
-            fut = asyncio.get_event_loop().create_future()
-            fut.set_result({
-                "label": "error",
-                "confidence": 0.0,
-                "scores": {},
-                "frames_analyzed": 0,
-                "media_type": mt,
-            })
-            futures.append(fut)
-        else:
-            req = InferenceRequest(frames)
-            await request_queue.put(req)
-            futures.append(req.future)
-        filenames.append(file.filename or "unknown")
+            with open(fp, "rb") as f:
+                contents = f.read()
+
+            frames = decode_by_media_type(contents, mt)
+            if not frames:
+                fut = asyncio.get_event_loop().create_future()
+                fut.set_result({"label": "error", "confidence": 0.0, "scores": {}, "frames_analyzed": 0, "media_type": mt})
+                futures.append(fut)
+            else:
+                req = InferenceRequest(frames)
+                await request_queue.put(req)
+                futures.append(req.future)
+            filenames.append(fname)
+    else:
+        for file, mt in zip(files, media_types):
+            contents = await file.read()
+            try:
+                _check_file_size(contents, file.filename)
+            except HTTPException as e:
+                fut = asyncio.get_event_loop().create_future()
+                fut.set_exception(e)
+                futures.append(fut)
+                filenames.append(file.filename or "unknown")
+                continue
+
+            frames = decode_by_media_type(contents, mt)
+            if not frames:
+                fut = asyncio.get_event_loop().create_future()
+                fut.set_result({"label": "error", "confidence": 0.0, "scores": {}, "frames_analyzed": 0, "media_type": mt})
+                futures.append(fut)
+            else:
+                req = InferenceRequest(frames)
+                await request_queue.put(req)
+                futures.append(req.future)
+            filenames.append(file.filename or "unknown")
 
     results = []
     for i, fut in enumerate(futures):
         try:
             res = await asyncio.wait_for(asyncio.shield(fut), timeout=60.0)
         except Exception as e:
-            res = {
-                "label": "error",
-                "confidence": 0.0,
-                "error": str(e),
-                "frames_analyzed": 0,
-                "media_type": media_types[i],
-            }
+            res = {"label": "error", "confidence": 0.0, "error": str(e), "frames_analyzed": 0, "media_type": media_types[i]}
         res["filename"] = filenames[i]
         res["image_index"] = i
         results.append(res)
@@ -371,9 +397,9 @@ async def detect_nsfw_batch(
     total_time = time.time() - start
     return JSONResponse(content={
         "results": results,
-        "total_files": len(files),
+        "total_files": source_count,
         "total_processing_time_ms": round(total_time * 1000, 2),
-        "avg_time_per_file_ms": round((total_time / max(len(files), 1)) * 1000, 2),
+        "avg_time_per_file_ms": round((total_time / max(source_count, 1)) * 1000, 2),
     })
 
 
