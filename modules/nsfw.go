@@ -32,9 +32,8 @@ var httpClient = &http.Client{
 }
 
 const (
-	nsfwViolationThreshold  = 5
-	nsfwMaxConcurrent       = 8
-	nsfwLargeVideoThreshold = 10 * 1024 * 1024
+	nsfwViolationThreshold = 5
+	nsfwMaxConcurrent      = 8
 )
 
 var (
@@ -212,6 +211,38 @@ func AlbumNsfwHandler(a *tg.Album) error {
 				}
 			}
 
+			if !config.NsfwOnLocalhost && mt == mediaTypeStickerVideo {
+				isNsfw, err := checkStickerVideoNsfw(m)
+				if err != nil {
+					a.Client.Log.Error(fmt.Sprintf("NSFW sticker video error for msg %d: %v", m.ID, err))
+					continue
+				}
+				if m.File != nil {
+					nsfwFileCache.Set(m.File.FileID, isNsfw)
+				}
+				if isNsfw {
+					isNsfwDetected = true
+					break
+				}
+				continue
+			}
+
+			if !config.NsfwOnLocalhost && mt == mediaTypeVideo {
+				isNsfw, err := extractVideoFramesNsfw(m)
+				if err != nil {
+					a.Client.Log.Error(fmt.Sprintf("NSFW video frame extraction error for msg %d: %v", m.ID, err))
+					continue
+				}
+				if m.File != nil {
+					nsfwFileCache.Set(m.File.FileID, isNsfw)
+				}
+				if isNsfw {
+					isNsfwDetected = true
+					break
+				}
+				continue
+			}
+
 			path, err := m.Download()
 			if err != nil {
 				a.Client.Log.Error(fmt.Sprintf("NSFW album download error for msg %d: %v", m.ID, err))
@@ -357,8 +388,8 @@ func checkNsfwRemote(m *tg.NewMessage, mt nsfwMediaType) (bool, error) {
 	switch {
 	case mt == mediaTypeStickerVideo:
 		return checkStickerVideoNsfw(m)
-	case mt == mediaTypeVideo && m.File != nil && m.File.Size > nsfwLargeVideoThreshold:
-		return checkLargeVideoNsfw(m)
+	case mt == mediaTypeVideo:
+		return extractVideoFramesNsfw(m)
 	default:
 		path, err := m.Download()
 		if err != nil {
@@ -395,7 +426,7 @@ func checkStickerVideoNsfw(m *tg.NewMessage) (bool, error) {
 	return sendFileToNsfwApi(jpgPath, mediaTypePhoto)
 }
 
-func checkLargeVideoNsfw(m *tg.NewMessage) (bool, error) {
+func extractVideoFramesNsfw(m *tg.NewMessage) (bool, error) {
 	videoPath, err := m.Download()
 	if err != nil {
 		return false, err
