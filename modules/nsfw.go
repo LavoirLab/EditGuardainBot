@@ -51,7 +51,6 @@ const (
 	mediaTypePhoto         nsfwMediaType = "photo"
 	mediaTypeStickerStatic nsfwMediaType = "sticker_static"
 	mediaTypeStickerVideo  nsfwMediaType = "sticker_video"
-	mediaTypeAnimation     nsfwMediaType = "animation"
 	mediaTypeVideo         nsfwMediaType = "video"
 )
 
@@ -120,9 +119,7 @@ func NsfwCmdHandler(m *tg.NewMessage) error {
 		status = "enabled ✅"
 		next = "Use <code>/nonsfw off</code> to disable it."
 	}
-	_, err = m.Reply(
-		fmt.Sprintf("🔞 <b>NSFW Detection %s</b>\n\n%s", status, next),
-	)
+	_, err = m.Reply(fmt.Sprintf("🔞 <b>NSFW Detection %s</b>\n\n%s", status, next))
 	return err
 }
 
@@ -217,36 +214,22 @@ func AlbumNsfwHandler(a *tg.Album) error {
 
 			path, err := m.Download()
 			if err != nil {
-				a.Client.Log.Error(
-					fmt.Sprintf(
-						"NSFW album download error for msg %d: %v",
-						m.ID,
-						err,
-					),
-				)
+				a.Client.Log.Error(fmt.Sprintf("NSFW album download error for msg %d: %v", m.ID, err))
 				continue
 			}
 			allPaths = append(allPaths, path)
-			pending = append(
-				pending,
-				pendingMedia{msg: m, path: path, mediaType: mt},
-			)
+			pending = append(pending, pendingMedia{msg: m, path: path, mediaType: mt})
 		}
 
 		if !isNsfwDetected && len(pending) > 0 {
 			var items []batchEntry
 			for _, p := range pending {
-				items = append(
-					items,
-					batchEntry{path: p.path, mediaType: p.mediaType},
-				)
+				items = append(items, batchEntry{path: p.path, mediaType: p.mediaType})
 			}
 
 			batchResults, err := sendBatchToNsfwApi(items)
 			if err != nil {
-				a.Client.Log.Error(
-					fmt.Sprintf("NSFW album batch API error: %v", err),
-				)
+				a.Client.Log.Error(fmt.Sprintf("NSFW album batch API error: %v", err))
 			} else {
 				for i, res := range batchResults {
 					isNsfw := strings.ToLower(res.Label) == "nsfw"
@@ -267,12 +250,7 @@ func AlbumNsfwHandler(a *tg.Album) error {
 			chatID := a.Messages[0].ChatID()
 			userID := a.Messages[0].SenderID()
 			muted := trackViolationAndMute(a.Client, chatID, userID)
-			a.Messages[0].Respond(
-				buildNsfwWarnMsg(
-					utils.MentionHTML(a.Messages[0].Sender),
-					muted,
-				),
-			)
+			a.Messages[0].Respond(buildNsfwWarnMsg(utils.MentionHTML(a.Messages[0].Sender), muted))
 		}
 	}()
 
@@ -296,7 +274,7 @@ func resolveMediaType(m *tg.NewMessage) nsfwMediaType {
 	}
 
 	if m.Animation() != nil {
-		return mediaTypeAnimation
+		return mediaTypeVideo
 	}
 
 	if m.Video() != nil {
@@ -383,11 +361,7 @@ func checkStickerVideoNsfw(m *tg.NewMessage) (bool, error) {
 		jpgPath,
 	)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return false, fmt.Errorf(
-			"ffmpeg sticker frame extraction failed: %w\n%s",
-			err,
-			out,
-		)
+		return false, fmt.Errorf("ffmpeg sticker frame extraction failed: %w\n%s", err, out)
 	}
 
 	return sendFileToNsfwApi(jpgPath, mediaTypePhoto)
@@ -408,26 +382,16 @@ func checkLargeVideoNsfw(m *tg.NewMessage) (bool, error) {
 
 	framePattern := filepath.Join(tmpDir, "frame_%02d.jpg")
 	cmd := exec.Command(
-		"ffmpeg",
-		"-y",
-		"-i",
-		videoPath,
-		"-vf",
-		"select='not(mod(n\\,trunc(nb_frames/6+1)))',setpts=N/FRAME_RATE/TB",
-		"-vsync",
-		"vfr",
-		"-frames:v",
-		"6",
-		"-q:v",
-		"2",
+		"ffmpeg", "-y",
+		"-i", videoPath,
+		"-vf", "select='not(mod(n\\,trunc(nb_frames/6+1)))',setpts=N/FRAME_RATE/TB",
+		"-vsync", "vfr",
+		"-frames:v", "6",
+		"-q:v", "2",
 		framePattern,
 	)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return false, fmt.Errorf(
-			"ffmpeg frame extraction failed: %w\n%s",
-			err,
-			out,
-		)
+		return false, fmt.Errorf("ffmpeg frame extraction failed: %w\n%s", err, out)
 	}
 
 	entries, err := os.ReadDir(tmpDir)
@@ -494,11 +458,7 @@ func sendFileToNsfwApi(filePath string, mt nsfwMediaType) (bool, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return false, fmt.Errorf(
-			"API status %d: %s",
-			resp.StatusCode,
-			string(bodyBytes),
-		)
+		return false, fmt.Errorf("API status %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var result NsfwApiResponse
@@ -533,11 +493,7 @@ func sendBatchToNsfwApi(items []batchEntry) ([]NsfwApiResponse, error) {
 		if err != nil {
 			file.Close()
 			writer.Close()
-			return nil, fmt.Errorf(
-				"create form file for %s: %w",
-				item.path,
-				err,
-			)
+			return nil, fmt.Errorf("create form file for %s: %w", item.path, err)
 		}
 		if _, err = io.Copy(part, file); err != nil {
 			file.Close()
@@ -563,11 +519,7 @@ func sendBatchToNsfwApi(items []batchEntry) ([]NsfwApiResponse, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf(
-			"API status %d: %s",
-			resp.StatusCode,
-			string(bodyBytes),
-		)
+		return nil, fmt.Errorf("API status %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var response struct {
@@ -578,11 +530,7 @@ func sendBatchToNsfwApi(items []batchEntry) ([]NsfwApiResponse, error) {
 	}
 
 	if len(response.Results) != len(items) {
-		return nil, fmt.Errorf(
-			"API returned %d results for %d files",
-			len(response.Results),
-			len(items),
-		)
+		return nil, fmt.Errorf("API returned %d results for %d files", len(response.Results), len(items))
 	}
 
 	return response.Results, nil
@@ -610,14 +558,7 @@ func trackViolationAndMute(client *tg.Client, chatID, userID int64) bool {
 			TillDate: muteUntil,
 		})
 		if err != nil {
-			client.Log.Error(
-				fmt.Sprintf(
-					"NSFW mute failed for user %d in chat %d: %v",
-					userID,
-					chatID,
-					err,
-				),
-			)
+			client.Log.Error(fmt.Sprintf("NSFW mute failed for user %d in chat %d: %v", userID, chatID, err))
 			return false
 		}
 		nsfwViolations.Set(key, 0)
