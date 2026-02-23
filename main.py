@@ -1,12 +1,14 @@
 import asyncio
 import io
 import os
+import sys
 import time
 import logging
 import tempfile
 from contextlib import asynccontextmanager
 from typing import List, Dict, Any, Optional
 
+import uvloop
 import cv2
 import torch
 from PIL import Image
@@ -341,6 +343,12 @@ async def detect_nsfw_batch(files: List[UploadFile] = File(...)):
     })
 
 
+if sys.platform != "win32":
+    if sys.version_info >= (3, 11):
+        asyncio.DefaultEventLoopPolicy = uvloop.EventLoopPolicy
+    else:
+        uvloop.install()
+
 if __name__ == "__main__":
     import multiprocessing
     workers = 1 if torch.cuda.is_available() else min(multiprocessing.cpu_count(), 4)
@@ -349,6 +357,7 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=int(os.getenv("PORT", "8000")),
         workers=workers,
+        loop="uvloop",
         log_level="info",
         access_log=True,
     )
