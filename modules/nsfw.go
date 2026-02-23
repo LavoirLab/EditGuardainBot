@@ -321,24 +321,6 @@ func resolveMediaType(m *tg.NewMessage) nsfwMediaType {
 	return ""
 }
 
-func isTgsSticker(m *tg.NewMessage) bool {
-	doc := m.Sticker()
-	if doc == nil {
-		return false
-	}
-	if doc.MimeType == "application/x-tgsticker" {
-		return true
-	}
-	for _, attr := range doc.Attributes {
-		if file, ok := attr.(*tg.DocumentAttributeFilename); ok {
-			if strings.HasSuffix(strings.ToLower(file.FileName), ".tgs") {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 func getOrCheckNsfw(m *tg.NewMessage, mt nsfwMediaType) (bool, error) {
 	cacheKey := ""
 	if m.File != nil {
@@ -680,6 +662,8 @@ func sendPathBatchToNsfwApi(items []batchEntry) ([]NsfwApiResponse, error) {
 
 	return response.Results, nil
 }
+
+func trackViolationAndMute(client *tg.Client, chatID, userID int64) bool {
 	key := fmt.Sprintf("%d_%d", chatID, userID)
 
 	muI, _ := nsfwViolationsMu.LoadOrStore(key, &sync.Mutex{})
