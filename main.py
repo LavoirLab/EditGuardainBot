@@ -28,7 +28,6 @@ MAX_BATCH_FILES = 20
 VALID_MEDIA_TYPES = {
     "photo",
     "sticker_static",
-    "animation",
     "video",
 }
 
@@ -183,8 +182,8 @@ def decode_by_media_type(contents: bytes, media_type: str) -> List[Image.Image]:
     photo          → single JPEG/PNG image
     sticker_static → static WebP image
     sticker_video  → handled entirely in Go (ffmpeg extracts frame, sent here as 'photo')
-    animation      → GIF or animated WebP, extract up to 4 frames via Pillow
-    video          → MP4 video, extract up to 3 frames via cv2
+    animation      → Telegram animations are MP4 — Go sends these as 'video'
+    video          → MP4, extract up to 3 frames via cv2
     """
     if media_type == "photo" or media_type == "sticker_static":
         try:
@@ -195,26 +194,6 @@ def decode_by_media_type(contents: bytes, media_type: str) -> List[Image.Image]:
 
     if media_type == "video":
         return _extract_video_frames(contents, ".mp4")
-
-    if media_type == "animation":
-        try:
-            img = Image.open(io.BytesIO(contents))
-            if getattr(img, "is_animated", False):
-                n = img.n_frames
-                indices = sorted(set([0, n // 3, (2 * n) // 3, max(n - 1, 0)]))
-                frames = []
-                for i in indices:
-                    try:
-                        img.seek(i)
-                        frames.append(img.convert("RGB"))
-                    except EOFError:
-                        break
-                return frames
-            else:
-                return [img.convert("RGB")]
-        except Exception as e:
-            logger.error(f"Failed to decode animation: {e}")
-            return []
 
     logger.warning(f"Unknown media_type: {media_type!r}")
     return []
