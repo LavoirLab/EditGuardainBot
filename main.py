@@ -28,7 +28,6 @@ MAX_BATCH_FILES = 20
 VALID_MEDIA_TYPES = {
     "photo",
     "sticker_static",
-    "sticker_video",
     "animation",
     "video",
 }
@@ -183,9 +182,9 @@ def decode_by_media_type(contents: bytes, media_type: str) -> List[Image.Image]:
 
     photo          → single JPEG/PNG image
     sticker_static → static WebP image
-    sticker_video  → WebM video, extract up to 3 frames via cv2
+    sticker_video  → handled entirely in Go (ffmpeg extracts frame, sent here as 'photo')
     animation      → GIF or animated WebP, extract up to 4 frames via Pillow
-    video          → MP4/WebM video, extract up to 3 frames via cv2
+    video          → MP4 video, extract up to 3 frames via cv2
     """
     if media_type == "photo" or media_type == "sticker_static":
         try:
@@ -194,9 +193,8 @@ def decode_by_media_type(contents: bytes, media_type: str) -> List[Image.Image]:
             logger.error(f"Failed to decode {media_type}: {e}")
             return []
 
-    if media_type == "sticker_video" or media_type == "video":
-        ext = ".webm" if media_type == "sticker_video" else ".mp4"
-        return _extract_video_frames(contents, ext)
+    if media_type == "video":
+        return _extract_video_frames(contents, ".mp4")
 
     if media_type == "animation":
         try:
