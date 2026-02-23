@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -31,8 +32,9 @@ var httpClient = &http.Client{
 }
 
 const (
-	nsfwViolationThreshold = 5
-	nsfwMaxConcurrent      = 8
+	nsfwViolationThreshold  = 5
+	nsfwMaxConcurrent       = 8
+	nsfwLargeVideoThreshold = 10 * 1024 * 1024
 )
 
 var (
@@ -41,6 +43,16 @@ var (
 	nsfwViolationsMu sync.Map
 	nsfwSemaphore    = make(chan struct{}, nsfwMaxConcurrent)
 	nsfwInflight     int64
+)
+
+type nsfwMediaType string
+
+const (
+	mediaTypePhoto         nsfwMediaType = "photo"
+	mediaTypeStickerStatic nsfwMediaType = "sticker_static"
+	mediaTypeStickerVideo  nsfwMediaType = "sticker_video"
+	mediaTypeAnimation     nsfwMediaType = "animation"
+	mediaTypeVideo         nsfwMediaType = "video"
 )
 
 func init() {
@@ -108,9 +120,7 @@ func NsfwCmdHandler(m *tg.NewMessage) error {
 		status = "enabled ✅"
 		next = "Use <code>/nonsfw off</code> to disable it."
 	}
-	_, err = m.Reply(
-		fmt.Sprintf("🔞 <b>NSFW Detection %s</b>\n\n%s", status, next),
-	)
+	_, err = m.Reply(fmt.Sprintf("🔞 <b>NSFW Detection %s</b>\n\n%s", status, next))
 	return err
 }
 
@@ -123,16 +133,8 @@ func NsfwHandler(m *tg.NewMessage) error {
 		return nil
 	}
 
-	isPhoto := m.Photo() != nil
-	isSticker := m.Sticker() != nil
-	isVideo := m.Video() != nil
-	isAnimation := m.Animation() != nil
-
-	if !isPhoto && !isSticker && !isVideo && !isAnimation {
-		return nil
-	}
-
-	if isSticker && isTgsSticker(m) {
+	mt := resolveMediaType(m)
+	if mt == "" {
 		return nil
 	}
 
@@ -147,7 +149,7 @@ func NsfwHandler(m *tg.NewMessage) error {
 		nsfwSemaphore <- struct{}{}
 		defer func() { <-nsfwSemaphore }()
 
-		isNsfw, err := getOrCheckNsfw(m)
+		isNsfw, err := getOrCheckNsfw(m, mt)
 		if err != nil {
 			m.Client.Log.Error(fmt.Sprintf("NSFW check error: %v", err))
 			return
@@ -178,12 +180,17 @@ func AlbumNsfwHandler(a *tg.Album) error {
 		nsfwSemaphore <- struct{}{}
 		defer func() { <-nsfwSemaphore }()
 
-		var (
-			mediaToProcess []*tg.NewMessage
-			filePaths      []string
-		)
+		type pendingMedia struct {
+			msg       *tg.NewMessage
+			path      string
+			mediaType nsfwMediaType
+		}
+
+		var pending []pendingMedia
+		var allPaths []string
+
 		defer func() {
-			for _, p := range filePaths {
+			for _, p := range allPaths {
 				os.Remove(p)
 			}
 		}()
@@ -191,12 +198,8 @@ func AlbumNsfwHandler(a *tg.Album) error {
 		isNsfwDetected := false
 
 		for _, m := range a.Messages {
-			if m.Photo() == nil && m.Sticker() == nil && m.Video() == nil &&
-				m.Animation() == nil {
-				continue
-			}
-
-			if m.Sticker() != nil && isTgsSticker(m) {
+			mt := resolveMediaType(m)
+			if mt == "" {
 				continue
 			}
 
@@ -212,30 +215,31 @@ func AlbumNsfwHandler(a *tg.Album) error {
 
 			path, err := m.Download()
 			if err != nil {
-				a.Client.Log.Error(
-					fmt.Sprintf(
-						"NSFW album download error for msg %d: %v",
-						m.ID,
-						err,
-					),
-				)
+				a.Client.Log.Error(fmt.Sprintf("NSFW album download error for msg %d: %v", m.ID, err))
 				continue
 			}
-			filePaths = append(filePaths, path)
-			mediaToProcess = append(mediaToProcess, m)
+			allPaths = append(allPaths, path)
+			pending = append(pending, pendingMedia{msg: m, path: path, mediaType: mt})
 		}
 
-		if !isNsfwDetected && len(filePaths) > 0 {
-			batchResults, err := sendBatchToNsfwApi(filePaths)
+		if !isNsfwDetected && len(pending) > 0 {
+			type batchItem struct {
+				path      string
+				mediaType nsfwMediaType
+			}
+			var items []batchItem
+			for _, p := range pending {
+				items = append(items, batchItem{path: p.path, mediaType: p.mediaType})
+			}
+
+			batchResults, err := sendBatchToNsfwApi(items)
 			if err != nil {
-				a.Client.Log.Error(
-					fmt.Sprintf("NSFW album batch API error: %v", err),
-				)
+				a.Client.Log.Error(fmt.Sprintf("NSFW album batch API error: %v", err))
 			} else {
 				for i, res := range batchResults {
 					isNsfw := strings.ToLower(res.Label) == "nsfw"
-					if i < len(mediaToProcess) && mediaToProcess[i].File != nil {
-						nsfwFileCache.Set(mediaToProcess[i].File.FileID, isNsfw)
+					if i < len(pending) && pending[i].msg.File != nil {
+						nsfwFileCache.Set(pending[i].msg.File.FileID, isNsfw)
 					}
 					if isNsfw {
 						isNsfwDetected = true
@@ -251,16 +255,38 @@ func AlbumNsfwHandler(a *tg.Album) error {
 			chatID := a.Messages[0].ChatID()
 			userID := a.Messages[0].SenderID()
 			muted := trackViolationAndMute(a.Client, chatID, userID)
-			a.Messages[0].Respond(
-				buildNsfwWarnMsg(
-					utils.MentionHTML(a.Messages[0].Sender),
-					muted,
-				),
-			)
+			a.Messages[0].Respond(buildNsfwWarnMsg(utils.MentionHTML(a.Messages[0].Sender), muted))
 		}
 	}()
 
 	return nil
+}
+
+func resolveMediaType(m *tg.NewMessage) nsfwMediaType {
+	if m.Photo() != nil {
+		return mediaTypePhoto
+	}
+
+	if sticker := m.Sticker(); sticker != nil {
+		switch sticker.MimeType {
+		case "application/x-tgsticker":
+			return ""
+		case "video/webm":
+			return mediaTypeStickerVideo
+		default:
+			return mediaTypeStickerStatic
+		}
+	}
+
+	if m.Animation() != nil {
+		return mediaTypeAnimation
+	}
+
+	if m.Video() != nil {
+		return mediaTypeVideo
+	}
+
+	return ""
 }
 
 func isTgsSticker(m *tg.NewMessage) bool {
@@ -281,7 +307,7 @@ func isTgsSticker(m *tg.NewMessage) bool {
 	return false
 }
 
-func getOrCheckNsfw(m *tg.NewMessage) (bool, error) {
+func getOrCheckNsfw(m *tg.NewMessage, mt nsfwMediaType) (bool, error) {
 	cacheKey := ""
 	if m.File != nil {
 		cacheKey = m.File.FileID
@@ -293,13 +319,20 @@ func getOrCheckNsfw(m *tg.NewMessage) (bool, error) {
 		}
 	}
 
-	path, err := m.Download()
-	if err != nil {
-		return false, err
-	}
-	defer os.Remove(path)
+	var isNsfw bool
+	var err error
 
-	isNsfw, err := sendFileToNsfwApi(path)
+	if mt == mediaTypeVideo && m.File != nil && m.File.Size > nsfwLargeVideoThreshold {
+		isNsfw, err = checkLargeVideoNsfw(m)
+	} else {
+		path, dlErr := m.Download()
+		if dlErr != nil {
+			return false, dlErr
+		}
+		defer os.Remove(path)
+		isNsfw, err = sendFileToNsfwApi(path, mt)
+	}
+
 	if err != nil {
 		return false, err
 	}
@@ -310,7 +343,66 @@ func getOrCheckNsfw(m *tg.NewMessage) (bool, error) {
 	return isNsfw, nil
 }
 
-func sendFileToNsfwApi(filePath string) (bool, error) {
+func checkLargeVideoNsfw(m *tg.NewMessage) (bool, error) {
+	videoPath, err := m.Download()
+	if err != nil {
+		return false, err
+	}
+	defer os.Remove(videoPath)
+
+	tmpDir, err := os.MkdirTemp("", "nsfw_frames_*")
+	if err != nil {
+		return false, err
+	}
+	defer os.RemoveAll(tmpDir)
+
+	framePattern := filepath.Join(tmpDir, "frame_%02d.jpg")
+	cmd := exec.Command(
+		"ffmpeg", "-y",
+		"-i", videoPath,
+		"-vf", "select='eq(n\\,0)+eq(n\\,floor(n/2))+eq(n\\,n-1)',setpts=N/FRAME_RATE/TB",
+		"-vsync", "vfr",
+		"-frames:v", "3",
+		"-q:v", "2",
+		framePattern,
+	)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return false, fmt.Errorf("ffmpeg frame extraction failed: %w\n%s", err, out)
+	}
+
+	entries, err := os.ReadDir(tmpDir)
+	if err != nil || len(entries) == 0 {
+		return false, fmt.Errorf("no frames extracted from video")
+	}
+
+	var framePaths []string
+	for _, e := range entries {
+		framePaths = append(framePaths, filepath.Join(tmpDir, e.Name()))
+	}
+
+	type batchItem struct {
+		path      string
+		mediaType nsfwMediaType
+	}
+	var items []batchItem
+	for _, fp := range framePaths {
+		items = append(items, batchItem{path: fp, mediaType: mediaTypePhoto})
+	}
+
+	results, err := sendBatchToNsfwApi(items)
+	if err != nil {
+		return false, err
+	}
+
+	for _, r := range results {
+		if strings.ToLower(r.Label) == "nsfw" {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func sendFileToNsfwApi(filePath string, mt nsfwMediaType) (bool, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return false, fmt.Errorf("open %s: %w", filePath, err)
@@ -319,6 +411,11 @@ func sendFileToNsfwApi(filePath string) (bool, error) {
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
+
+	if err := writer.WriteField("media_type", string(mt)); err != nil {
+		return false, err
+	}
+
 	part, err := writer.CreateFormFile("file", filepath.Base(filePath))
 	if err != nil {
 		return false, err
@@ -343,11 +440,7 @@ func sendFileToNsfwApi(filePath string) (bool, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return false, fmt.Errorf(
-			"API status %d: %s",
-			resp.StatusCode,
-			string(bodyBytes),
-		)
+		return false, fmt.Errorf("API status %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var result NsfwApiResponse
@@ -358,26 +451,36 @@ func sendFileToNsfwApi(filePath string) (bool, error) {
 	return strings.ToLower(result.Label) == "nsfw", nil
 }
 
-func sendBatchToNsfwApi(filePaths []string) ([]NsfwApiResponse, error) {
+type batchEntry struct {
+	path      string
+	mediaType nsfwMediaType
+}
+
+func sendBatchToNsfwApi(items []batchEntry) ([]NsfwApiResponse, error) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
-	for _, path := range filePaths {
-		file, err := os.Open(path)
+	for _, item := range items {
+		if err := writer.WriteField("media_types", string(item.mediaType)); err != nil {
+			writer.Close()
+			return nil, err
+		}
+
+		file, err := os.Open(item.path)
 		if err != nil {
 			writer.Close()
-			return nil, fmt.Errorf("open %s: %w", path, err)
+			return nil, fmt.Errorf("open %s: %w", item.path, err)
 		}
-		part, err := writer.CreateFormFile("files", filepath.Base(path))
+		part, err := writer.CreateFormFile("files", filepath.Base(item.path))
 		if err != nil {
 			file.Close()
 			writer.Close()
-			return nil, fmt.Errorf("create form file for %s: %w", path, err)
+			return nil, fmt.Errorf("create form file for %s: %w", item.path, err)
 		}
 		if _, err = io.Copy(part, file); err != nil {
 			file.Close()
 			writer.Close()
-			return nil, fmt.Errorf("copy %s: %w", path, err)
+			return nil, fmt.Errorf("copy %s: %w", item.path, err)
 		}
 		file.Close()
 	}
@@ -398,11 +501,7 @@ func sendBatchToNsfwApi(filePaths []string) ([]NsfwApiResponse, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf(
-			"API status %d: %s",
-			resp.StatusCode,
-			string(bodyBytes),
-		)
+		return nil, fmt.Errorf("API status %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var response struct {
@@ -412,12 +511,8 @@ func sendBatchToNsfwApi(filePaths []string) ([]NsfwApiResponse, error) {
 		return nil, err
 	}
 
-	if len(response.Results) != len(filePaths) {
-		return nil, fmt.Errorf(
-			"API returned %d results for %d files",
-			len(response.Results),
-			len(filePaths),
-		)
+	if len(response.Results) != len(items) {
+		return nil, fmt.Errorf("API returned %d results for %d files", len(response.Results), len(items))
 	}
 
 	return response.Results, nil
@@ -445,14 +540,7 @@ func trackViolationAndMute(client *tg.Client, chatID, userID int64) bool {
 			TillDate: muteUntil,
 		})
 		if err != nil {
-			client.Log.Error(
-				fmt.Sprintf(
-					"NSFW mute failed for user %d in chat %d: %v",
-					userID,
-					chatID,
-					err,
-				),
-			)
+			client.Log.Error(fmt.Sprintf("NSFW mute failed for user %d in chat %d: %v", userID, chatID, err))
 			return false
 		}
 		nsfwViolations.Set(key, 0)
