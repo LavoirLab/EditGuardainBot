@@ -108,7 +108,9 @@ func NsfwCmdHandler(m *tg.NewMessage) error {
 		status = "enabled ✅"
 		next = "Use <code>/nonsfw off</code> to disable it."
 	}
-	_, err = m.Reply(fmt.Sprintf("🔞 <b>NSFW Detection %s</b>\n\n%s", status, next))
+	_, err = m.Reply(
+		fmt.Sprintf("🔞 <b>NSFW Detection %s</b>\n\n%s", status, next),
+	)
 	return err
 }
 
@@ -189,7 +191,8 @@ func AlbumNsfwHandler(a *tg.Album) error {
 		isNsfwDetected := false
 
 		for _, m := range a.Messages {
-			if m.Photo() == nil && m.Sticker() == nil && m.Video() == nil && m.Animation() == nil {
+			if m.Photo() == nil && m.Sticker() == nil && m.Video() == nil &&
+				m.Animation() == nil {
 				continue
 			}
 
@@ -209,7 +212,13 @@ func AlbumNsfwHandler(a *tg.Album) error {
 
 			path, err := m.Download()
 			if err != nil {
-				a.Client.Log.Error(fmt.Sprintf("NSFW album download error for msg %d: %v", m.ID, err))
+				a.Client.Log.Error(
+					fmt.Sprintf(
+						"NSFW album download error for msg %d: %v",
+						m.ID,
+						err,
+					),
+				)
 				continue
 			}
 			filePaths = append(filePaths, path)
@@ -219,7 +228,9 @@ func AlbumNsfwHandler(a *tg.Album) error {
 		if !isNsfwDetected && len(filePaths) > 0 {
 			batchResults, err := sendBatchToNsfwApi(filePaths)
 			if err != nil {
-				a.Client.Log.Error(fmt.Sprintf("NSFW album batch API error: %v", err))
+				a.Client.Log.Error(
+					fmt.Sprintf("NSFW album batch API error: %v", err),
+				)
 			} else {
 				for i, res := range batchResults {
 					isNsfw := strings.ToLower(res.Label) == "nsfw"
@@ -240,7 +251,12 @@ func AlbumNsfwHandler(a *tg.Album) error {
 			chatID := a.Messages[0].ChatID()
 			userID := a.Messages[0].SenderID()
 			muted := trackViolationAndMute(a.Client, chatID, userID)
-			a.Messages[0].Respond(buildNsfwWarnMsg(utils.MentionHTML(a.Messages[0].Sender), muted))
+			a.Messages[0].Respond(
+				buildNsfwWarnMsg(
+					utils.MentionHTML(a.Messages[0].Sender),
+					muted,
+				),
+			)
 		}
 	}()
 
@@ -327,7 +343,11 @@ func sendFileToNsfwApi(filePath string) (bool, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return false, fmt.Errorf("API status %d: %s", resp.StatusCode, string(bodyBytes))
+		return false, fmt.Errorf(
+			"API status %d: %s",
+			resp.StatusCode,
+			string(bodyBytes),
+		)
 	}
 
 	var result NsfwApiResponse
@@ -378,7 +398,11 @@ func sendBatchToNsfwApi(filePaths []string) ([]NsfwApiResponse, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API status %d: %s", resp.StatusCode, string(bodyBytes))
+		return nil, fmt.Errorf(
+			"API status %d: %s",
+			resp.StatusCode,
+			string(bodyBytes),
+		)
 	}
 
 	var response struct {
@@ -389,7 +413,11 @@ func sendBatchToNsfwApi(filePaths []string) ([]NsfwApiResponse, error) {
 	}
 
 	if len(response.Results) != len(filePaths) {
-		return nil, fmt.Errorf("API returned %d results for %d files", len(response.Results), len(filePaths))
+		return nil, fmt.Errorf(
+			"API returned %d results for %d files",
+			len(response.Results),
+			len(filePaths),
+		)
 	}
 
 	return response.Results, nil
@@ -417,7 +445,14 @@ func trackViolationAndMute(client *tg.Client, chatID, userID int64) bool {
 			TillDate: muteUntil,
 		})
 		if err != nil {
-			client.Log.Error(fmt.Sprintf("NSFW mute failed for user %d in chat %d: %v", userID, chatID, err))
+			client.Log.Error(
+				fmt.Sprintf(
+					"NSFW mute failed for user %d in chat %d: %v",
+					userID,
+					chatID,
+					err,
+				),
+			)
 			return false
 		}
 		nsfwViolations.Set(key, 0)
