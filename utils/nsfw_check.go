@@ -36,7 +36,10 @@ func CheckNsfwApi(url string) error {
 	}
 
 	if health.Status != "online" && health.Status != "healthy" {
-		return fmt.Errorf("NSFW API status is neither 'online' nor 'healthy': %s", health.Status)
+		return fmt.Errorf(
+			"NSFW API status is neither 'online' nor 'healthy': %s",
+			health.Status,
+		)
 	}
 
 	return nil
