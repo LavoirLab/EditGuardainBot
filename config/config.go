@@ -101,8 +101,7 @@ var (
 
 	OwnerId = getEnv("OWNER_ID", "6119285647").Int64Slice()
 
-	NsfwApiUrl     = getEnv("NSFW_API_URL", "").String()
-	NsfwApiEnabled = false
-NsfwOnLocalHost = getEnv("NSFW_ON_LOCAL_HOST", "false").Bool()
-
+	NsfwApiUrl      = getEnv("NSFW_API_URL", "").String()
+	NsfwApiEnabled  = false
+	NsfwOnLocalHost = getEnv("NSFW_ON_LOCAL_HOST", "false").Bool()
 )
