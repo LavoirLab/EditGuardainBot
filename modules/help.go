@@ -120,7 +120,10 @@ func getHelpKeyboard(page int) telegram.ReplyMarkup {
 	var buttons []telegram.KeyboardButton
 	for i := start; i < end; i++ {
 		mod := modules[i]
-		button := telegram.Button.Data(mod.ModName, fmt.Sprintf("help_module:%s:%d", mod.Name, page))
+		button := telegram.Button.Data(
+			mod.ModName,
+			fmt.Sprintf("help_module:%s:%d", mod.Name, page),
+		)
 		buttons = append(buttons, button)
 	}
 
@@ -128,13 +131,28 @@ func getHelpKeyboard(page int) telegram.ReplyMarkup {
 
 	var navButtons []telegram.KeyboardButton
 	if page > 0 {
-		navButtons = append(navButtons, telegram.Button.Data("⬅️ Previous", fmt.Sprintf("help_page:%d", page-1)))
+		navButtons = append(
+			navButtons,
+			telegram.Button.Data(
+				"⬅️ Previous",
+				fmt.Sprintf("help_page:%d", page-1),
+			),
+		)
 	}
 
-	navButtons = append(navButtons, telegram.Button.Data("🏠 Back", "start_callback"))
+	navButtons = append(
+		navButtons,
+		telegram.Button.Data("🏠 Back", "start_callback"),
+	)
 
 	if end < totalModules {
-		navButtons = append(navButtons, telegram.Button.Data("➡️ Next", fmt.Sprintf("help_page:%d", page+1)))
+		navButtons = append(
+			navButtons,
+			telegram.Button.Data(
+				"➡️ Next",
+				fmt.Sprintf("help_page:%d", page+1),
+			),
+		)
 	}
 
 	keyboard.AddRow(navButtons...)
