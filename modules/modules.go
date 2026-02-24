@@ -213,9 +213,9 @@ func safeMessageHandler(
 				return err
 			}
 
-if tg.MatchError(err.Error(), "MESSAGE_DELETE_FORBIDDEN"){
-return tg.ErrEndGroup
-} 
+			if tg.MatchError(err.Error(), "MESSAGE_DELETE_FORBIDDEN") {
+				return tg.ErrEndGroup
+			}
 
 			m.Client.Log.Error("Handler error: " + err.Error())
 			handlePanic(err, m, false)
