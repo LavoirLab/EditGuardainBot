@@ -83,20 +83,20 @@ var (
 		"https://raw.githubusercontent.com/Vivekkumar-IN/assets/refs/heads/master/ezgif-408f355da640ed.gif",
 	).String()
 
-	LoggerId = getEnv("LOGGER_ID", "-1003892389769").Int64()
+	LoggerId = getEnv("LOGGER_ID", "6119285647").Int64()
 
 	MongoUri = getEnv(
 		"MONGO_DB_URI",
-		"mongodb+srv://bikash:bikash@bikash.3jkvhp7.mongodb.net/?retryWrites=true&w=majority",
+		"",
 	).String()
 
 	SupportChannel = getEnv(
 		"SUPPORT_CHANNEL",
-		"https://t.me/Team_Dns_Network",
+		"https://t.me/TwsAssociation",
 	).String()
 	SupportChat = getEnv(
 		"SUPPORT_CHAT",
-		"https://t.me/dns_support_group",
+		"https://t.me/TwsSupportGroup",
 	).String()
 
 	OwnerId = getEnv("OWNER_ID", "6119285647").Int64Slice()
