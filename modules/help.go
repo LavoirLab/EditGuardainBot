@@ -3,9 +3,15 @@ package modules
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/amarnathcjd/gogram/telegram"
+)
+
+const (
+	HelpColumns = 3
+	HelpRows    = 3
 )
 
 func init() {
@@ -21,6 +27,10 @@ func init() {
 			{
 				Pattern: "callback:^help$",
 				Handler: handleHelpCallback,
+			},
+			{
+				Pattern: "callback:^help_page:(\\d+)$",
+				Handler: handleHelpPageCallback,
 			},
 			{
 				Pattern: "callback:^help_module:",
@@ -54,38 +64,80 @@ func handleHelp(m *telegram.NewMessage) error {
 	}
 
 	m.Reply(helpText, &telegram.SendOptions{
-		ReplyMarkup: getFullHelp(),
+		ReplyMarkup: getHelpKeyboard(0),
 	})
 	return telegram.ErrEndGroup
 }
 
 func handleHelpCallback(c *telegram.CallbackQuery) error {
 	c.Answer("")
-	c.Edit(helpText, &telegram.SendOptions{ReplyMarkup: getFullHelp()})
+	c.Edit(helpText, &telegram.SendOptions{ReplyMarkup: getHelpKeyboard(0)})
 	return telegram.ErrEndGroup
 }
 
-func getFullHelp() telegram.ReplyMarkup {
+func handleHelpPageCallback(c *telegram.CallbackQuery) error {
+	c.Answer("")
+	data := c.DataString()
+	parts := strings.Split(data, ":")
+	if len(parts) < 2 {
+		return nil
+	}
+	page, _ := strconv.Atoi(parts[1])
+	c.Edit(helpText, &telegram.SendOptions{ReplyMarkup: getHelpKeyboard(page)})
+	return telegram.ErrEndGroup
+}
+
+func getHelpKeyboard(page int) telegram.ReplyMarkup {
 	keyboard := telegram.NewKeyboard()
 
-	modules := GetModulesWithHelp()
+	allModules := GetModulesWithHelp()
+	var modules []*ModuleInfo
+
+	for _, mod := range allModules {
+		if mod.Name == "help" || mod.Name == "start" {
+			continue
+		}
+		modules = append(modules, mod)
+	}
 
 	sort.Slice(modules, func(i, j int) bool {
 		return modules[i].Name < modules[j].Name
 	})
 
-	var buttons []telegram.KeyboardButton
+	buttonsPerPage := HelpColumns * HelpRows
+	totalModules := len(modules)
 
-	for _, mod := range modules {
-		if mod.Name == "help" || mod.Name == "start" {
-			continue
-		}
-		button := telegram.Button.Data(mod.ModName, "help_module:"+mod.Name)
+	start := page * buttonsPerPage
+	if start >= totalModules && totalModules > 0 {
+		page = 0
+		start = 0
+	}
+	end := start + buttonsPerPage
+	if end > totalModules {
+		end = totalModules
+	}
+
+	var buttons []telegram.KeyboardButton
+	for i := start; i < end; i++ {
+		mod := modules[i]
+		button := telegram.Button.Data(mod.ModName, fmt.Sprintf("help_module:%s:%d", mod.Name, page))
 		buttons = append(buttons, button)
 	}
 
-	keyboard.NewColumn(3, buttons...)
-	keyboard.AddRow(telegram.Button.Data("⬅️ Back", "start_callback"))
+	keyboard.NewColumn(HelpColumns, buttons...)
+
+	var navButtons []telegram.KeyboardButton
+	if page > 0 {
+		navButtons = append(navButtons, telegram.Button.Data("⬅️ Previous", fmt.Sprintf("help_page:%d", page-1)))
+	}
+
+	navButtons = append(navButtons, telegram.Button.Data("🏠 Back", "start_callback"))
+
+	if end < totalModules {
+		navButtons = append(navButtons, telegram.Button.Data("➡️ Next", fmt.Sprintf("help_page:%d", page+1)))
+	}
+
+	keyboard.AddRow(navButtons...)
 
 	return keyboard.Build()
 }
@@ -93,11 +145,15 @@ func getFullHelp() telegram.ReplyMarkup {
 func handleHelpModuleCallback(c *telegram.CallbackQuery) error {
 	data := c.DataString()
 	c.Answer("")
-	parts := strings.SplitN(data, ":", 2)
-	if len(parts) != 2 {
+	parts := strings.Split(data, ":")
+	if len(parts) < 2 {
 		return nil
 	}
 	moduleName := parts[1]
+	page := 0
+	if len(parts) > 2 {
+		page, _ = strconv.Atoi(parts[2])
+	}
 
 	module, exists := GetModule(moduleName)
 	modHelpText := "❌ No help found for this module."
@@ -105,8 +161,13 @@ func handleHelpModuleCallback(c *telegram.CallbackQuery) error {
 		modHelpText = module.Help
 	}
 
+	backData := "help"
+	if page > 0 {
+		backData = fmt.Sprintf("help_page:%d", page)
+	}
+
 	keyboard := telegram.NewKeyboard().AddRow(
-		telegram.Button.Data("⬅️ Back", "help"),
+		telegram.Button.Data("⬅️ Back", backData),
 	).Build()
 
 	_, err := c.Edit(modHelpText, &telegram.SendOptions{
