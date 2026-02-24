@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	HelpColumns = 3
+	HelpColumns = 2
 	HelpRows    = 3
 )
 
