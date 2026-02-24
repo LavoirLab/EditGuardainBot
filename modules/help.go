@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	HelpColumns = 2
-	HelpRows    = 3
+	HelpColumns = 4
+	HelpRows    = 4
 )
 
 func init() {
