@@ -213,7 +213,7 @@ func safeMessageHandler(
 				return err
 			}
 
-			if tg.MatchError(err.Error(), "MESSAGE_DELETE_FORBIDDEN") {
+			if tg.MatchError(err, "MESSAGE_DELETE_FORBIDDEN") {
 				return tg.ErrEndGroup
 			}
 
