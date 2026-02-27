@@ -105,7 +105,7 @@ func ListBlockedStickersCmd(m *telegram.NewMessage) error {
 		).
 			Build()
 
-		_, err = m.Reply(
+		_, err := m.Reply(
 			"<b>Click the button below to view the list of blocked stickers in private.</b>",
 			&telegram.SendOptions{ReplyMarkup: btn},
 		)
@@ -218,13 +218,16 @@ func listBlockedStickers(
 		media, err := telegram.ResolveBotFileID(stickers[i])
 		if err != nil {
 			log.Printf("Failed to resolve sticker %s: %v", stickers[i], err)
-		}
-		continue
+		} else {
 
-		_, err := client.SendMedia(userID, media)
+		umm, err = client.SendMedia(userID, media)
 		if err != nil {
 			log.Printf("Failed to send sticker %s: %v", stickers[i], err)
-		}
+		} else {
+
+go func(m *telegram.NewMessage){time.Sleep(15*time.Second); m.Delete()}()
+}
+}
 	}
 
 	if end < len(stickers) {
