@@ -229,7 +229,7 @@ func listBlockedStickers(
 			}
 		}
 
-time.Sleep(time.Second)
+		time.Sleep(time.Second)
 	}
 
 	if end < len(stickers) {
