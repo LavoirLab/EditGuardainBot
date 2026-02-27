@@ -176,15 +176,13 @@ func StickerBlockHandler(m *telegram.NewMessage) error {
 		&telegram.SendOptions{ParseMode: "HTML"},
 	)
 
-if m != nil {
-go func( m *telegram.NewMessage){
-time.Sleep(20*time.Second)
+	if m != nil {
+		go func(m *telegram.NewMessage) {
+			time.Sleep(20 * time.Second)
 
-m.Delete()
-
-}(m)
-
-}
+			m.Delete()
+		}(m)
+	}
 	return telegram.ErrEndGroup
 }
 
