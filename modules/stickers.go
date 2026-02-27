@@ -17,14 +17,24 @@ func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "stickers",
 		ModName: "🖼️ Stickers",
-		Help: `🖼️ <b>Sᴛɪᴄᴋᴇʀ Bʟᴏᴄᴋᴇʀ</b> ᴀʟʟᴏᴡs ᴀᴅᴍɪɴs ᴛᴏ ʙʟᴏᴄᴋ ꜱᴘᴇᴄɪꜰɪᴄ ꜱᴛɪᴄᴋᴇʀꜱ ɪɴ ᴛʜᴇ ɢʀᴏᴜᴘ.
+		Help: `🖼️ <b>Sᴛɪᴄᴋᴇʀ Fɪʟᴛᴇʀ</b> ʟᴇᴛs ᴀᴅᴍɪɴs ʀᴇsᴛʀɪᴄᴛ ꜱᴘᴇᴄɪꜰɪᴄ ꜱᴛɪᴄᴋᴇʀꜱ ꜰʀᴏᴍ ʙᴇɪɴɢ ꜱᴇɴᴛ ɪɴ ᴛʜᴇ ɢʀᴏᴜᴘ.
+
+<b>ʜᴏᴡ ɪᴛ ᴡᴏʀᴋs:</b>
+<blockquote>➤ ʙᴏᴛ ꜱᴀᴠᴇꜱ ᴛʜᴇ ꜱᴛɪᴄᴋᴇʀ ɪᴅ ᴏꜰ ᴀ ʀᴇᴘʟɪᴇᴅ ꜱᴛɪᴄᴋᴇʀ
+➤ ᴏɴᴄᴇ ʙʟᴏᴄᴋᴇᴅ, ᴀɴʏ ᴜꜱᴇʀ ꜱᴇɴᴅɪɴɢ ᴛʜᴀᴛ ꜱᴛɪᴄᴋᴇʀ ᴡɪʟʟ ʙᴇ ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ᴅᴇʟᴇᴛᴇᴅ</blockquote>
 
 <b>ᴜsᴀɢᴇ:</b>
-<blockquote>➤ ʀᴇᴘʟʏ ᴛᴏ ᴀ ꜱᴛɪᴄᴋᴇʀ ᴡɪᴛʜ <code>/blocksticker</code> ᴏʀ <code>/bs</code> ᴛᴏ ʙʟᴏᴄᴋ ɪᴛ.
-➤ ʀᴇᴘʟʏ ᴛᴏ ᴀ ꜱᴛɪᴄᴋᴇʀ ᴡɪᴛʜ <code>/unblocksticker</code> ᴏʀ <code>/ubs</code> ᴛᴏ ᴜɴʙʟᴏᴄᴋ ɪᴛ.
-➤ ᴜꜱᴇ <code>/listblockedstickers</code> ᴏʀ <code>/slist</code> ᴛᴏ ᴠɪᴇᴡ ᴀʟʟ ʙʟᴏᴄᴋᴇᴅ ꜱᴛɪᴄᴋᴇʀꜱ.</blockquote>
+<blockquote>➤ <code>/blocksticker</code> – ʀᴇᴘʟʏ ᴛᴏ ᴀ ꜱᴛɪᴄᴋᴇʀ ᴛᴏ ʙʟᴏᴄᴋ ɪᴛ
+➤ <code>/bs</code> – ꜱʜᴏʀᴛ ᴀʟɪᴀꜱ ꜰᴏʀ ʙʟᴏᴄᴋɪɴɢ
 
-<emoji id='5370872220149099318'>👮</emoji> ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴜsᴇ ᴛʜᴇꜱᴇ ᴄᴏᴍᴍᴀɴᴅꜱ.`,
+➤ <code>/unblocksticker</code> – ʀᴇᴘʟʏ ᴛᴏ ᴀ ʙʟᴏᴄᴋᴇᴅ ꜱᴛɪᴄᴋᴇʀ ᴛᴏ ʀᴇᴍᴏᴠᴇ ɪᴛ
+➤ <code>/ubs</code> – ꜱʜᴏʀᴛ ᴀʟɪᴀꜱ ꜰᴏʀ ᴜɴʙʟᴏᴄᴋɪɴɢ
+
+➤ <code>/listblockedstickers</code> – ꜱʜᴏᴡ ᴀʟʟ ʙʟᴏᴄᴋᴇᴅ ꜱᴛɪᴄᴋᴇʀꜱ
+➤ <code>/slist</code> – ꜱʜᴏʀᴛ ᴀʟɪᴀꜱ ꜰᴏʀ ʟɪꜱᴛ</blockquote>
+
+<blockquote><emoji id='5929345782560853059'>🚫</emoji> ʙʟᴏᴄᴋᴇᴅ ꜱᴛɪᴄᴋᴇʀꜱ ᴀʀᴇ ʀᴇᴍᴏᴠᴇᴅ ɪɴꜱᴛᴀɴᴛʟʏ ᴀꜰᴛᴇʀ ꜱᴇɴᴅɪɴɢ.
+<emoji id='5370872220149099318'>👮</emoji> ᴏɴʟʏ ᴀᴅᴍɪɴꜱ ᴄᴀɴ ᴍᴀɴᴀɢᴇ ᴛʜᴇ ꜰɪʟᴛᴇʀ.</blockquote>`,
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:(blocksticker|sblock|bs)",
