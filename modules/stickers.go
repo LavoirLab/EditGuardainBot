@@ -130,7 +130,7 @@ func ListBlockedStickersCmd(m *telegram.NewMessage) error {
 				return listBlockedStickers(
 					m.Client,
 					m.Sender.ID,
-					chatID,
+					cleanChatID(chatID),
 					0,
 					nil,
 				)
@@ -270,4 +270,20 @@ func listBlockedStickers(
 // Exported for start.go
 func HandleBlockedListDeepLink(m *telegram.NewMessage, chatID int64) error {
 	return listBlockedStickers(m.Client, m.Sender.ID, chatID, 0, nil)
+}
+
+
+
+func cleanChatID(input int64) int64 {
+    // supergroup / channel  (-100xxxxxxxxxx)
+    if input <= -1000000000000 {
+        return -(input + 1000000000000)
+    }
+
+    // old basic group (-xxxxxxxxx)
+    if input < 0 {
+        return -input
+    }
+
+    return input
 }
