@@ -186,7 +186,6 @@ func listBlockedStickers(
 	offset int,
 	c *telegram.CallbackQuery,
 ) error {
-
 	stickers, err := database.GetBlockedStickers(chatID)
 	if err != nil {
 		if c != nil {
@@ -216,15 +215,11 @@ func listBlockedStickers(
 
 	for i := offset; i < end; i++ {
 
-media, err := telegram.ResolveBotFileID(stickers[i])
-
-
-if err != nil {
-
+		media, err := telegram.ResolveBotFileID(stickers[i])
+		if err != nil {
 			log.Printf("Failed to resolve sticker %s: %v", stickers[i], err)
-
-}
-continue 
+		}
+		continue
 
 		_, err := client.SendMedia(userID, media)
 		if err != nil {
