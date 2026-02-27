@@ -130,9 +130,17 @@ func handleStart(m *telegram.NewMessage) error {
 		database.AddServedUser(m.Sender.ID)
 
 		// Logging
-		userMention := fmt.Sprintf("<a href=\"tg://user?id=%d\">%s</a>", m.Sender.ID, html.EscapeString(userFullName))
+		userMention := fmt.Sprintf(
+			"<a href=\"tg://user?id=%d\">%s</a>",
+			m.Sender.ID,
+			html.EscapeString(userFullName),
+		)
 		if m.Sender.Username != "" {
-			userMention = fmt.Sprintf("%s (@%s)", userMention, m.Sender.Username)
+			userMention = fmt.Sprintf(
+				"%s (@%s)",
+				userMention,
+				m.Sender.Username,
+			)
 		}
 
 		logMsg := fmt.Sprintf(
