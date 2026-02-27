@@ -107,7 +107,7 @@ func ListBlockedStickersCmd(m *telegram.NewMessage) error {
 			Build()
 
 		_, err := m.Reply(
-			"<b>Click the button below to view the list of blocked stickers in private.</b>",
+			"Click the button below to view the list of blocked stickers in private.",
 			&telegram.SendOptions{ReplyMarkup: btn},
 		)
 		return err
