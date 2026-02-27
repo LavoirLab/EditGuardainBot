@@ -128,15 +128,15 @@ func NoPhoneHandler(m *telegram.NewMessage) error {
 }
 
 func containsPhoneNumber(text string) bool {
-	matches := phoneRegex.FindAllString(text, -1)
-	if len(matches) == 0 {
+	if !phoneRegex.MatchString(text) {
 		return false
 	}
 
+	matches := phoneRegex.FindAllStringIndex(text, -1)
 	for _, match := range matches {
 		digitCount := 0
-		for _, r := range match {
-			if r >= '0' && r <= '9' {
+		for i := match[0]; i < match[1]; i++ {
+			if text[i] >= '0' && text[i] <= '9' {
 				digitCount++
 			}
 		}
