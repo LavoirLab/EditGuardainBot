@@ -228,6 +228,8 @@ func listBlockedStickers(
 				go func(m *telegram.NewMessage) { time.Sleep(15 * time.Second); m.Delete() }(umm)
 			}
 		}
+
+time.Sleep(time.Second)
 	}
 
 	if end < len(stickers) {
