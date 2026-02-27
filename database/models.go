@@ -46,6 +46,7 @@ type ChatSettings struct {
 	NoPhoneEnabled    bool                `bson:"no_phone_enabled"`
 	NoHashtagsEnabled bool                `bson:"no_hashtags_enabled"`
 	NoPromoEnabled    bool                `bson:"no_promo_enabled"`
+	BlockedStickers   []string            `bson:"blocked_stickers"`
 }
 
 type BotState struct {
