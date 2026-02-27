@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/amarnathcjd/gogram/telegram"
+
+	"main/config"
 )
 
 const (
@@ -47,6 +49,12 @@ const helpText = `<emoji id='5814427657609153890'>📚</emoji> <b>ʙᴏᴛ ᴄ�
 <b><i><emoji id='5411322793373477644'>👇</emoji> ᴛᴀᴘ ᴛʜᴇ ʙᴜᴛᴛᴏɴꜱ ʙᴇʟᴏᴡ ᴛᴏ ᴠɪᴇᴡ ʜᴇʟᴘ ꜰᴏʀ ᴇᴀᴄʜ ᴍᴏᴅᴜʟᴇ:</i></b>`
 
 func handleHelp(m *telegram.NewMessage) error {
+	args := strings.TrimSpace(m.Args())
+	if args == "nsfw" && !config.NsfwApiEnabled {
+		m.Reply("That module is disabled.")
+		return telegram.ErrEndGroup
+	}
+
 	if !m.IsPrivate() {
 		keyboard := telegram.NewKeyboard().AddRow(
 			telegram.Button.URL("📖 Open Help in PM", fmt.Sprintf("https://t.me/%s?start=help", m.Client.Me().Username)),
@@ -94,9 +102,15 @@ func getHelpKeyboard(page int) telegram.ReplyMarkup {
 	var modules []*ModuleInfo
 
 	for _, mod := range allModules {
+
 		if mod.Name == "help" || mod.Name == "start" {
 			continue
 		}
+
+		if mod.Name == "nsfw" && !config.NsfwApiEnabled {
+			continue
+		}
+
 		modules = append(modules, mod)
 	}
 
@@ -167,7 +181,14 @@ func handleHelpModuleCallback(c *telegram.CallbackQuery) error {
 	if len(parts) < 2 {
 		return nil
 	}
+
 	moduleName := parts[1]
+
+	if moduleName == "nsfw" && !config.NsfwApiEnabled {
+		c.Answer("This module is not available.")
+		return telegram.ErrEndGroup
+	}
+
 	page := 0
 	if len(parts) > 2 {
 		page, _ = strconv.Atoi(parts[2])
