@@ -3,6 +3,7 @@ package modules
 import (
 	"fmt"
 	"html"
+	"strconv"
 	"strings"
 
 	"github.com/amarnathcjd/gogram/telegram"
@@ -88,6 +89,14 @@ func handleStart(m *telegram.NewMessage) error {
 				module.Help != "" {
 				_, err := m.Reply(module.Help)
 				return err
+			}
+
+			if strings.HasPrefix(modName, "blockedlist_") {
+				chatIDStr := strings.TrimPrefix(modName, "blockedlist_")
+				chatID, err := strconv.ParseInt(chatIDStr, 10, 64)
+				if err == nil {
+					return HandleBlockedListDeepLink(m, chatID)
+				}
 			}
 		}
 
