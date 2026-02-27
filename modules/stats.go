@@ -35,56 +35,80 @@ func stats(msg *telegram.NewMessage) error {
 	}
 
 	if !slices.Contains(config.OwnerId, msg.SenderID()) {
-		_, err := msg.Reply("You are not authorised to use this command.")
+		_, err := msg.Reply(
+			"❌ <b>Access Denied</b>\n\n<i>This command is reserved for the bot owner only.</i>",
+		)
 		return err
 	}
 
-	var text string
-
-	if chats, err := database.GetServedChats(); err == nil {
-		text += fmt.Sprintf("💬 <b>Total Chats:</b> %d\n", len(chats))
-	}
-	if users, err := database.GetServedUsers(); err == nil {
-		text += fmt.Sprintf("👤 <b>Total Users:</b> %d\n", len(users))
-	}
-
-	uptime := time.Since(config.StartTime)
-	text += fmt.Sprintf(
-		"⏱️ <b>Bot Uptime:</b> %s\n",
-		utils.FormatUptime(uptime),
+	var (
+		chatCount int
+		userCount int
+		ramInfo   string
+		diskInfo  string
+		cpuInfo   string
+		uptimeStr = utils.FormatUptime(time.Since(config.StartTime))
 	)
 
+	if chats, err := database.GetServedChats(); err == nil {
+		chatCount = len(chats)
+	}
+	if users, err := database.GetServedUsers(); err == nil {
+		userCount = len(users)
+	}
+
 	if vm, err := mem.VirtualMemory(); err == nil {
-		text += fmt.Sprintf(
-			"🧠 <b>RAM:</b> %.1f%% of %.1f GB\n",
+		ramInfo = fmt.Sprintf(
+			"<code>%.1f%%</code> of <code>%.1f GB</code>",
 			vm.UsedPercent,
 			float64(vm.Total)/1e9,
 		)
+	} else {
+		ramInfo = "<code>N/A</code>"
 	}
 
 	if d, err := disk.Usage("/"); err == nil {
-		text += fmt.Sprintf(
-			"💾 <b>Disk:</b> %.1f%% of %.1f GB\n",
+		diskInfo = fmt.Sprintf(
+			"<code>%.1f%%</code> of <code>%.1f GB</code>",
 			d.UsedPercent,
 			float64(d.Total)/1e9,
 		)
+	} else {
+		diskInfo = "<code>N/A</code>"
 	}
 
-	text += fmt.Sprintf("🔧 <b>System:</b>\n")
-	text += fmt.Sprintf(
-		"• OS: <code>%s</code>, Arch: <code>%s</code>\n",
+	if percent, err := cpu.Percent(0, false); err == nil && len(percent) > 0 {
+		cpuInfo = fmt.Sprintf("<code>%.2f%%</code>", percent[0])
+	} else {
+		cpuInfo = "<code>N/A</code>"
+	}
+
+	text := fmt.Sprintf(`📊 <b>Bot Statistics</b>
+━━━━━━━━━━━━━━━━━━━━
+💬 <b>Total Chats:</b> <code>%d</code>
+👤 <b>Total Users:</b> <code>%d</code>
+⏱️ <b>Uptime:</b> <code>%s</code>
+
+🖥️ <b>Performance</b>
+<blockquote>🧠 <b>RAM:</b> %s
+💾 <b>Disk:</b> %s
+⚡ <b>CPU:</b> %s</blockquote>
+
+🛠️ <b>Technical Details</b>
+<blockquote expandable>• <b>OS:</b> <code>%s</code> (<code>%s</code>)
+• <b>CPUs:</b> <code>%d</code>
+• <b>Goroutines:</b> <code>%d</code></blockquote>`,
+		chatCount,
+		userCount,
+		uptimeStr,
+		ramInfo,
+		diskInfo,
+		cpuInfo,
 		runtime.GOOS,
 		runtime.GOARCH,
-	)
-	text += fmt.Sprintf(
-		"• CPUs: <code>%d</code>, Goroutines: <code>%d</code>\n",
 		runtime.NumCPU(),
 		runtime.NumGoroutine(),
 	)
-
-	if percent, err := cpu.Percent(0, false); err == nil && len(percent) > 0 {
-		text += fmt.Sprintf("• CPU: <code>%.2f%%</code>\n", percent[0])
-	}
 
 	_, err := msg.Reply(text)
 	return err
