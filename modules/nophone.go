@@ -134,8 +134,12 @@ func containsPhoneNumber(text string) bool {
 	}
 
 	for _, match := range matches {
-		digits := regexp.MustCompile(`\d`).FindAllString(match, -1)
-		digitCount := len(digits)
+		digitCount := 0
+		for _, r := range match {
+			if r >= '0' && r <= '9' {
+				digitCount++
+			}
+		}
 		if digitCount >= 10 && digitCount <= 15 {
 			return true
 		}
