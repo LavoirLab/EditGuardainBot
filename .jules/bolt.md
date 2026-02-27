@@ -7,3 +7,11 @@
 ## 2024-05-23 - Slice Allocation in Dispatcher
 **Learning:** The central message dispatcher was creating a new slice of handler functions for every single message.
 **Action:** Move static handler slices to package-level variables to eliminate per-update allocations.
+
+## 2026-02-27 - Lock Contention in Shared Cache
+**Learning:** Using a single `sync.Mutex` for the global cache caused significant bottlenecking when multiple protection handlers (10+) checked settings concurrently for every message.
+**Action:** Use `sync.RWMutex` with double-checked locking in `Get()` to allow parallel reads on the fast path.
+
+## 2026-02-27 - Allocation-Free Cache Keys
+**Learning:** Using `fmt.Sprintf("%d:%d", chatID, userID)` as a cache key in the message hot path (e.g., for `IsAdmin` checks) caused millions of unnecessary string allocations.
+**Action:** Use a struct (e.g., `type adminCacheKey struct { chatID, userID int64 }`) as the map key to leverage Go's efficient struct hashing without allocations.
