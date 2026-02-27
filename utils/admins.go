@@ -3,7 +3,6 @@ package utils
 import (
 	"fmt"
 	"log"
-	"strings"
 	"time"
 
 	"github.com/amarnathcjd/gogram/telegram"
@@ -20,14 +19,15 @@ type AdminListCache struct {
 	Admins map[int64]*AdminInfo
 }
 
-var (
-	adminCache           = NewCache[int64, *AdminListCache](5 * time.Minute)
-	individualAdminCache = NewCache[string, *AdminInfo](5 * time.Minute)
-)
-
-func makeAdminKey(chatID, userID int64) string {
-	return fmt.Sprintf("%d:%d", chatID, userID)
+type adminCacheKey struct {
+	chatID int64
+	userID int64
 }
+
+var (
+	adminCache           = NewCache[int64, *AdminListCache](2 * time.Hour)
+	individualAdminCache = NewCache[adminCacheKey, *AdminInfo](2 * time.Hour)
+)
 
 func GetChatAdmins(
 	client *telegram.Client,
@@ -71,7 +71,7 @@ func fetchAndCacheAdmins(
 
 		admins[participant.User.ID] = adminInfo
 		individualAdminCache.Set(
-			makeAdminKey(chatID, participant.User.ID),
+			adminCacheKey{chatID, participant.User.ID},
 			adminInfo,
 		)
 	}
@@ -89,7 +89,7 @@ func GetAdmin(
 	client *telegram.Client,
 	chatID, userID int64,
 ) (*AdminInfo, error) {
-	cacheKey := makeAdminKey(chatID, userID)
+	cacheKey := adminCacheKey{chatID, userID}
 	if cached, ok := individualAdminCache.Get(cacheKey); ok {
 		return cached, nil
 	}
@@ -107,7 +107,7 @@ func GetAdmin(
 }
 
 func IsAdmin(client *telegram.Client, chatID, userID int64) (bool, error) {
-	cacheKey := makeAdminKey(chatID, userID)
+	cacheKey := adminCacheKey{chatID, userID}
 	if _, ok := individualAdminCache.Get(cacheKey); ok {
 		return true, nil
 	}
@@ -209,7 +209,7 @@ func UpdateAdminFromParticipant(
 		return
 	}
 
-	cacheKey := makeAdminKey(chatID, userID)
+	cacheKey := adminCacheKey{chatID, userID}
 	individualAdminCache.Set(cacheKey, adminInfo)
 
 	if cached, ok := adminCache.Get(chatID); ok {
@@ -221,7 +221,7 @@ func UpdateAdminFromParticipant(
 }
 
 func RemoveAdmin(chatID, userID int64) {
-	cacheKey := makeAdminKey(chatID, userID)
+	cacheKey := adminCacheKey{chatID, userID}
 	individualAdminCache.Delete(cacheKey)
 
 	if cached, ok := adminCache.Get(chatID); ok {
@@ -235,10 +235,8 @@ func RemoveAdmin(chatID, userID int64) {
 func ClearChatAdminCache(chatID int64) {
 	adminCache.Delete(chatID)
 
-	prefix := fmt.Sprintf("%d:", chatID)
-
 	for _, key := range individualAdminCache.Keys() {
-		if strings.HasPrefix(key, prefix) {
+		if key.chatID == chatID {
 			individualAdminCache.Delete(key)
 		}
 	}
