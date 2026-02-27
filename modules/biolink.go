@@ -35,10 +35,10 @@ func init() {
 	})
 }
 
+var bioLinkRegex = regexp.MustCompile(`\b(?:https?://|www\.)\S+|\b[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:/\S*)?|\B@\w{5,32}\b|\b\w{5,32}\.t\.me\b`)
+
 func ShouldDeleteMsg(text string) bool {
-	pattern := `\b(?:https?://|www\.)\S+|\b[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:/\S*)?|\B@\w{5,32}\b|\b\w{5,32}\.t\.me\b`
-	re := regexp.MustCompile(pattern)
-	return re.MatchString(text)
+	return bioLinkRegex.MatchString(text)
 }
 
 func setBioMode(m *telegram.NewMessage) error {
