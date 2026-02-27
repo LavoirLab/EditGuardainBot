@@ -43,18 +43,37 @@ func (c *Cache[K, V]) Set(key K, value V, ttl ...time.Duration) {
 }
 
 func (c *Cache[K, V]) Get(key K) (V, bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
+	c.mu.RLock()
 	item, ok := c.items[key]
-	if !ok || item.Expired() {
-		if ok {
-			delete(c.items, key)
-		}
+	if !ok {
+		c.mu.RUnlock()
 		var zero V
 		return zero, false
 	}
-	return item.Value, true
+
+	if !item.Expired() {
+		val := item.Value
+		c.mu.RUnlock()
+		return val, true
+	}
+	c.mu.RUnlock()
+
+	// Item expired, need to delete it
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Double check since it might have been deleted/updated by another goroutine
+	item, ok = c.items[key]
+	if ok && item.Expired() {
+		delete(c.items, key)
+		var zero V
+		return zero, false
+	} else if ok {
+		return item.Value, true
+	}
+
+	var zero V
+	return zero, false
 }
 
 func (c *Cache[K, V]) Keys() []K {
