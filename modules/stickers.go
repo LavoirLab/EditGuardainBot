@@ -51,7 +51,7 @@ func init() {
 func BlockStickerCmd(m *telegram.NewMessage) error {
 	reply, _ := m.GetReplyMessage()
 	if reply == nil || reply.Sticker() == nil || reply.File == nil {
-		_, err := m.Reply("❌ <b>Please reply to a sticker to block it.</b>")
+		_, err := m.Reply("❌ Please reply to a sticker to block it.")
 		return err
 	}
 
@@ -76,7 +76,7 @@ func BlockStickerCmd(m *telegram.NewMessage) error {
 func UnblockStickerCmd(m *telegram.NewMessage) error {
 	reply, _ := m.GetReplyMessage()
 	if reply == nil || reply.Sticker() == nil || reply.File == nil {
-		_, err := m.Reply("❌ <b>Please reply to a sticker to unblock it.</b>")
+		_, err := m.Reply("❌ Please reply to a sticker to unblock it.")
 		return err
 	}
 
@@ -100,10 +100,6 @@ func UnblockStickerCmd(m *telegram.NewMessage) error {
 
 func ListBlockedStickersCmd(m *telegram.NewMessage) error {
 	if m.IsGroup() {
-		isAdmin, err := utils.IsAdmin(m.Client, m.ChatID(), m.SenderID())
-		if err != nil || !isAdmin {
-			return nil
-		}
 		btn := telegram.NewKeyboard().AddRow(
 			telegram.Button.URL("📋 View Blocked Stickers", fmt.Sprintf("https://t.me/%s?start=blockedlist_%d", m.Client.Me().Username, m.ChatID())),
 		).
@@ -190,18 +186,6 @@ func listBlockedStickers(
 	offset int,
 	c *telegram.CallbackQuery,
 ) error {
-	isAdmin, err := utils.IsAdmin(client, chatID, userID)
-	if err != nil || !isAdmin {
-		if c != nil {
-			c.Answer(
-				"❌ You are no longer an admin in that group.",
-				&telegram.CallbackOptions{Alert: true},
-			)
-		} else {
-			client.SendMessage(userID, "❌ You must be an admin of the group to view its blocked stickers.")
-		}
-		return nil
-	}
 
 	stickers, err := database.GetBlockedStickers(chatID)
 	if err != nil {
@@ -231,7 +215,18 @@ func listBlockedStickers(
 	}
 
 	for i := offset; i < end; i++ {
-		_, err := client.SendMedia(userID, stickers[i])
+
+media, err := telegram.ResolveBotFileID(stickers[i])
+
+
+if err != nil {
+
+			log.Printf("Failed to resolve sticker %s: %v", stickers[i], err)
+
+}
+continue 
+
+		_, err := client.SendMedia(userID, media)
 		if err != nil {
 			log.Printf("Failed to send sticker %s: %v", stickers[i], err)
 		}
