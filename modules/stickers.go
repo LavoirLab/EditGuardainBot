@@ -5,6 +5,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/amarnathcjd/gogram/telegram"
 
@@ -220,14 +221,13 @@ func listBlockedStickers(
 			log.Printf("Failed to resolve sticker %s: %v", stickers[i], err)
 		} else {
 
-		umm, err = client.SendMedia(userID, media)
-		if err != nil {
-			log.Printf("Failed to send sticker %s: %v", stickers[i], err)
-		} else {
-
-go func(m *telegram.NewMessage){time.Sleep(15*time.Second); m.Delete()}()
-}
-}
+			umm, err = client.SendMedia(userID, media)
+			if err != nil {
+				log.Printf("Failed to send sticker %s: %v", stickers[i], err)
+			} else {
+				go func(m *telegram.NewMessage) { time.Sleep(15 * time.Second); m.Delete() }()
+			}
+		}
 	}
 
 	if end < len(stickers) {
