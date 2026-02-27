@@ -14,10 +14,23 @@ func init() {
 			{
 				Pattern: "message",
 				Handler: OnMessageFnc,
-				Group:   -1, // Early group for serving
 			},
 		},
 	})
+}
+
+var messageProtectionHandlers = []func(*telegram.NewMessage) error{
+	AutoDeleteHandler,
+	MediaDeleteHandler,
+	AbuseHandler,
+	NoForwardHandler,
+	NoHashtagsHandler,
+	NoPhoneHandler,
+	LinkFilterHandler,
+	NoPromoHandler,
+	LongMessageHandler,
+	BioLinkHandler,
+	NsfwHandler,
 }
 
 func OnMessageFnc(m *telegram.NewMessage) error {
@@ -31,21 +44,7 @@ func OnMessageFnc(m *telegram.NewMessage) error {
 		return nil
 	}
 
-	handlers := []func(*telegram.NewMessage) error{
-		AutoDeleteHandler,
-		MediaDeleteHandler,
-		AbuseHandler,
-		NoForwardHandler,
-		NoHashtagsHandler,
-		NoPhoneHandler,
-		LinkFilterHandler,
-		NoPromoHandler,
-		LongMessageHandler,
-		BioLinkHandler,
-		NsfwHandler,
-	}
-
-	for _, handler := range handlers {
+	for _, handler := range messageProtectionHandlers {
 		if err := handler(m); err != nil {
 			return err
 		}
