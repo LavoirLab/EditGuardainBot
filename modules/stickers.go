@@ -31,7 +31,10 @@ func init() {
 			},
 			{
 				Pattern: "command:(unblocksticker|sunblock|ubs)",
-				Handler: RequirePermission("delete_messages", UnblockStickerCmd),
+				Handler: RequirePermission(
+					"delete_messages",
+					UnblockStickerCmd,
+				),
 			},
 			{
 				Pattern: "command:(listblockedstickers|slist|lbs)",
@@ -55,7 +58,9 @@ func BlockStickerCmd(m *telegram.NewMessage) error {
 	fileID := reply.File.FileID
 	blocked, err := database.BlockSticker(m.ChatID(), fileID)
 	if err != nil {
-		_, err = m.Reply("⚠️ <b>Something went wrong while blocking the sticker.</b>")
+		_, err = m.Reply(
+			"⚠️ <b>Something went wrong while blocking the sticker.</b>",
+		)
 		return err
 	}
 
@@ -78,7 +83,9 @@ func UnblockStickerCmd(m *telegram.NewMessage) error {
 	fileID := reply.File.FileID
 	unblocked, err := database.UnblockSticker(m.ChatID(), fileID)
 	if err != nil {
-		_, err = m.Reply("⚠️ <b>Something went wrong while unblocking the sticker.</b>")
+		_, err = m.Reply(
+			"⚠️ <b>Something went wrong while unblocking the sticker.</b>",
+		)
 		return err
 	}
 
@@ -99,9 +106,13 @@ func ListBlockedStickersCmd(m *telegram.NewMessage) error {
 		}
 		btn := telegram.NewKeyboard().AddRow(
 			telegram.Button.URL("📋 View Blocked Stickers", fmt.Sprintf("https://t.me/%s?start=blockedlist_%d", m.Client.Me().Username, m.ChatID())),
-		).Build()
+		).
+			Build()
 
-		_, err = m.Reply("<b>Click the button below to view the list of blocked stickers in private.</b>", &telegram.SendOptions{ReplyMarkup: btn})
+		_, err = m.Reply(
+			"<b>Click the button below to view the list of blocked stickers in private.</b>",
+			&telegram.SendOptions{ReplyMarkup: btn},
+		)
 		return err
 	}
 	if m.IsPrivate() {
@@ -109,17 +120,26 @@ func ListBlockedStickersCmd(m *telegram.NewMessage) error {
 		if len(args) > 0 {
 			chatID, err := strconv.ParseInt(args[0], 10, 64)
 			if err == nil {
-				return listBlockedStickers(m.Client, m.Sender.ID, chatID, 0, nil)
+				return listBlockedStickers(
+					m.Client,
+					m.Sender.ID,
+					chatID,
+					0,
+					nil,
+				)
 			}
 		}
-		_, err := m.Reply("<b>Usage:</b> <code>/slist &lt;chat_id&gt;</code> in PM, or use it in a group.")
+		_, err := m.Reply(
+			"<b>Usage:</b> <code>/slist &lt;chat_id&gt;</code> in PM, or use it in a group.",
+		)
 		return err
 	}
 	return nil
 }
 
 func StickerBlockHandler(m *telegram.NewMessage) error {
-	if m.Sticker() == nil || m.File == nil || m.IsPrivate() || m.IsChannelPost() {
+	if m.Sticker() == nil || m.File == nil || m.IsPrivate() ||
+		m.IsChannelPost() {
 		return nil
 	}
 
@@ -140,7 +160,14 @@ func StickerBlockHandler(m *telegram.NewMessage) error {
 	}
 
 	mention := utils.MentionHTML(m.Sender)
-	_, _ = m.Client.SendMessage(m.ChatID(), fmt.Sprintf("⚠️ %s, that sticker is not allowed in this group.", mention), &telegram.SendOptions{ParseMode: "HTML"})
+	_, _ = m.Client.SendMessage(
+		m.ChatID(),
+		fmt.Sprintf(
+			"⚠️ %s, that sticker is not allowed in this group.",
+			mention,
+		),
+		&telegram.SendOptions{ParseMode: "HTML"},
+	)
 	return telegram.ErrEndGroup
 }
 
@@ -157,11 +184,19 @@ func handleBlockedListCallback(c *telegram.CallbackQuery) error {
 	return listBlockedStickers(c.Client, c.Sender.ID, chatID, offset, c)
 }
 
-func listBlockedStickers(client *telegram.Client, userID int64, chatID int64, offset int, c *telegram.CallbackQuery) error {
+func listBlockedStickers(
+	client *telegram.Client,
+	userID, chatID int64,
+	offset int,
+	c *telegram.CallbackQuery,
+) error {
 	isAdmin, err := utils.IsAdmin(client, chatID, userID)
 	if err != nil || !isAdmin {
 		if c != nil {
-			c.Answer("❌ You are no longer an admin in that group.", &telegram.CallbackOptions{Alert: true})
+			c.Answer(
+				"❌ You are no longer an admin in that group.",
+				&telegram.CallbackOptions{Alert: true},
+			)
 		} else {
 			client.SendMessage(userID, "❌ You must be an admin of the group to view its blocked stickers.")
 		}
@@ -205,8 +240,13 @@ func listBlockedStickers(client *telegram.Client, userID int64, chatID int64, of
 	if end < len(stickers) {
 		btn := telegram.NewKeyboard().AddRow(
 			telegram.Button.Data("Load next 10 ➡️", fmt.Sprintf("blockedlist_%d_%d", chatID, end)),
-		).Build()
-		client.SendMessage(userID, fmt.Sprintf("Listed %d/%d stickers.", end, len(stickers)), &telegram.SendOptions{ReplyMarkup: btn})
+		).
+			Build()
+		client.SendMessage(
+			userID,
+			fmt.Sprintf("Listed %d/%d stickers.", end, len(stickers)),
+			&telegram.SendOptions{ReplyMarkup: btn},
+		)
 	} else {
 		client.SendMessage(userID, fmt.Sprintf("✅ All %d blocked stickers have been listed.", len(stickers)))
 	}
