@@ -70,29 +70,29 @@ func ParseBool(s string) (bool, error) {
 }
 
 func FormatDuration(d time.Duration) string {
-        if d < time.Second {
-                return "0s"
-        }
+	if d < time.Second {
+		return "0s"
+	}
 
-        if d < time.Minute {
-                return fmt.Sprintf("%ds", int(d.Seconds()))
-        }
+	if d < time.Minute {
+		return fmt.Sprintf("%ds", int(d.Seconds()))
+	}
 
-        if d < time.Hour {
-                m := int(d.Minutes())
-                s := int(d.Seconds()) % 60
-                if s == 0 {
-                        return fmt.Sprintf("%dm", m)
-                }
-                return fmt.Sprintf("%dm %ds", m, s)
-        }
+	if d < time.Hour {
+		m := int(d.Minutes())
+		s := int(d.Seconds()) % 60
+		if s == 0 {
+			return fmt.Sprintf("%dm", m)
+		}
+		return fmt.Sprintf("%dm %ds", m, s)
+	}
 
-        hours := int(d.Hours())
-        minutes := int(d.Minutes()) % 60
+	hours := int(d.Hours())
+	minutes := int(d.Minutes()) % 60
 
-        if minutes == 0 {
-                return fmt.Sprintf("%dh", hours)
-        }
+	if minutes == 0 {
+		return fmt.Sprintf("%dh", hours)
+	}
 
-        return fmt.Sprintf("%dh %dm", hours, minutes)
+	return fmt.Sprintf("%dh %dm", hours, minutes)
 }
