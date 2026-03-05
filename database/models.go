@@ -56,3 +56,17 @@ type BotState struct {
 	LoggerEnabled bool    `bson:"logger_enabled"`
 	Migrated      bool    `bson:"migrated"`
 }
+
+func (s *BotState) copy() *BotState {
+	users := make([]int64, len(s.ServedUsers))
+	copy(users, s.ServedUsers)
+	chats := make([]int64, len(s.ServedChats))
+	copy(chats, s.ServedChats)
+	return &BotState{
+		ID:            s.ID,
+		ServedUsers:   users,
+		ServedChats:   chats,
+		LoggerEnabled: s.LoggerEnabled,
+		Migrated:      s.Migrated,
+	}
+}

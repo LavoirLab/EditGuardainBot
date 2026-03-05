@@ -3,34 +3,59 @@ package database
 import "slices"
 
 func GetServedUsers() ([]int64, error) {
+	stateMu.RLock()
+	defer stateMu.RUnlock()
 	state, err := getBotState()
 	if err != nil {
 		return nil, err
 	}
-	return state.ServedUsers, nil
+	return state.copy().ServedUsers, nil
 }
 
 func IsServedUser(userID int64) (bool, error) {
-	users, err := GetServedUsers()
+	if IsServedUserCached(userID) {
+		return true, nil
+	}
+	stateMu.RLock()
+	defer stateMu.RUnlock()
+	state, err := getBotState()
 	if err != nil {
 		return false, err
 	}
-	return slices.Contains(users, userID), nil
+	isServed := slices.Contains(state.ServedUsers, userID)
+	if isServed {
+		MarkUserServed(userID)
+	}
+	return isServed, nil
 }
 
 func AddServedUser(userID int64) error {
+	if IsServedUserCached(userID) {
+		return nil
+	}
+
+	stateMu.Lock()
+	defer stateMu.Unlock()
+
 	state, err := getBotState()
 	if err != nil {
 		return err
 	}
+
 	if !slices.Contains(state.ServedUsers, userID) {
 		state.ServedUsers = append(state.ServedUsers, userID)
-		return updateBotState(state)
+		if err := updateBotState(state); err != nil {
+			return err
+		}
+		MarkUserServed(userID)
 	}
 	return nil
 }
 
 func DeleteServedUser(userID int64) error {
+	stateMu.Lock()
+	defer stateMu.Unlock()
+
 	state, err := getBotState()
 	if err != nil {
 		return err
@@ -40,7 +65,11 @@ func DeleteServedUser(userID int64) error {
 			state.ServedUsers = append(
 				state.ServedUsers[:i],
 				state.ServedUsers[i+1:]...)
-			return updateBotState(state)
+			if err := updateBotState(state); err != nil {
+				return err
+			}
+			seenUsers.Delete(userID)
+			return nil
 		}
 	}
 	return nil

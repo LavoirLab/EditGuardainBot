@@ -5,6 +5,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -20,6 +21,10 @@ var (
 	chatSettingsColl *mongo.Collection
 	botSettingsColl  *mongo.Collection
 	dbCache          = utils.NewCache[string, any](60 * time.Minute)
+
+	stateMu   sync.RWMutex
+	seenUsers sync.Map
+	seenChats sync.Map
 
 	timeout = 11 * time.Second
 )
@@ -39,7 +44,35 @@ func init() {
 	chatSettingsColl = db.Collection("chat_settings")
 	botSettingsColl = db.Collection("bot_settings")
 
+	state, err := getBotState()
+	if err == nil {
+		for _, userID := range state.ServedUsers {
+			seenUsers.Store(userID, true)
+		}
+		for _, chatID := range state.ServedChats {
+			seenChats.Store(chatID, true)
+		}
+	}
+
 	go MigrateData()
+}
+
+func IsServedUserCached(userID int64) bool {
+	_, loaded := seenUsers.Load(userID)
+	return loaded
+}
+
+func IsServedChatCached(chatID int64) bool {
+	_, loaded := seenChats.Load(chatID)
+	return loaded
+}
+
+func MarkUserServed(userID int64) {
+	seenUsers.Store(userID, true)
+}
+
+func MarkChatServed(chatID int64) {
+	seenChats.Store(chatID, true)
 }
 
 func Disconnect() {

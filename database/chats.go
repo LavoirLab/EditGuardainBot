@@ -3,34 +3,59 @@ package database
 import "slices"
 
 func GetServedChats() ([]int64, error) {
+	stateMu.RLock()
+	defer stateMu.RUnlock()
 	state, err := getBotState()
 	if err != nil {
 		return nil, err
 	}
-	return state.ServedChats, nil
+	return state.copy().ServedChats, nil
 }
 
 func IsServedChat(chatID int64) (bool, error) {
-	chats, err := GetServedChats()
+	if IsServedChatCached(chatID) {
+		return true, nil
+	}
+	stateMu.RLock()
+	defer stateMu.RUnlock()
+	state, err := getBotState()
 	if err != nil {
 		return false, err
 	}
-	return slices.Contains(chats, chatID), nil
+	isServed := slices.Contains(state.ServedChats, chatID)
+	if isServed {
+		MarkChatServed(chatID)
+	}
+	return isServed, nil
 }
 
 func AddServedChat(chatID int64) error {
+	if IsServedChatCached(chatID) {
+		return nil
+	}
+
+	stateMu.Lock()
+	defer stateMu.Unlock()
+
 	state, err := getBotState()
 	if err != nil {
 		return err
 	}
+
 	if !slices.Contains(state.ServedChats, chatID) {
 		state.ServedChats = append(state.ServedChats, chatID)
-		return updateBotState(state)
+		if err := updateBotState(state); err != nil {
+			return err
+		}
+		MarkChatServed(chatID)
 	}
 	return nil
 }
 
 func DeleteServedChat(chatID int64) error {
+	stateMu.Lock()
+	defer stateMu.Unlock()
+
 	state, err := getBotState()
 	if err != nil {
 		return err
@@ -40,7 +65,11 @@ func DeleteServedChat(chatID int64) error {
 			state.ServedChats = append(
 				state.ServedChats[:i],
 				state.ServedChats[i+1:]...)
-			return updateBotState(state)
+			if err := updateBotState(state); err != nil {
+				return err
+			}
+			seenChats.Delete(chatID)
+			return nil
 		}
 	}
 	return nil
