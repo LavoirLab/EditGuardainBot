@@ -120,19 +120,6 @@ Leaving... 👋`
 			return m.Client.LeaveChannel(m.ChannelID())
 		}
 
-		_, _ = m.Client.SendMessage(
-			m.ChannelID(),
-			fmt.Sprintf(
-				`Hello 👋 I'm <b>%s</b>, here to help keep the chat transparent and secure.
-
-🚫 I will automatically delete edited messages to maintain clarity.
-
-I'm ready to protect this group! ✅
-Let me know if you need any help.`,
-				html.EscapeString(BotInfo.FirstName),
-			),
-		)
-
 		database.AddServedChat(m.ChannelID())
 
 		logStr := fmt.Sprintf(

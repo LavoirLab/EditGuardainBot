@@ -1,28 +1,40 @@
 package database
 
-func SetEditMode(chatID int64, mode string, duration int) (bool, error) {
+import "time"
+
+func SetEditMode(chatID int64, enabled bool) error {
 	settings, err := getChatSettings(chatID)
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	if settings.EditMode.Mode == mode &&
-		settings.EditMode.Duration == duration {
-		return true, nil
+	if settings.EditMode.Enabled == enabled {
+		return nil
 	}
 
-	settings.EditMode.Mode = mode
+	settings.EditMode.Enabled = enabled
+	return updateChatSettings(settings)
+}
+
+func SetEditDelay(chatID int64, duration time.Duration) error {
+	settings, err := getChatSettings(chatID)
+	if err != nil {
+		return err
+	}
+
+	if settings.EditMode.Duration == duration {
+		return nil
+	}
+
 	settings.EditMode.Duration = duration
-
-	err = updateChatSettings(settings)
-	return err == nil, err
+	return updateChatSettings(settings)
 }
 
 func GetEditMode(chatID int64) EditModeSettings {
 	settings, err := getChatSettings(chatID)
 	if err != nil {
 		return EditModeSettings{
-			Mode:     "USER",
+			Enabled:  true,
 			Duration: 0,
 		}
 	}
@@ -30,6 +42,13 @@ func GetEditMode(chatID int64) EditModeSettings {
 }
 
 func ResetEditMode(chatID int64) error {
-	_, err := SetEditMode(chatID, "USER", 0)
-	return err
+	settings, err := getChatSettings(chatID)
+	if err != nil {
+		return err
+	}
+	settings.EditMode = EditModeSettings{
+		Enabled:  true,
+		Duration: 0,
+	}
+	return updateChatSettings(settings)
 }

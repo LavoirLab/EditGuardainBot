@@ -8,8 +8,8 @@ type EchoSettings struct {
 }
 
 type EditModeSettings struct {
-	Mode     string `bson:"mode"`
-	Duration int    `bson:"duration"`
+	Enabled  bool          `bson:"enabled"`
+	Duration time.Duration `bson:"duration"`
 }
 
 type LinkData struct {

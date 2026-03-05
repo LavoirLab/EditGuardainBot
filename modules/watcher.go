@@ -2,6 +2,7 @@ package modules
 
 import (
 	"fmt"
+	"html"
 	"log"
 	"time"
 
@@ -170,11 +171,21 @@ func handleBotAdded(m *telegram.NewMessage) error {
 		// SuperGroup - proceed normally
 		welcomeText := fmt.Sprintf(`👋 <b>Hello!</b>
 
-Thanks for adding me to <b>%s</b>! I'm %s, your group management assistant.
+Thanks for adding me to <b>%s</b>! I'm <b>%s</b> 🤖, your group management assistant.
 
-Use /help to see what I can do!`, getTitle(m), m.Client.Me().FirstName)
+Use /help to see what I can do!`, html.EscapeString(getTitle(m)), html.EscapeString(m.Client.Me().FirstName))
 
-		_, err := m.Reply(welcomeText, &telegram.SendOptions{ParseMode: "HTML"})
+		btn := telegram.NewKeyboard().AddRow(
+			telegram.Button.URL(
+				"➕ Add me to Your Group",
+				fmt.Sprintf(
+					"https://t.me/%s?startgroup=s&admin=delete_messages+invite_users",
+					m.Client.Me().Username,
+				),
+			),
+		).Build()
+
+		_, err := m.Reply(welcomeText, &telegram.SendOptions{ReplyMarkup: btn, ParseMode: "HTML"})
 		return err
 	}
 }

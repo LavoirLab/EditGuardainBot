@@ -137,7 +137,7 @@ func defaultChatSettings(chatID int64) *ChatSettings {
 	return &ChatSettings{
 		ChatID: chatID,
 		EditMode: EditModeSettings{
-			Mode:     "USER",
+			Enabled:  true,
 			Duration: 0,
 		},
 		Echo: EchoSettings{
