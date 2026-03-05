@@ -115,10 +115,12 @@ func PurgeCmd(m *telegram.NewMessage) error {
 	)
 
 	// Delete the notification after 5 seconds
-	go func(n *telegram.NewMessage) {
-		time.Sleep(5 * time.Second)
-		n.Delete()
-	}(notification)
+	ScheduleMessageDeletion(
+		m.Client,
+		m.ChatID(),
+		int32(notification.ID),
+		5*time.Second,
+	)
 
 	return nil
 }

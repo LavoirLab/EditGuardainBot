@@ -177,11 +177,12 @@ func StickerBlockHandler(m *telegram.NewMessage) error {
 	)
 
 	if m != nil {
-		go func(m *telegram.NewMessage) {
-			time.Sleep(20 * time.Second)
-
-			m.Delete()
-		}(m)
+		ScheduleMessageDeletion(
+			m.Client,
+			m.ChatID(),
+			int32(m.ID),
+			20*time.Second,
+		)
 	}
 	return telegram.ErrEndGroup
 }
@@ -243,7 +244,12 @@ func listBlockedStickers(
 			if err != nil {
 				log.Printf("Failed to send sticker %s: %v", stickers[i], err)
 			} else {
-				go func(m *telegram.NewMessage) { time.Sleep(15 * time.Second); m.Delete() }(umm)
+				ScheduleMessageDeletion(
+					client,
+					userID,
+					int32(umm.ID),
+					15*time.Second,
+				)
 			}
 		}
 
