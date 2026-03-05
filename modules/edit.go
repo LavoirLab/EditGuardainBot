@@ -141,14 +141,20 @@ func handleSetEditDelayCommand(m *telegram.NewMessage) error {
 		return err
 	}
 
-	_, err = m.Reply(
+if duration == 0 {
+        m.Reply(
+                "⚡ <b>Edited messages will now be deleted immediately!</b>",
+        )
+        return telegram.ErrEndGroup
+}
+
+ m.Reply(
 		fmt.Sprintf(
 			"✅ <b>Edit Protection delay set to %s!</b>",
 			utils.FormatDuration(duration),
 		),
-		&telegram.SendOptions{ParseMode: "HTML"},
 	)
-	return err
+	return telegram.ErrEndGroup
 }
 
 func deleteEditedMessage(m *telegram.NewMessage) error {
