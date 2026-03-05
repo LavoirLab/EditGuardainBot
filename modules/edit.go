@@ -12,43 +12,45 @@ import (
 )
 
 func init() {
-	RegisterModule(&ModuleInfo{
-		Name:    "edit",
-		ModName: "✏️ Edit",
-		Help: `<b><emoji id='5445214044325684784'>✏️</emoji> Eᴅɪᴛ Pʀᴏᴛᴇᴄᴛɪᴏɴ</b>
+        RegisterModule(&ModuleInfo{
+                Name:    "edit",
+                ModName: "✏️ Edit",
+                Help: `<b><emoji id='5445214044325684784'>✏️</emoji> Eᴅɪᴛ Pʀᴏᴛᴇᴄᴛɪᴏɴ</b>
 
 <i>ᴀᴜᴛᴏᴍᴀᴛɪᴄᴀʟʟʏ ᴅᴇᴛᴇᴄᴛs ᴀɴᴅ ᴅᴇʟᴇᴛᴇs ᴍᴇssᴀɢᴇs ᴛʜᴀᴛ ʜᴀᴠᴇ ʙᴇᴇɴ ᴇᴅɪᴛᴇᴅ. ᴛʜɪs ᴇɴsᴜʀᴇs ᴛʜᴀᴛ ᴛʜᴇ ᴄᴏɴᴠᴇʀsᴀᴛɪᴏɴ ʀᴇᴍᴀɪɴs ᴛʀᴀɴsᴘᴀʀᴇɴᴛ ᴀɴᴅ ᴜɴᴀʟᴛᴇʀᴇᴅ.</i>
 
 <b><emoji id='5341715473882955310'>🔧</emoji> ᴄᴏᴍᴍᴀɴᴅs:</b>
 <blockquote>• /edit on – ᴇɴᴀʙʟᴇ ᴇᴅɪᴛ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ <emoji id='6084551628461967966'>✅</emoji>
 • /edit off – ᴅɪsᴀʙʟᴇ ᴇᴅɪᴛ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ <emoji id='5465665476971471368'>❌</emoji>
-• /seteditdelay <time> – sᴇᴛ ᴅᴇʟᴀʏ ʙᴇғᴏʀᴇ ᴅᴇʟᴇᴛɪɴɢ ᴇᴅɪᴛᴇᴅ ᴍᴇssᴀɢᴇs (ᴇ.ɢ. 5s, 1m)</blockquote>
+• /seteditdelay &lt;time&gt; – sᴇᴛ ᴅᴇʟᴀʏ ʙᴇғᴏʀᴇ ᴅᴇʟᴇᴛɪɴɢ ᴇᴅɪᴛᴇᴅ ᴍᴇssᴀɢᴇs (ᴇ.ɢ. 5s, 1m)</blockquote>
 
 <b><emoji id='5443038326535759644'>ℹ️</emoji> ɴᴏᴛᴇs:</b>
 <blockquote>– ᴇᴅɪᴛᴇᴅ ᴍᴇssᴀɢᴇs ᴡɪʟʟ ʙᴇ ᴅᴇʟᴇᴛᴇᴅ ɪᴍᴍᴇᴅɪᴀᴛᴇʟʏ ᴏʀ ᴀғᴛᴇʀ ᴛʜᴇ sᴇᴛ ᴅᴇʟᴀʏ.
+– ɪғ ᴛʜᴇ ᴅᴇʟᴀʏ ɪs sᴇᴛ ᴛᴏ <b>0</b>, ᴛʜᴇ ᴍᴇssᴀɢᴇ ᴡɪʟʟ ʙᴇ ᴅᴇʟᴇᴛᴇᴅ ɪɴsᴛᴀɴᴛʟʏ.
 – <emoji id='5370872220149099318'>👮</emoji> ᴏɴʟʏ ɢʀᴏᴜᴘ ᴀᴅᴍɪɴs ᴄᴀɴ ᴄᴏɴғɪɢᴜʀᴇ ᴛʜɪs sᴇᴛᴛɪɴɢ.</blockquote>`,
-		Handlers: []HandlerConfig{
-			{
-				Pattern: "edit",
-				Handler: deleteEditedMessage,
-			},
-			{
-				Pattern: "command:edit",
-				Handler: RequirePermission(
-					"delete_messages",
-					handleEditCommand,
-				),
-			},
-			{
-				Pattern: "command:seteditdelay",
-				Handler: RequirePermission(
-					"delete_messages",
-					handleSetEditDelayCommand,
-				),
-			},
-		},
-	})
+                Handlers: []HandlerConfig{
+                        {
+                                Pattern: "edit",
+                                Handler: deleteEditedMessage,
+                        },
+                        {
+                                Pattern: "command:edit",
+                                Handler: RequirePermission(
+                                        "delete_messages",
+                                        handleEditCommand,
+                                ),
+                        },
+                        {
+                                Pattern: "command:seteditdelay",
+                                Handler: RequirePermission(
+                                        "delete_messages",
+                                        handleSetEditDelayCommand,
+                                ),
+                        },
+                },
+        })
 }
+
 
 func handleEditCommand(m *telegram.NewMessage) error {
 	args := strings.Fields(m.Args())
