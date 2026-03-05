@@ -181,7 +181,9 @@ func migrateChatSettings(
 		}
 		if err := editModeDB.FindOne(ctx, bson.M{"chat_id": id}).Decode(&editDoc); err == nil {
 			settings.EditMode.Enabled = (editDoc.Mode != "OFF")
-			settings.EditMode.Duration = time.Duration(editDoc.Duration) * time.Second
+			settings.EditMode.Duration = time.Duration(
+				editDoc.Duration,
+			) * time.Second
 		}
 
 		var echoDoc struct {

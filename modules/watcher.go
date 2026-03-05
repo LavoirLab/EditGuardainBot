@@ -185,7 +185,10 @@ Use /help to see what I can do!`, html.EscapeString(getTitle(m)), html.EscapeStr
 			),
 		).Build()
 
-		_, err := m.Reply(welcomeText, &telegram.SendOptions{ReplyMarkup: btn, ParseMode: "HTML"})
+		_, err := m.Reply(
+			welcomeText,
+			&telegram.SendOptions{ReplyMarkup: btn, ParseMode: "HTML"},
+		)
 		return err
 	}
 }

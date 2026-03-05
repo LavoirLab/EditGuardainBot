@@ -34,11 +34,17 @@ func init() {
 			},
 			{
 				Pattern: "command:edit",
-				Handler: RequirePermission("delete_messages", handleEditCommand),
+				Handler: RequirePermission(
+					"delete_messages",
+					handleEditCommand,
+				),
 			},
 			{
 				Pattern: "command:seteditdelay",
-				Handler: RequirePermission("delete_messages", handleSetEditDelayCommand),
+				Handler: RequirePermission(
+					"delete_messages",
+					handleSetEditDelayCommand,
+				),
 			},
 		},
 	})
@@ -53,19 +59,32 @@ func handleEditCommand(m *telegram.NewMessage) error {
 		if !settings.Enabled {
 			status = "Disabled 🔴"
 		}
-		_, err := m.Reply(fmt.Sprintf("✏️ <b>Edit Protection Status:</b> %s\n⏱ <b>Delay:</b> %s\n\n<i>Use <code>/edit on</code> or <code>/edit off</code> to change the setting.</i>", status, utils.FormatDuration(settings.Duration)), &telegram.SendOptions{ParseMode: "HTML"})
+		_, err := m.Reply(
+			fmt.Sprintf(
+				"✏️ <b>Edit Protection Status:</b> %s\n⏱ <b>Delay:</b> %s\n\n<i>Use <code>/edit on</code> or <code>/edit off</code> to change the setting.</i>",
+				status,
+				utils.FormatDuration(settings.Duration),
+			),
+			&telegram.SendOptions{ParseMode: "HTML"},
+		)
 		return err
 	}
 
 	enable, err := utils.ParseBool(args[0])
 	if err != nil {
-		_, err := m.Reply("❌ <b>Invalid argument!</b> Use <code>on</code> or <code>off</code>.", &telegram.SendOptions{ParseMode: "HTML"})
+		_, err := m.Reply(
+			"❌ <b>Invalid argument!</b> Use <code>on</code> or <code>off</code>.",
+			&telegram.SendOptions{ParseMode: "HTML"},
+		)
 		return err
 	}
 
 	err = database.SetEditMode(m.ChatID(), enable)
 	if err != nil {
-		_, err = m.Reply("❌ <b>Failed to update settings.</b>", &telegram.SendOptions{ParseMode: "HTML"})
+		_, err = m.Reply(
+			"❌ <b>Failed to update settings.</b>",
+			&telegram.SendOptions{ParseMode: "HTML"},
+		)
 		return err
 	}
 
@@ -74,14 +93,20 @@ func handleEditCommand(m *telegram.NewMessage) error {
 		statusMsg = "<b>Disabled</b> 🔴"
 	}
 
-	_, err = m.Reply(fmt.Sprintf("✏️ <b>Edit Protection has been %s!</b>", statusMsg), &telegram.SendOptions{ParseMode: "HTML"})
+	_, err = m.Reply(
+		fmt.Sprintf("✏️ <b>Edit Protection has been %s!</b>", statusMsg),
+		&telegram.SendOptions{ParseMode: "HTML"},
+	)
 	return err
 }
 
 func handleSetEditDelayCommand(m *telegram.NewMessage) error {
 	args := strings.Fields(m.Args())
 	if len(args) < 1 {
-		_, err := m.Reply("⚠️ <b>Usage:</b> <code>/seteditdelay &lt;time&gt;</code>\n\n<b>Example:</b> <code>/seteditdelay 5s</code>, <code>1m</code>", &telegram.SendOptions{ParseMode: "HTML"})
+		_, err := m.Reply(
+			"⚠️ <b>Usage:</b> <code>/seteditdelay &lt;time&gt;</code>\n\n<b>Example:</b> <code>/seteditdelay 5s</code>, <code>1m</code>",
+			&telegram.SendOptions{ParseMode: "HTML"},
+		)
 		return err
 	}
 
@@ -90,23 +115,38 @@ func handleSetEditDelayCommand(m *telegram.NewMessage) error {
 		// Fallback to utils.ParseDuration if standard ParseDuration fails
 		duration, err = utils.ParseDuration(args[0])
 		if err != nil {
-			_, err = m.Reply("❌ <b>Invalid time format.</b> Use formats like <code>5s</code>, <code>1m</code>, <code>1h</code>.", &telegram.SendOptions{ParseMode: "HTML"})
+			_, err = m.Reply(
+				"❌ <b>Invalid time format.</b> Use formats like <code>5s</code>, <code>1m</code>, <code>1h</code>.",
+				&telegram.SendOptions{ParseMode: "HTML"},
+			)
 			return err
 		}
 	}
 
 	if duration < 0 {
-		_, err = m.Reply("❌ <b>Duration cannot be negative.</b>", &telegram.SendOptions{ParseMode: "HTML"})
+		_, err = m.Reply(
+			"❌ <b>Duration cannot be negative.</b>",
+			&telegram.SendOptions{ParseMode: "HTML"},
+		)
 		return err
 	}
 
 	err = database.SetEditDelay(m.ChatID(), duration)
 	if err != nil {
-		_, err = m.Reply("❌ <b>Failed to update delay.</b>", &telegram.SendOptions{ParseMode: "HTML"})
+		_, err = m.Reply(
+			"❌ <b>Failed to update delay.</b>",
+			&telegram.SendOptions{ParseMode: "HTML"},
+		)
 		return err
 	}
 
-	_, err = m.Reply(fmt.Sprintf("✅ <b>Edit Protection delay set to %s!</b>", utils.FormatDuration(duration)), &telegram.SendOptions{ParseMode: "HTML"})
+	_, err = m.Reply(
+		fmt.Sprintf(
+			"✅ <b>Edit Protection delay set to %s!</b>",
+			utils.FormatDuration(duration),
+		),
+		&telegram.SendOptions{ParseMode: "HTML"},
+	)
 	return err
 }
 
@@ -128,7 +168,12 @@ func deleteEditedMessage(m *telegram.NewMessage) error {
 	}
 
 	if settings.Duration > 0 {
-		ScheduleMessageDeletion(m.Client, m.ChatID(), int32(m.ID), settings.Duration)
+		ScheduleMessageDeletion(
+			m.Client,
+			m.ChatID(),
+			int32(m.ID),
+			settings.Duration,
+		)
 		return nil
 	}
 
