@@ -15,3 +15,7 @@
 ## 2026-02-27 - Allocation-Free Cache Keys
 **Learning:** Using `fmt.Sprintf("%d:%d", chatID, userID)` as a cache key in the message hot path (e.g., for `IsAdmin` checks) caused millions of unnecessary string allocations.
 **Action:** Use a struct (e.g., `type adminCacheKey struct { chatID, userID int64 }`) as the map key to leverage Go's efficient struct hashing without allocations.
+
+## 2026-02-27 - Lock-Free Global State with atomic.Pointer
+**Learning:** The global bot state (served users/chats) was being fetched via a string-keyed generic cache with a 60-minute TTL. This caused repeated type assertions and potential thundering herd issues if the cache expired under high load.
+**Action:** Use `atomic.Pointer` for lock-free reads and a dedicated `sync.Mutex` for lazy initialization. This ensures O(1) access without allocations or lock contention in the hot path.

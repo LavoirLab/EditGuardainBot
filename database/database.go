@@ -3,9 +3,9 @@ package database
 import (
 	"context"
 	"log"
-	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -17,10 +17,17 @@ import (
 )
 
 var (
-	client           *mongo.Client
-	chatSettingsColl *mongo.Collection
-	botSettingsColl  *mongo.Collection
-	dbCache          = utils.NewCache[string, any](60 * time.Minute)
+	client            *mongo.Client
+	chatSettingsColl  *mongo.Collection
+	botSettingsColl   *mongo.Collection
+	// chatSettingsCache uses int64 keys to eliminate string allocations (strconv.FormatInt)
+	// in the message processing hot path.
+	chatSettingsCache = utils.NewCache[int64, *ChatSettings](60 * time.Minute)
+
+	// botStateAtomic provides lock-free, O(1) access to global bot state.
+	botStateAtomic atomic.Pointer[BotState]
+	// botStateInitMu protects the lazy-loading of the global state to prevent thundering herd.
+	botStateInitMu sync.Mutex
 
 	stateMu   sync.RWMutex
 	seenUsers sync.Map
@@ -87,12 +94,18 @@ func Disconnect() {
 // Low-level methods
 
 func getBotState() (*BotState, error) {
-	const cacheKey = "bot_state"
-	if cached, found := dbCache.Get(cacheKey); found {
-		if state, ok := cached.(*BotState); ok {
-			return state, nil
-		}
+	if state := botStateAtomic.Load(); state != nil {
+		return state, nil
 	}
+
+	botStateInitMu.Lock()
+	defer botStateInitMu.Unlock()
+
+	// Double-check after acquiring lock
+	if state := botStateAtomic.Load(); state != nil {
+		return state, nil
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
@@ -103,18 +116,17 @@ func getBotState() (*BotState, error) {
 			ID:            "global",
 			LoggerEnabled: true,
 		}
-		dbCache.Set(cacheKey, defaultState)
+		botStateAtomic.Store(defaultState)
 		return defaultState, nil
 	} else if err != nil {
 		return nil, err
 	}
 
-	dbCache.Set(cacheKey, &state)
+	botStateAtomic.Store(&state)
 	return &state, nil
 }
 
 func updateBotState(newState *BotState) error {
-	const cacheKey = "bot_state"
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
@@ -129,7 +141,7 @@ func updateBotState(newState *BotState) error {
 		return err
 	}
 
-	dbCache.Set(cacheKey, newState)
+	botStateAtomic.Store(newState)
 	return nil
 }
 
@@ -160,11 +172,8 @@ func defaultChatSettings(chatID int64) *ChatSettings {
 }
 
 func getChatSettings(chatID int64) (*ChatSettings, error) {
-	cacheKey := "chat_settings_" + strconv.FormatInt(chatID, 10)
-	if cached, found := dbCache.Get(cacheKey); found {
-		if settings, ok := cached.(*ChatSettings); ok {
-			return settings, nil
-		}
+	if settings, found := chatSettingsCache.Get(chatID); found {
+		return settings, nil
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -175,18 +184,17 @@ func getChatSettings(chatID int64) (*ChatSettings, error) {
 		Decode(&settings)
 	if err == mongo.ErrNoDocuments {
 		def := defaultChatSettings(chatID)
-		dbCache.Set(cacheKey, def)
+		chatSettingsCache.Set(chatID, def)
 		return def, nil
 	} else if err != nil {
 		return nil, err
 	}
 
-	dbCache.Set(cacheKey, &settings)
+	chatSettingsCache.Set(chatID, &settings)
 	return &settings, nil
 }
 
 func updateChatSettings(newSettings *ChatSettings) error {
-	cacheKey := "chat_settings_" + strconv.FormatInt(newSettings.ChatID, 10)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
@@ -201,7 +209,7 @@ func updateChatSettings(newSettings *ChatSettings) error {
 		return err
 	}
 
-	dbCache.Set(cacheKey, newSettings)
+	chatSettingsCache.Set(newSettings.ChatID, newSettings)
 	return nil
 }
 
