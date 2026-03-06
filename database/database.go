@@ -17,9 +17,9 @@ import (
 )
 
 var (
-	client            *mongo.Client
-	chatSettingsColl  *mongo.Collection
-	botSettingsColl   *mongo.Collection
+	client           *mongo.Client
+	chatSettingsColl *mongo.Collection
+	botSettingsColl  *mongo.Collection
 	// chatSettingsCache uses int64 keys to eliminate string allocations (strconv.FormatInt)
 	// in the message processing hot path.
 	chatSettingsCache = utils.NewCache[int64, *ChatSettings](60 * time.Minute)
