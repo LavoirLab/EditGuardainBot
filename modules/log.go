@@ -36,7 +36,6 @@ func botAddded(m *telegram.ParticipantUpdate) error {
 	groupUsername := "N/A"
 	groupTitle := "N/A"
 	actor := "N/A"
-	chatMemberCount := 0
 
 	if m.Channel != nil {
 		if m.Channel.Username != "" {
@@ -45,7 +44,6 @@ func botAddded(m *telegram.ParticipantUpdate) error {
 		if m.Channel.Title != "" {
 			groupTitle = html.EscapeString(m.Channel.Title)
 		}
-		chatMemberCount = int(m.Channel.ParticipantsCount)
 	}
 
 	if m.Actor != nil {
@@ -129,13 +127,11 @@ Leaving... 👋`
 🆔 <b>Group ID:</b> <code>%d</code>
 🔗 <b>Username:</b> %s
 👤 <b>Added By:</b> %s
-👥 <b>Members:</b> %d
 ━━━━━━━━━━━━━━━━━`,
 			groupTitle,
 			m.ChannelID(),
 			groupUsername,
 			actor,
-			chatMemberCount,
 		)
 
 		_, err := m.Client.SendMessage(config.LoggerId, logStr)
