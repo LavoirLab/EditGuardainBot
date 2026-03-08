@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/amarnathcjd/gogram/telegram"
@@ -38,38 +37,14 @@ func init() {
 	})
 }
 
-type warningTracker struct {
-	globalLock sync.Mutex            // Protects access to locks map
-	locks      map[int64]*sync.Mutex // Per-chat locks
-	chats      map[int64]time.Time   // Last warning per chat
+type longModeCacheKey struct {
+	chatID int64
+	userID int64
 }
 
-var deleteWarningTracker = warningTracker{
-	locks: make(map[int64]*sync.Mutex),
-	chats: make(map[int64]time.Time),
-}
-
-func (w *warningTracker) Lock(chatId int64) {
-	w.globalLock.Lock()
-	lock, exists := w.locks[chatId]
-	if !exists {
-		lock = &sync.Mutex{}
-		w.locks[chatId] = lock
-	}
-	w.globalLock.Unlock()
-
-	lock.Lock()
-}
-
-func (w *warningTracker) Unlock(chatId int64) {
-	w.globalLock.Lock()
-	lock := w.locks[chatId]
-	w.globalLock.Unlock()
-
-	if lock != nil {
-		lock.Unlock()
-	}
-}
+// longModeWarningCache throttles warning messages to once per second per user per chat,
+// preventing spam while ensuring individual users are warned.
+var longModeWarningCache = utils.NewCache[longModeCacheKey, bool](time.Second)
 
 func SetLongLimitHandler(m *telegram.NewMessage) error {
 	if _, err := m.Delete(); err != nil {
@@ -156,30 +131,32 @@ func NoLongMessageCmd(m *telegram.NewMessage) error {
 }
 
 func LongMessageHandler(m *telegram.NewMessage) error {
+	// Early return for empty or very short messages (fast path)
+	// 200 is the minimum configurable limit in SetLongLimitHandler
+	if m.Text() == "" || len(m.Text()) < 200 {
+		return nil
+	}
+
 	if m.IsAnonymous() || m.IsChannelPost() {
 		return nil
 	}
 
 	chatID := m.ChatID()
 
+	// Move settings check before admin check to skip lookup if feature is off
+	settings, err := database.GetEchoSettings(chatID)
+	if err != nil || settings.Mode == "OFF" {
+		return nil
+	}
+
+	// Final length check against configured limit
+	if len(m.Text()) < settings.Limit {
+		return nil
+	}
+
+	// Expensive admin check only for messages that actually violate the limit
 	isadmin, _ := utils.IsAdmin(m.Client, chatID, m.SenderID())
 	if isadmin {
-		return nil
-	}
-
-	settings, err := database.GetEchoSettings(chatID)
-	if err != nil {
-		return nil
-	}
-
-	if settings.Mode == "OFF" {
-		return nil
-	}
-
-	if m.Text() == "" {
-		return nil
-	}
-	if len(m.Text()) < settings.Limit {
 		return nil
 	}
 
@@ -187,11 +164,9 @@ func LongMessageHandler(m *telegram.NewMessage) error {
 		return err
 	}
 
-	deleteWarningTracker.Lock(chatID)
-	defer deleteWarningTracker.Unlock(chatID)
-
-	lastWarning, exists := deleteWarningTracker.chats[chatID]
-	if !exists || time.Since(lastWarning) > time.Second {
+	// Non-blocking warning throttle using cache (per-user per-chat)
+	cacheKey := longModeCacheKey{chatID: chatID, userID: m.SenderID()}
+	if _, warned := longModeWarningCache.Get(cacheKey); !warned {
 		var name string
 		var id int64
 		if m.SenderChat != nil && m.SenderChat.ID != 0 {
@@ -208,7 +183,7 @@ func LongMessageHandler(m *telegram.NewMessage) error {
 ⚠️ <a href="tg://user?id=%d">%s</a>, <i>your message exceeds the %d-character limit allowed in this group.</i> 🚫`, id, name, settings.Limit)
 
 		_, _ = m.Reply(text)
-		deleteWarningTracker.chats[chatID] = time.Now()
+		longModeWarningCache.Set(cacheKey, true)
 	}
 
 	return telegram.ErrEndGroup
