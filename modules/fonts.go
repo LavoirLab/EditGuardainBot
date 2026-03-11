@@ -2,7 +2,6 @@ package modules
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/amarnathcjd/gogram/telegram"
