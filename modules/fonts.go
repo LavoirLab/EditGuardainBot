@@ -108,7 +108,7 @@ func NoStylishHandler(m *telegram.NewMessage) error {
 	if containsStylishFont(text) {
 		mention := utils.MentionHTML(m.Sender)
 		warnMsg, err := m.Reply(fmt.Sprintf(
-			"⚠️ %s, <b>Please use a standard normal font. Stylish text is not allowed here and this message will be deleted in 30 seconds.</b>",
+			"⚠️ %s, Please use a standard normal font. Stylish text is not allowed here and this message will be deleted in 30 seconds.",
 			mention,
 		))
 
