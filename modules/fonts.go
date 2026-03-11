@@ -3,7 +3,7 @@ package modules
 import (
 	"fmt"
 	"time"
-
+"strings"
 	"github.com/amarnathcjd/gogram/telegram"
 
 	"main/database"
@@ -39,7 +39,7 @@ func init() {
 
 func NoStylishCmd(m *telegram.NewMessage) error {
 	var err error
-
+args := strings.Fields(m.Args())
 	if len(args) < 1 {
 		isEnabled, err := database.IsNoStylishEnabled(m.ChatID())
 		if err != nil {
