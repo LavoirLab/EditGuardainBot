@@ -40,10 +40,6 @@ func init() {
 
 func NoStylishCmd(m *telegram.NewMessage) error {
 	var err error
-	args := strings.Fields(m.Args())
-	if _, err = m.Delete(); err != nil {
-		return err
-	}
 
 	if len(args) < 1 {
 		isEnabled, err := database.IsNoStylishEnabled(m.ChatID())
