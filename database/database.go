@@ -168,6 +168,7 @@ func defaultChatSettings(chatID int64) *ChatSettings {
 			Enabled: false,
 			Delay:   1 * time.Hour,
 		},
+		NoStylishEnabled: false,
 	}
 }
 
