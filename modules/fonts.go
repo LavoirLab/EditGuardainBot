@@ -112,16 +112,26 @@ func NoStylishHandler(m *telegram.NewMessage) error {
 	if containsStylishFont(text) {
 		mention := utils.MentionHTML(m.Sender)
 		warnMsg, err := m.Reply(fmt.Sprintf(
-                        "⚠️ %s, <b>Please use a standard normal font. Stylish text is not allowed here and this message will be deleted in 30 seconds.</b>",
-                        mention,
-                ))
+			"⚠️ %s, <b>Please use a standard normal font. Stylish text is not allowed here and this message will be deleted in 30 seconds.</b>",
+			mention,
+		))
 
 		// Schedule original message deletion
-		ScheduleMessageDeletion(m.Client, m.ChatID(), int32(m.ID), 30*time.Second)
+		ScheduleMessageDeletion(
+			m.Client,
+			m.ChatID(),
+			int32(m.ID),
+			30*time.Second,
+		)
 
 		// Schedule warning message deletion
 		if err == nil && warnMsg != nil {
-			ScheduleMessageDeletion(m.Client, m.ChatID(), int32(warnMsg.ID), 30*time.Second)
+			ScheduleMessageDeletion(
+				m.Client,
+				m.ChatID(),
+				int32(warnMsg.ID),
+				30*time.Second,
+			)
 		}
 
 		return telegram.ErrEndGroup
@@ -139,20 +149,17 @@ func containsStylishFont(text string) bool {
 	return false
 }
 
-
-
 func isStylish(r rune) bool {
-switch {
-case r >= 0x1D400 && r <= 0x1D7FF: // 𝓢𝗕𝘐 Mathematical
-return true
-case r >= 0x1D00 && r <= 0x1D7F:   // ꜱᴍᴀʟʟ Small Caps
-return true
-case r >= 0xFF01 && r <= 0xFF5E:   // Ａ Ｂ Ｃ Fullwidth
-return true
-case r >= 0x2460 && r <= 0x24FF:   // ①② Enclosed
-return true
-default:
-return false
+	switch {
+	case r >= 0x1D400 && r <= 0x1D7FF: // 𝓢𝗕𝘐 Mathematical
+		return true
+	case r >= 0x1D00 && r <= 0x1D7F: // ꜱᴍᴀʟʟ Small Caps
+		return true
+	case r >= 0xFF01 && r <= 0xFF5E: // Ａ Ｂ Ｃ Fullwidth
+		return true
+	case r >= 0x2460 && r <= 0x24FF: // ①② Enclosed
+		return true
+	default:
+		return false
+	}
 }
-}
-
