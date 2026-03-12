@@ -222,38 +222,75 @@ func calculatePromoScore(m *telegram.NewMessage) int {
 		}
 	}
 
-	// Count URLs using Telegram entities (proper way)
+	// URL count using entities (already efficient)
 	urlCount := 0
 	if m.Message.Entities != nil {
 		for _, entity := range m.Message.Entities {
 			switch entity.(type) {
-			case *telegram.MessageEntityURL:
-				urlCount++
-			case *telegram.MessageEntityTextURL:
+			case *telegram.MessageEntityURL, *telegram.MessageEntityTextURL:
 				urlCount++
 			}
 		}
 	}
 
-	// Score based on URL count
 	if urlCount >= 5 {
-		score += 20 // Many URLs = likely spam
+		score += 20
 	} else if urlCount >= 3 {
 		score += 12
 	} else if urlCount >= 2 {
 		score += 6
 	}
 
-	// Long messages with multiple lines (likely promo)
-	lines := strings.Split(text, "\n")
-	if len(lines) > 10 && len(text) > 500 && urlCount > 0 {
+	// Single-pass scanner for lines, emojis, caps, and bullets
+	var (
+		lineCount   = 1
+		emojiCount  = 0
+		inEmoji     = false
+		upperCount  = 0
+		lowerCount  = 0
+		letterCount = 0
+		bulletCount = 0
+	)
+
+	for _, r := range text {
+		// Line counting
+		if r == '\n' {
+			lineCount++
+		}
+
+		// Emoji counting
+		isEmoji := isEmojiRune(r)
+		if isEmoji && !inEmoji {
+			emojiCount++
+			inEmoji = true
+		} else if !isEmoji {
+			inEmoji = false
+		}
+
+		// Caps detection
+		if unicode.IsLetter(r) {
+			letterCount++
+			if unicode.IsUpper(r) {
+				upperCount++
+			} else if unicode.IsLower(r) {
+				lowerCount++
+			}
+		}
+
+		// Bullet points and special characters
+		if r == '•' || r == '✨' || r == '✅' {
+			bulletCount++
+		}
+	}
+
+	// Line count score
+	if lineCount > 10 && len(text) > 500 && urlCount > 0 {
 		score += 10
-	} else if len(lines) > 7 && len(text) > 300 && urlCount > 0 {
+	} else if lineCount > 7 && len(text) > 300 && urlCount > 0 {
 		score += 6
 	}
 
-	// Proper emoji counting
-	emojiCount := countEmojis(text)
+	// Emoji score
 	if emojiCount > 20 {
 		score += 15
 	} else if emojiCount > 15 {
@@ -262,15 +299,19 @@ func calculatePromoScore(m *telegram.NewMessage) int {
 		score += 5
 	}
 
-	// ALL-CAPS spam detection
-	capsScore := detectAllCaps(text)
-	score += capsScore
+	// Caps score
+	if len(text) >= 50 && letterCount > 0 {
+		capsRatio := float64(upperCount) / float64(letterCount)
+		if capsRatio > 0.7 && letterCount > 50 {
+			score += 12
+		} else if capsRatio > 0.6 && letterCount > 30 {
+			score += 8
+		} else if capsRatio > 0.5 && letterCount > 50 {
+			score += 5
+		}
+	}
 
-	// Check for promotional structure (bullet points, formatting)
-	bulletCount := strings.Count(text, "•") +
-		strings.Count(text, "✨") +
-		strings.Count(text, "✅")
-
+	// Bullet point score
 	if bulletCount > 8 {
 		score += 10
 	} else if bulletCount > 5 {
@@ -278,25 +319,6 @@ func calculatePromoScore(m *telegram.NewMessage) int {
 	}
 
 	return score
-}
-
-// Proper emoji detection using Unicode properties
-func countEmojis(text string) int {
-	count := 0
-	inEmoji := false
-
-	for _, r := range text {
-		isEmoji := isEmojiRune(r)
-
-		if isEmoji && !inEmoji {
-			count++
-			inEmoji = true
-		} else if !isEmoji {
-			inEmoji = false
-		}
-	}
-
-	return count
 }
 
 func isEmojiRune(r rune) bool {
@@ -312,52 +334,38 @@ func isEmojiRune(r rune) bool {
 		(r >= 0x1FA70 && r <= 0x1FAFF) // Symbols and Pictographs Extended-A
 }
 
-// Detect excessive ALL-CAPS spam
-func detectAllCaps(text string) int {
-	if len(text) < 50 {
-		return 0 // Too short to judge
-	}
-
-	upperCount := 0
-	lowerCount := 0
-	letterCount := 0
-
-	for _, r := range text {
-		if unicode.IsLetter(r) {
-			letterCount++
-			if unicode.IsUpper(r) {
-				upperCount++
-			} else if unicode.IsLower(r) {
-				lowerCount++
-			}
-		}
-	}
-
-	if letterCount == 0 {
-		return 0
-	}
-
-	capsRatio := float64(upperCount) / float64(letterCount)
-
-	// High caps ratio with significant text = spam
-	if capsRatio > 0.7 && letterCount > 50 {
-		return 12
-	} else if capsRatio > 0.6 && letterCount > 30 {
-		return 8
-	} else if capsRatio > 0.5 && letterCount > 50 {
-		return 5
-	}
-
-	return 0
-}
-
 func containsBotUsername(text string) bool {
-	words := strings.Fields(text)
-	for _, w := range words {
-		if strings.HasPrefix(w, "@") {
-			uname := strings.ToLower(strings.TrimPrefix(w, "@"))
-			if strings.HasSuffix(uname, "bot") {
-				return true
+	// A zero-allocation word scanner to replace strings.Fields and strings.ToLower
+	n := len(text)
+	for i := 0; i < n; {
+		// Skip whitespace
+		for i < n && unicode.IsSpace(rune(text[i])) {
+			i++
+		}
+		if i >= n {
+			break
+		}
+
+		// Start of a word
+		if text[i] == '@' {
+			start := i
+			for i < n && !unicode.IsSpace(rune(text[i])) {
+				i++
+			}
+			word := text[start:i]
+			// Check for 'bot' suffix case-insensitively
+			if len(word) >= 4 { // @ + at least one char + bot
+				l := len(word)
+				if (word[l-3] == 'b' || word[l-3] == 'B') &&
+					(word[l-2] == 'o' || word[l-2] == 'O') &&
+					(word[l-1] == 't' || word[l-1] == 'T') {
+					return true
+				}
+			}
+		} else {
+			// Skip the word
+			for i < n && !unicode.IsSpace(rune(text[i])) {
+				i++
 			}
 		}
 	}

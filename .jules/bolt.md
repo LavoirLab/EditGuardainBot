@@ -19,3 +19,11 @@
 ## 2026-02-27 - Lock-Free Global State with atomic.Pointer
 **Learning:** The global bot state (served users/chats) was being fetched via a string-keyed generic cache with a 60-minute TTL. This caused repeated type assertions and potential thundering herd issues if the cache expired under high load.
 **Action:** Use `atomic.Pointer` for lock-free reads and a dedicated `sync.Mutex` for lazy initialization. This ensures O(1) access without allocations or lock contention in the hot path.
+
+## 2026-03-11 - Single-Pass Scanner for Content Filtering
+**Learning:** Content filtering handlers (like NoPromo) often perform multiple passes over the message text for different checks (emojis, caps, line counts, bullet points), each potentially allocating or causing redundant traversals.
+**Action:** Consolidate multiple string analysis tasks into a single-pass UTF-8 scanner to minimize CPU cycles and memory pressure in the message processing hot path.
+
+## 2026-03-11 - Zero-Allocation Word Scanning
+**Learning:** Using `strings.Fields` and `strings.ToLower` to parse words in message handlers causes O(N) heap allocations per message.
+**Action:** Use a manual loop to scan words in-place and perform case-insensitive checks without allocating new strings.
