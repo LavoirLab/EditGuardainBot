@@ -7,25 +7,25 @@ import (
 )
 
 func FormatUptime(d time.Duration) string {
-	seconds := int(d.Seconds()) % 60
-	minutes := int(d.Minutes()) % 60
-	hours := int(d.Hours()) % 24
+	d = d.Round(time.Second)
 	days := int(d.Hours()) / 24
+	hours := int(d.Hours()) % 24
+	minutes := int(d.Minutes()) % 60
+	seconds := int(d.Seconds()) % 60
 
-	var result string
+	var parts []string
 	if days > 0 {
-		result += fmt.Sprintf("%dd:", days)
+		parts = append(parts, fmt.Sprintf("%dd", days))
 	}
-
 	if hours > 0 {
-		result += fmt.Sprintf("%dh:", hours)
+		parts = append(parts, fmt.Sprintf("%dh", hours))
 	}
 	if minutes > 0 {
-		result += fmt.Sprintf("%dm:", minutes)
+		parts = append(parts, fmt.Sprintf("%dm", minutes))
 	}
-	if contains := strings.Contains(result, "d:"); !contains {
-		result += fmt.Sprintf("%ds", seconds)
+	if seconds > 0 || len(parts) == 0 {
+		parts = append(parts, fmt.Sprintf("%ds", seconds))
 	}
 
-	return result
+	return strings.Join(parts, " ")
 }
