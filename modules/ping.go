@@ -24,9 +24,6 @@ func init() {
 }
 
 func pingHandler(m *telegram.NewMessage) error {
-	if _, err := m.Delete(); err != nil {
-		return err
-	}
 
 	start := time.Now()
 	reply, err := m.Reply("🏓 Pinging...")
