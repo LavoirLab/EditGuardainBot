@@ -27,3 +27,7 @@
 ## 2026-03-11 - Zero-Allocation Word Scanning
 **Learning:** Using `strings.Fields` and `strings.ToLower` to parse words in message handlers causes O(N) heap allocations per message.
 **Action:** Use a manual loop to scan words in-place and perform case-insensitive checks without allocating new strings.
+
+## 2026-03-11 - Allocation-Free Cleanup Scheduler Keys
+**Learning:** The `CleanupScheduler` used a formatted string `"chatid:msgid"` as a map key. In groups with auto-delete enabled, this resulted in thousands of heap allocations per hour just for key generation.
+**Action:** Use a struct `type deletionKey struct { chatID int64; messageID int32 }` as the map key to eliminate all allocations during message scheduling and cancellation.

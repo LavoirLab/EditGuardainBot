@@ -1,7 +1,6 @@
 package modules
 
 import (
-	"strconv"
 	"sync"
 	"time"
 
@@ -15,9 +14,14 @@ type ScheduledDeletion struct {
 	DeleteAt  time.Time
 }
 
+type deletionKey struct {
+	chatID    int64
+	messageID int32
+}
+
 type CleanupScheduler struct {
 	mu        sync.RWMutex
-	deletions map[string]*ScheduledDeletion // key: "chatid:msgid"
+	deletions map[deletionKey]*ScheduledDeletion
 	stopChan  chan struct{}
 }
 
@@ -25,7 +29,7 @@ var globalScheduler *CleanupScheduler
 
 func init() {
 	globalScheduler = &CleanupScheduler{
-		deletions: make(map[string]*ScheduledDeletion),
+		deletions: make(map[deletionKey]*ScheduledDeletion),
 		stopChan:  make(chan struct{}),
 	}
 	go globalScheduler.Run()
@@ -37,7 +41,7 @@ func (cs *CleanupScheduler) Schedule(
 	messageID int32,
 	delay time.Duration,
 ) {
-	key := makeKey(chatID, messageID)
+	key := deletionKey{chatID, messageID}
 
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
@@ -51,7 +55,7 @@ func (cs *CleanupScheduler) Schedule(
 }
 
 func (cs *CleanupScheduler) Cancel(chatID int64, messageID int32) {
-	key := makeKey(chatID, messageID)
+	key := deletionKey{chatID, messageID}
 
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
@@ -75,7 +79,7 @@ func (cs *CleanupScheduler) Run() {
 
 func (cs *CleanupScheduler) processScheduled() {
 	now := time.Now()
-	var toDelete []string
+	var toDelete []deletionKey
 	var deletions []*ScheduledDeletion
 
 	// Collect deletions that are ready
@@ -149,11 +153,6 @@ func (cs *CleanupScheduler) Count() int {
 	cs.mu.RLock()
 	defer cs.mu.RUnlock()
 	return len(cs.deletions)
-}
-
-func makeKey(chatID int64, messageID int32) string {
-	return strconv.FormatInt(chatID, 10) + ":" +
-		strconv.FormatInt(int64(messageID), 10)
 }
 
 // Helper function to schedule a message for deletion
