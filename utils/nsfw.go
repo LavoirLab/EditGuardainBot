@@ -69,7 +69,9 @@ func ContainsAbusiveWord(sentence string) bool {
 					// Check word boundary at the end
 					if isWordChar(lastMatchRune) {
 						if tempIdx < len(sentence) {
-							nextR, _ := utf8.DecodeRuneInString(sentence[tempIdx:])
+							nextR, _ := utf8.DecodeRuneInString(
+								sentence[tempIdx:],
+							)
 							if isWordChar(nextR) {
 								continue // Potential substring, keep looking for longer match
 							}
