@@ -31,3 +31,7 @@
 ## 2026-03-11 - Allocation-Free Cleanup Scheduler Keys
 **Learning:** The `CleanupScheduler` used a formatted string `"chatid:msgid"` as a map key. In groups with auto-delete enabled, this resulted in thousands of heap allocations per hour just for key generation.
 **Action:** Use a struct `type deletionKey struct { chatID int64; messageID int32 }` as the map key to eliminate all allocations during message scheduling and cancellation.
+
+## 2026-03-13 - Zero-Allocation Trie Matcher with Word Boundaries
+**Learning:** Standardizing word filters with `strings.Fields` and `strings.ToLower` causes heap allocations on every call. Switching to a Trie improves performance but can introduce the "Scunthorpe problem" (false positives in substrings) if not careful with boundaries.
+**Action:** Implement a Trie-based matcher that processes runes on-the-fly and explicitly validates word boundaries (checking `unicode.IsLetter` before and after the match). This achieves 0 allocs/op and fixes detection of multi-word phrases.

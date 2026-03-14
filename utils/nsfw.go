@@ -1,13 +1,85 @@
 package utils
 
-import "strings"
+import (
+	"sync"
+	"unicode"
+	"unicode/utf8"
+)
+
+type trieNode struct {
+	children map[rune]*trieNode
+	isEnd    bool
+}
+
+var (
+	abuseTrie = &trieNode{children: make(map[rune]*trieNode)}
+	trieOnce  sync.Once
+)
+
+func populateTrie() {
+	for word := range abusiveWords {
+		node := abuseTrie
+		for _, r := range word {
+			r = unicode.ToLower(r)
+			if node.children == nil {
+				node.children = make(map[rune]*trieNode)
+			}
+			child, ok := node.children[r]
+			if !ok {
+				child = &trieNode{}
+				node.children[r] = child
+			}
+			node = child
+		}
+		node.isEnd = true
+	}
+}
+
+func isWordChar(r rune) bool {
+	return unicode.IsLetter(r) || unicode.IsDigit(r)
+}
 
 func ContainsAbusiveWord(sentence string) bool {
-	words := strings.Fields(strings.ToLower(sentence))
-	for _, w := range words {
-		if _, exists := abusiveWords[w]; exists {
-			return true
+	trieOnce.Do(populateTrie)
+
+	var lastRune rune = -1
+	for i, r := range sentence {
+		// Only start matching at the beginning or after a non-word character
+		if lastRune == -1 || !isWordChar(lastRune) {
+			node := abuseTrie
+			tempIdx := i
+			var lastMatchRune rune
+
+			// Look ahead in the Trie
+			for _, rr := range sentence[i:] {
+				lowerRR := unicode.ToLower(rr)
+				if node.children == nil {
+					break
+				}
+				child, ok := node.children[lowerRR]
+				if !ok {
+					break
+				}
+				node = child
+				rrSize := utf8.RuneLen(rr)
+				tempIdx += rrSize
+				lastMatchRune = rr
+
+				if node.isEnd {
+					// Check word boundary at the end
+					if isWordChar(lastMatchRune) {
+						if tempIdx < len(sentence) {
+							nextR, _ := utf8.DecodeRuneInString(sentence[tempIdx:])
+							if isWordChar(nextR) {
+								continue // Potential substring, keep looking for longer match
+							}
+						}
+					}
+					return true
+				}
+			}
 		}
+		lastRune = r
 	}
 	return false
 }
