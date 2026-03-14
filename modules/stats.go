@@ -35,9 +35,21 @@ func stats(msg *telegram.NewMessage) error {
 	}
 
 	if !slices.Contains(config.OwnerId, msg.SenderID()) {
-		_, err := msg.Reply(
-			"❌ <b>Access Denied</b>\n\n<i>This command is reserved for the bot owner only.</i>",
-		)
+		text := "❌ <b>Access Denied</b>\n\n" +
+			"<i>This command is reserved for the bot owner only.</i>"
+
+		opts := &telegram.SendOptions{
+			ParseMode: "HTML",
+		}
+
+		if msg.IsPrivate() {
+			btn := telegram.NewKeyboard().AddRow(
+				telegram.Button.Data("🏠 Back to Menu", "start_callback"),
+			).Build()
+			opts.ReplyMarkup = btn
+		}
+
+		_, err := msg.Reply(text, opts)
 		return err
 	}
 
@@ -110,6 +122,17 @@ func stats(msg *telegram.NewMessage) error {
 		runtime.NumGoroutine(),
 	)
 
-	_, err := msg.Reply(text)
+	opts := &telegram.SendOptions{
+		ParseMode: "HTML",
+	}
+
+	if msg.IsPrivate() {
+		btn := telegram.NewKeyboard().AddRow(
+			telegram.Button.Data("🏠 Back to Menu", "start_callback"),
+		).Build()
+		opts.ReplyMarkup = btn
+	}
+
+	_, err := msg.Reply(text, opts)
 	return err
 }

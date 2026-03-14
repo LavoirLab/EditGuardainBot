@@ -25,21 +25,31 @@ func init() {
 
 func pingHandler(m *telegram.NewMessage) error {
 	start := time.Now()
-	reply, err := m.Reply("🏓 Pinging...")
-	if err != nil {
-		return err
-	}
-
+	_, _ = m.Delete()
 	latency := time.Since(start).Milliseconds()
 	uptime := time.Since(config.StartTime)
 	uptimeStr := utils.FormatUptime(uptime)
 
 	text := fmt.Sprintf(
-		"🏓 Pong!\nLatency: %dms\n🤖 I've been running for %s without rest!",
+		"<b>🏓 Pong!</b>\n"+
+			"━━━━━━━━━━━━━━━━━━━━\n"+
+			"🚀 <b>Latency:</b> <code>%dms</code>\n"+
+			"🆙 <b>Uptime:</b> <code>%s</code>",
 		latency,
 		uptimeStr,
 	)
 
-	_, err = reply.Edit(text)
+	opts := &telegram.SendOptions{
+		ParseMode: "HTML",
+	}
+
+	if m.IsPrivate() {
+		btn := telegram.NewKeyboard().AddRow(
+			telegram.Button.Data("🏠 Back to Menu", "start_callback"),
+		).Build()
+		opts.ReplyMarkup = btn
+	}
+
+	_, err := m.Reply(text, opts)
 	return err
 }

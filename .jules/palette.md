@@ -7,3 +7,11 @@
 ## 2026-02-28 - Humanizing Error States
 **Learning:** Cold error messages like "You are not authorized" create friction and confusion.
 **Action:** Use a warmer tone ("Access Denied") and always provide an actionable "💡 Tip" explaining *why* the error happened and how the user can resolve it.
+
+## 2026-03-01 - Delete-for-Latency Technique
+**Learning:** Intermediate "Pinging..." messages cause a visual flicker and don't provide a significant benefit for fast operations.
+**Action:** Use `m.Delete()` to measure network round-trip time. It eliminates flicker and provides a clean way to time latency. Suppress errors from `m.Delete()` to ensure the bot responds even if it lacks delete permissions in groups.
+
+## 2026-03-01 - Interactive Continuity (Back to Menu)
+**Learning:** Terminal messages (e.g., `/ping`, `/stats`) in private chats often lead to "dead ends" where the user has no clear next step.
+**Action:** Always include a "🏠 Back to Menu" button in private chat terminal messages to maintain flow and guide the user back to the primary interface.
