@@ -146,6 +146,11 @@ func containsStylishFont(text string) bool {
 }
 
 func isStylish(r rune) bool {
+	// Fast-path for standard text
+	if r < 0x1D00 {
+		return false
+	}
+
 	switch {
 	case r >= 0x1D400 && r <= 0x1D7FF: // 𝓢𝗕𝘐 Mathematical
 		return true

@@ -322,6 +322,11 @@ func calculatePromoScore(m *telegram.NewMessage) int {
 }
 
 func isEmojiRune(r rune) bool {
+	// Fast-path for standard text (ASCII, Latin, etc.)
+	if r < 0x2600 {
+		return false
+	}
+
 	// Emoji ranges
 	return (r >= 0x1F600 && r <= 0x1F64F) || // Emoticons
 		(r >= 0x1F300 && r <= 0x1F5FF) || // Misc Symbols and Pictographs
