@@ -47,31 +47,31 @@ func GetModule(name string) (*ModuleInfo, bool) {
 }
 
 func GetAllModules() []*ModuleInfo {
-	modules := make([]*ModuleInfo, 0, len(registeredModules))
+	mods := make([]*ModuleInfo, 0, len(registeredModules))
 	for _, mod := range registeredModules {
-		modules = append(modules, mod)
+		mods = append(mods, mod)
 	}
 
-	sort.Slice(modules, func(i, j int) bool {
-		return modules[i].ModName < modules[j].ModName
+	sort.Slice(mods, func(i, j int) bool {
+		return mods[i].ModName < mods[j].ModName
 	})
 
-	return modules
+	return mods
 }
 
 func GetModulesWithHelp() []*ModuleInfo {
-	modules := make([]*ModuleInfo, 0)
+	mods := make([]*ModuleInfo, 0)
 	for _, mod := range registeredModules {
 		if mod.Help != "" {
-			modules = append(modules, mod)
+			mods = append(mods, mod)
 		}
 	}
 
-	sort.Slice(modules, func(i, j int) bool {
-		return modules[i].ModName < modules[j].ModName
+	sort.Slice(mods, func(i, j int) bool {
+		return mods[i].ModName < mods[j].ModName
 	})
 
-	return modules
+	return mods
 }
 
 func LoadAllHandlers(client *tg.Client) {
@@ -207,7 +207,6 @@ func safeMessageHandler(
 			m.Client.Log.Debug("Executing handler for command " + cmd)
 		}
 		err = handler(m)
-
 		if err != nil {
 			if errors.Is(err, tg.ErrEndGroup) {
 				return err
@@ -220,10 +219,10 @@ func safeMessageHandler(
 			m.Client.Log.Error("Handler error: " + err.Error())
 			handlePanic(err, m, false)
 			return tg.ErrEndGroup
-		} else {
-			if cmd != "" {
-				m.Client.Log.Info("Handler completed successfully for command " + cmd)
-			}
+		}
+
+		if cmd != "" {
+			m.Client.Log.Info("Handler completed successfully for command " + cmd)
 		}
 
 		return nil
