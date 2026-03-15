@@ -222,7 +222,9 @@ func safeMessageHandler(
 		}
 
 		if cmd != "" {
-			m.Client.Log.Info("Handler completed successfully for command " + cmd)
+			m.Client.Log.Info(
+				"Handler completed successfully for command " + cmd,
+			)
 		}
 
 		return nil
