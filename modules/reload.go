@@ -30,7 +30,10 @@ func ReloadHandler(m *telegram.NewMessage) error {
 		return nil
 	}
 
-	x, _ := m.Reply("⏳ <b>Refreshing Admin Cache...</b>", &telegram.SendOptions{ParseMode: "HTML"})
+	x, _ := m.Reply(
+		"⏳ <b>Refreshing Admin Cache...</b>",
+		&telegram.SendOptions{ParseMode: "HTML"},
+	)
 
 	err := utils.RefreshAdminCache(m.Client, m.ChatID())
 	if err != nil {

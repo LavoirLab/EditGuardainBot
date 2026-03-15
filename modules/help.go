@@ -51,7 +51,10 @@ const helpText = `<emoji id='5814427657609153890'>📚</emoji> <b>ʙᴏᴛ ᴄ�
 func handleHelp(m *telegram.NewMessage) error {
 	args := strings.TrimSpace(m.Args())
 	if args == "nsfw" && !config.NsfwApiEnabled {
-		m.Reply("That module is disabled.", &telegram.SendOptions{ParseMode: "HTML"})
+		m.Reply(
+			"That module is disabled.",
+			&telegram.SendOptions{ParseMode: "HTML"},
+		)
 		return telegram.ErrEndGroup
 	}
 
