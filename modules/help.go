@@ -43,7 +43,7 @@ func init() {
 }
 
 const helpText = `<emoji id='5814427657609153890'>📚</emoji> <b>ʙᴏᴛ ᴄᴏᴍᴍᴀɴᴅ ʜᴇʟᴘ</b>
-
+━━━━━━━━━━━━━━━━━━━━
 ʜᴇʀᴇ ʏᴏᴜ'ʟʟ ꜰɪɴᴅ ᴅᴇᴛᴀɪʟꜱ ꜰᴏʀ ᴀʟʟ ᴀᴠᴀɪʟᴀʙʟᴇ ᴘʟᴜɢɪɴꜱ ᴀɴᴅ ꜰᴇᴀᴛᴜʀᴇꜱ.
 
 <b><i><emoji id='5411322793373477644'>👇</emoji> ᴛᴀᴘ ᴛʜᴇ ʙᴜᴛᴛᴏɴꜱ ʙᴇʟᴏᴡ ᴛᴏ ᴠɪᴇᴡ ʜᴇʟᴘ ꜰᴏʀ ᴇᴀᴄʜ ᴍᴏᴅᴜʟᴇ:</i></b>`
@@ -51,7 +51,7 @@ const helpText = `<emoji id='5814427657609153890'>📚</emoji> <b>ʙᴏᴛ ᴄ�
 func handleHelp(m *telegram.NewMessage) error {
 	args := strings.TrimSpace(m.Args())
 	if args == "nsfw" && !config.NsfwApiEnabled {
-		m.Reply("That module is disabled.")
+		m.Reply("That module is disabled.", &telegram.SendOptions{ParseMode: "HTML"})
 		return telegram.ErrEndGroup
 	}
 
@@ -62,9 +62,12 @@ func handleHelp(m *telegram.NewMessage) error {
 			Build()
 
 		m.Reply(
-			"👋 <b>Need help?</b>\n\nTo see all available commands and how to use them, please contact me in private message.",
+			"👋 <b>ɴᴇᴇᴅ ʜᴇʟᴘ?</b>\n\n"+
+				"<i>ᴛᴏ ꜱᴇᴇ ᴀʟʟ ᴀᴠᴀɪʟᴀʙʟᴇ ᴄᴏᴍᴍᴀɴᴅꜱ ᴀɴᴅ ʜᴏᴡ ᴛᴏ ᴜꜱᴇ ᴛʜᴇᴍ, ᴘʟᴇᴀꜱᴇ ᴄᴏɴᴛᴀᴄᴛ ᴍᴇ ɪɴ ᴘʀɪᴠᴀᴛᴇ ᴍᴇꜱꜱᴀɢᴇ.</i>\n\n"+
+				"💡 <b>ᴛɪᴘ:</b> ᴅɪʀᴇᴄᴛ ᴍᴇꜱꜱᴀɢᴇꜱ ᴀʀᴇ ᴜꜱᴇᴅ ᴛᴏ ᴋᴇᴇᴘ ɢʀᴏᴜᴘ ᴄʜᴀᴛꜱ ᴄʟᴇᴀɴ ᴀɴᴅ ᴘʀᴏᴠɪᴅᴇ ᴀ ʙᴇᴛᴛᴇʀ ʜᴇʟᴘ ᴇxᴘᴇʀɪᴇɴᴄᴇ.",
 			&telegram.SendOptions{
 				ReplyMarkup: keyboard,
+				ParseMode:   "HTML",
 			},
 		)
 
@@ -73,13 +76,17 @@ func handleHelp(m *telegram.NewMessage) error {
 
 	m.Reply(helpText, &telegram.SendOptions{
 		ReplyMarkup: getHelpKeyboard(0),
+		ParseMode:   "HTML",
 	})
 	return telegram.ErrEndGroup
 }
 
 func handleHelpCallback(c *telegram.CallbackQuery) error {
 	c.Answer("")
-	c.Edit(helpText, &telegram.SendOptions{ReplyMarkup: getHelpKeyboard(0)})
+	c.Edit(helpText, &telegram.SendOptions{
+		ReplyMarkup: getHelpKeyboard(0),
+		ParseMode:   "HTML",
+	})
 	return telegram.ErrEndGroup
 }
 
@@ -91,7 +98,10 @@ func handleHelpPageCallback(c *telegram.CallbackQuery) error {
 		return nil
 	}
 	page, _ := strconv.Atoi(parts[1])
-	c.Edit(helpText, &telegram.SendOptions{ReplyMarkup: getHelpKeyboard(page)})
+	c.Edit(helpText, &telegram.SendOptions{
+		ReplyMarkup: getHelpKeyboard(page),
+		ParseMode:   "HTML",
+	})
 	return telegram.ErrEndGroup
 }
 
@@ -211,6 +221,7 @@ func handleHelpModuleCallback(c *telegram.CallbackQuery) error {
 
 	_, err := c.Edit(modHelpText, &telegram.SendOptions{
 		ReplyMarkup: keyboard,
+		ParseMode:   "HTML",
 	})
 	return err
 }

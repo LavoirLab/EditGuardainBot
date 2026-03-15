@@ -39,7 +39,10 @@ func PurgeCmd(m *telegram.NewMessage) error {
 			return err
 		}
 		_, err := m.Reply(
-			"⚠️ <b>Purge requires a reply!</b>\n\nPlease reply to the message where you want the purge to <b>start</b>. All messages between that and your command will be deleted.",
+			"⚠️ <b>Purge requires a reply!</b>\n\n"+
+				"<i>Please reply to the message where you want the purge to <b>start</b>.</i>\n\n"+
+				"💡 <b>Tip:</b> All messages between the replied message and your command will be deleted.",
+			&telegram.SendOptions{ParseMode: "HTML"},
 		)
 		return err
 	}
@@ -52,7 +55,10 @@ func PurgeCmd(m *telegram.NewMessage) error {
 			return err
 		}
 		_, err := m.Reply(
-			"❌ <b>Invalid message range.</b>\n\nPlease reply to an <b>older</b> message to start the purge correctly.",
+			"❌ <b>Invalid Message Range</b>\n\n"+
+				"<i>The replied message must be older than the current command.</i>\n\n"+
+				"💡 <b>Tip:</b> Scroll up to find the first message you want to delete and reply to it.",
+			&telegram.SendOptions{ParseMode: "HTML"},
 		)
 		return err
 	}

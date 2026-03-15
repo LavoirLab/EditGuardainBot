@@ -23,8 +23,10 @@ func RequirePermission(
 
 		if m.IsPrivate() {
 			_, err := m.Reply(
-				"👋 <b>Group Only!</b>\n\nThis command is designed for group chats. Please use it inside a group where I am an admin.",
-				&telegram.SendOptions{},
+				"👋 <b>Group Only!</b>\n\n"+
+					"<i>This command is designed for group chats.</i>\n\n"+
+					"💡 <b>Tip:</b> Please use this command inside a group where I am an administrator.",
+				&telegram.SendOptions{ParseMode: "HTML"},
 			)
 			if err != nil {
 				return err
@@ -54,16 +56,20 @@ func RequirePermission(
 		if err != nil {
 			log.Printf("Failed to check user permission: %v", err)
 			_, err = m.Reply(
-				"Failed to verify your permissions.",
-				&telegram.SendOptions{},
+				"⚠️ <b>Verification Failed</b>\n\n"+
+					"<i>I encountered an error while checking your permissions.</i>\n\n"+
+					"💡 <b>Tip:</b> Please try again. If the issue persists, contact the bot owner.",
+				&telegram.SendOptions{ParseMode: "HTML"},
 			)
 			return err
 		}
 
 		if !userIsAdmin {
 			_, err = m.Reply(
-				"👤 <b>Admin Access Required</b>\n\nSorry, only group administrators can use this command.",
-				&telegram.SendOptions{},
+				"👤 <b>Admin Access Required</b>\n\n"+
+					"<i>Sorry, only group administrators can use this command.</i>\n\n"+
+					"💡 <b>Tip:</b> Contact a group admin if you believe this is an error.",
+				&telegram.SendOptions{ParseMode: "HTML"},
 			)
 			if err != nil {
 				return err
@@ -74,10 +80,12 @@ func RequirePermission(
 		if !userHasPerm {
 			_, err = m.Reply(
 				fmt.Sprintf(
-					"🚫 <b>Permission Denied</b>\n\nYou need the <code>%s</code> permission to use this command.",
+					"🚫 <b>Permission Denied</b>\n\n"+
+						"<i>You need the <code>%s</code> permission to use this command.</i>\n\n"+
+						"💡 <b>Tip:</b> Ask a group owner to grant you this specific right.",
 					utils.PrettifyPermission(permission),
 				),
-				&telegram.SendOptions{},
+				&telegram.SendOptions{ParseMode: "HTML"},
 			)
 			if err != nil {
 				return err
@@ -93,16 +101,20 @@ func RequirePermission(
 				fmt.Sprintf("Failed to check bot permission: %v", err),
 			)
 			_, err = m.Reply(
-				"⚠️ <b>Verification Failed</b>\n\nI couldn't verify my own permissions in this chat. Please try again.",
-				&telegram.SendOptions{},
+				"⚠️ <b>Verification Failed</b>\n\n"+
+					"<i>I couldn't verify my own permissions in this chat.</i>\n\n"+
+					"💡 <b>Tip:</b> Please try running the command again in a few moments.",
+				&telegram.SendOptions{ParseMode: "HTML"},
 			)
 			return err
 		}
 
 		if !botIsAdmin {
 			_, err = m.Reply(
-				"🤖 <b>I am not an Admin!</b>\n\nI need administrator rights to perform this action. Please promote me and try again.",
-				&telegram.SendOptions{},
+				"🤖 <b>I am not an Admin!</b>\n\n"+
+					"<i>I need administrator rights to perform this action.</i>\n\n"+
+					"💡 <b>Tip:</b> Please promote me to Admin and ensure I have the <i>Delete Messages</i> permission.",
+				&telegram.SendOptions{ParseMode: "HTML"},
 			)
 			if err != nil {
 				return err
@@ -113,10 +125,12 @@ func RequirePermission(
 		if !botHasPerm {
 			_, err = m.Reply(
 				fmt.Sprintf(
-					"🚫 <b>Missing Bot Permission</b>\n\nI don't have the <code>%s</code> permission. Please grant it to me so I can help you.",
+					"🚫 <b>Missing Bot Permission</b>\n\n"+
+						"<i>I don't have the <code>%s</code> permission.</i>\n\n"+
+						"💡 <b>Tip:</b> Please grant me this permission so I can assist you.",
 					utils.PrettifyPermission(permission),
 				),
-				&telegram.SendOptions{},
+				&telegram.SendOptions{ParseMode: "HTML"},
 			)
 			if err != nil {
 				return err
@@ -168,8 +182,10 @@ func handleAnonAdmin(
 	).Build()
 
 	_, err := m.Reply(
-		"You are an anonymous admin. Click the button below to verify your identity.",
-		&telegram.SendOptions{ReplyMarkup: keyboard},
+		"👤 <b>Identity Verification</b>\n\n"+
+			"<i>You are appearing as an anonymous administrator.</i>\n\n"+
+			"💡 <b>Tip:</b> Tap the button below to verify your identity and execute the command.",
+		&telegram.SendOptions{ReplyMarkup: keyboard, ParseMode: "HTML"},
 	)
 	if err != nil {
 		log.Printf("Failed to send anon verification message: %v", err)
@@ -214,7 +230,10 @@ func HandleAnonVerification(cb *telegram.CallbackQuery) error {
 	if !ok {
 		cb.Answer("")
 		_, err := cb.Edit(
-			"This button has expired. Please use the command again.",
+			"⌛ <b>Session Expired</b>\n\n"+
+				"<i>This verification button has expired for security reasons.</i>\n\n"+
+				"💡 <b>Tip:</b> Please send the command again to generate a new verification button.",
+			&telegram.SendOptions{ParseMode: "HTML"},
 		)
 		if err != nil {
 			return err
@@ -243,9 +262,11 @@ func HandleAnonVerification(cb *telegram.CallbackQuery) error {
 
 		cb.Answer("I am not an admin!", &telegram.CallbackOptions{Alert: true})
 		_, err := cb.Edit(fmt.Sprintf(
-			"🤖 <b>I am not an Admin!</b>\n\nI need administrator rights to %s. Please promote me and try again.",
+			"🤖 <b>I am not an Admin!</b>\n\n"+
+				"<i>I need administrator rights to %s.</i>\n\n"+
+				"💡 <b>Tip:</b> Please promote me to Admin and ensure I have the <i>Delete Messages</i> permission.",
 			utils.PrettifyPermission(verify.Permission),
-		))
+		), &telegram.SendOptions{ParseMode: "HTML"})
 		if err != nil {
 			return err
 		}
@@ -286,9 +307,12 @@ func HandleAnonVerification(cb *telegram.CallbackQuery) error {
 		cb.Answer("")
 		_, err := cb.Edit(
 			fmt.Sprintf(
-				"I don't have permission to %s.",
+				"🚫 <b>Missing Bot Permission</b>\n\n"+
+					"<i>I don't have the <code>%s</code> permission.</i>\n\n"+
+					"💡 <b>Tip:</b> Please grant me this permission so I can assist you.",
 				utils.PrettifyPermission(verify.Permission),
 			),
+			&telegram.SendOptions{ParseMode: "HTML"},
 		)
 		if err != nil {
 			return err
