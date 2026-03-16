@@ -77,96 +77,112 @@ func handleStartCallback(c *telegram.CallbackQuery) error {
 
 func handleStart(m *telegram.NewMessage) error {
 	if m.IsPrivate() {
-
-		args := strings.Fields(m.Args())
-		if len(args) >= 1 {
-			modName := args[0]
-			if modName == "help" {
-				return handleHelp(m)
-			}
-
-			if module, exists := GetModule(modName); exists &&
-				module.Help != "" {
-				_, err := m.Reply(module.Help)
-				return err
-			}
-
-			if strings.HasPrefix(modName, "blockedlist_") {
-				chatIDStr := strings.TrimPrefix(modName, "blockedlist_")
-				chatID, err := strconv.ParseInt(chatIDStr, 10, 64)
-				if err == nil {
-					return HandleBlockedListDeepLink(m, chatID)
-				}
-			}
+		handled, err := handleDeepLink(m)
+		if err != nil || handled {
+			return err
 		}
+		return sendPrivateStart(m)
+	}
 
-		userFullName := strings.TrimSpace(
-			m.Sender.FirstName + " " + m.Sender.LastName,
-		)
-		botName := strings.TrimSpace(m.Client.Me().FirstName)
+	if m.IsGroup() && m.Channel != nil {
+		return handleGroupStart(m)
+	}
 
-		caption := fmt.Sprintf(startMsG,
-			m.Sender.ID, userFullName,
-			m.Client.Me().ID, botName)
+	return nil
+}
 
-		btn := telegram.NewKeyboard()
-		btn.AddRow(
-			telegram.Button.URL("🔄 Update Channel", config.SupportChannel),
-			telegram.Button.URL("💬 Update Group", config.SupportChat),
-		)
-		btn.AddRow(
-			telegram.Button.Data("📖 Command Help", "help"),
-		)
-		btn.AddRow(
-			telegram.Button.URL(
-				"➕ Add me to Your Group",
-				fmt.Sprintf(
-					"https://t.me/%s?startgroup=s&admin=delete_messages+invite_users",
-					m.Client.Me().Username,
-				),
-			),
-		)
+func handleDeepLink(m *telegram.NewMessage) (bool, error) {
+	args := strings.Fields(m.Args())
+	if len(args) < 1 {
+		return false, nil
+	}
 
-		database.AddServedUser(m.Sender.ID)
+	modName := args[0]
+	if modName == "help" {
+		return true, handleHelp(m)
+	}
 
-		// Logging
-		userMention := fmt.Sprintf(
-			"<a href=\"tg://user?id=%d\">%s</a>",
-			m.Sender.ID,
-			html.EscapeString(userFullName),
-		)
-		if m.Sender.Username != "" {
-			userMention = fmt.Sprintf(
-				"%s (@%s)",
-				userMention,
-				m.Sender.Username,
-			)
+	if module, exists := GetModule(modName); exists && module.Help != "" {
+		_, err := m.Reply(module.Help)
+		return true, err
+	}
+
+	if strings.HasPrefix(modName, "blockedlist_") {
+		chatIDStr := strings.TrimPrefix(modName, "blockedlist_")
+		chatID, err := strconv.ParseInt(chatIDStr, 10, 64)
+		if err == nil {
+			return true, HandleBlockedListDeepLink(m, chatID)
 		}
+	}
 
-		logMsg := fmt.Sprintf(
-			"👤 <b>User Started Bot</b>\n"+
-				"━━━━━━━━━━━━━━━━━\n"+
-				"👤 <b>User:</b> %s\n"+
-				"🆔 <b>ID:</b> <code>%d</code>\n"+
-				"━━━━━━━━━━━━━━━━━",
+	return false, nil
+}
+
+func logUserStart(m *telegram.NewMessage, userFullName string) {
+	userMention := fmt.Sprintf(
+		"<a href=\"tg://user?id=%d\">%s</a>",
+		m.Sender.ID,
+		html.EscapeString(userFullName),
+	)
+	if m.Sender.Username != "" {
+		userMention = fmt.Sprintf(
+			"%s (@%s)",
 			userMention,
-			m.Sender.ID,
+			m.Sender.Username,
 		)
-		_, _ = m.Client.SendMessage(config.LoggerId, logMsg)
-
-		_, err := m.ReplyMedia(
-			config.StartImage,
-			&telegram.MediaOptions{Caption: caption, ReplyMarkup: btn.Build()},
-		)
-		return err
 	}
 
-	if !m.IsGroup() || m.Channel == nil {
-		// Basic group check logic from old watcher/grouponly could go here but watcher handles it now
-		return nil
-	}
+	logMsg := fmt.Sprintf(
+		"👤 <b>User Started Bot</b>\n"+
+			"━━━━━━━━━━━━━━━━━\n"+
+			"👤 <b>User:</b> %s\n"+
+			"🆔 <b>ID:</b> <code>%d</code>\n"+
+			"━━━━━━━━━━━━━━━━━",
+		userMention,
+		m.Sender.ID,
+	)
+	_, _ = m.Client.SendMessage(config.LoggerId, logMsg)
+}
 
-	// Supergroup Chat
+func sendPrivateStart(m *telegram.NewMessage) error {
+	userFullName := strings.TrimSpace(
+		m.Sender.FirstName + " " + m.Sender.LastName,
+	)
+	botName := strings.TrimSpace(m.Client.Me().FirstName)
+
+	caption := fmt.Sprintf(startMsG,
+		m.Sender.ID, userFullName,
+		m.Client.Me().ID, botName)
+
+	btn := telegram.NewKeyboard()
+	btn.AddRow(
+		telegram.Button.URL("🔄 Update Channel", config.SupportChannel),
+		telegram.Button.URL("💬 Update Group", config.SupportChat),
+	)
+	btn.AddRow(
+		telegram.Button.Data("📖 Command Help", "help"),
+	)
+	btn.AddRow(
+		telegram.Button.URL(
+			"➕ Add me to Your Group",
+			fmt.Sprintf(
+				"https://t.me/%s?startgroup=s&admin=delete_messages+invite_users",
+				m.Client.Me().Username,
+			),
+		),
+	)
+
+	database.AddServedUser(m.Sender.ID)
+	logUserStart(m, userFullName)
+
+	_, err := m.ReplyMedia(
+		config.StartImage,
+		&telegram.MediaOptions{Caption: caption, ReplyMarkup: btn.Build()},
+	)
+	return err
+}
+
+func handleGroupStart(m *telegram.NewMessage) error {
 	m.Delete()
 	database.AddServedChat(m.ChatID())
 
