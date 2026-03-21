@@ -9,7 +9,21 @@ func GetServedUsers() ([]int64, error) {
 	if err != nil {
 		return nil, err
 	}
-	return state.copy().ServedUsers, nil
+	// Optimization: Only copy the requested slice to avoid unnecessary memory allocations
+	// and redundant work from state.copy().
+	users := make([]int64, len(state.ServedUsers))
+	copy(users, state.ServedUsers)
+	return users, nil
+}
+
+func GetServedUsersCount() (int, error) {
+	stateMu.RLock()
+	defer stateMu.RUnlock()
+	state, err := getBotState()
+	if err != nil {
+		return 0, err
+	}
+	return len(state.ServedUsers), nil
 }
 
 func IsServedUser(userID int64) (bool, error) {

@@ -9,7 +9,21 @@ func GetServedChats() ([]int64, error) {
 	if err != nil {
 		return nil, err
 	}
-	return state.copy().ServedChats, nil
+	// Optimization: Only copy the requested slice to avoid unnecessary memory allocations
+	// and redundant work from state.copy().
+	chats := make([]int64, len(state.ServedChats))
+	copy(chats, state.ServedChats)
+	return chats, nil
+}
+
+func GetServedChatsCount() (int, error) {
+	stateMu.RLock()
+	defer stateMu.RUnlock()
+	state, err := getBotState()
+	if err != nil {
+		return 0, err
+	}
+	return len(state.ServedChats), nil
 }
 
 func IsServedChat(chatID int64) (bool, error) {

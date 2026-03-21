@@ -35,3 +35,7 @@
 ## 2026-03-13 - Zero-Allocation Trie Matcher with Word Boundaries
 **Learning:** Standardizing word filters with `strings.Fields` and `strings.ToLower` causes heap allocations on every call. Switching to a Trie improves performance but can introduce the "Scunthorpe problem" (false positives in substrings) if not careful with boundaries.
 **Action:** Implement a Trie-based matcher that processes runes on-the-fly and explicitly validates word boundaries (checking `unicode.IsLetter` before and after the match). This achieves 0 allocs/op and fixes detection of multi-word phrases.
+
+## 2026-03-24 - Efficient Statistics Counting and Selective State Copying
+**Learning:** The `/stats` command was fetching and allocating large slices of thousands of IDs (served users/chats) from the global state just to call `len()`. Additionally, the `BotState.copy()` method was redundantly copying both users and chats slices even when only one was needed.
+**Action:** Implement dedicated `GetServedUsersCount()` and `GetServedChatsCount()` functions to return lengths in O(1) time and memory. Refactor slice getters to copy only the requested data under a read lock, significantly reducing heap pressure and O(N) overhead during statistics reporting.

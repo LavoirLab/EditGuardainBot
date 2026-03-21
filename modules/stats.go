@@ -63,11 +63,13 @@ func stats(msg *telegram.NewMessage) error {
 		uptimeStr = utils.FormatUptime(time.Since(config.StartTime))
 	)
 
-	if chats, err := database.GetServedChats(); err == nil {
-		chatCount = len(chats)
+	// Optimization: Use dedicated O(1) count functions instead of fetching
+	// and allocating memory for all IDs just to count them.
+	if count, err := database.GetServedChatsCount(); err == nil {
+		chatCount = count
 	}
-	if users, err := database.GetServedUsers(); err == nil {
-		userCount = len(users)
+	if count, err := database.GetServedUsersCount(); err == nil {
+		userCount = count
 	}
 
 	if vm, err := mem.VirtualMemory(); err == nil {
