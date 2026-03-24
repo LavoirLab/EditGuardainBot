@@ -231,7 +231,9 @@ func processAlbumMedia(a *tg.Album, allPaths *[]string) (bool, []pendingMedia) {
 		if mt == mediaTypeStickerVideo || mt == mediaTypeVideo {
 			isNsfw, err := checkVideoMediaNsfw(m, mt)
 			if err != nil {
-				a.Client.Log.Error(fmt.Sprintf("NSFW video error for msg %d: %v", m.ID, err))
+				a.Client.Log.Error(
+					fmt.Sprintf("NSFW video error for msg %d: %v", m.ID, err),
+				)
 				continue
 			}
 			if isNsfw {
@@ -243,11 +245,20 @@ func processAlbumMedia(a *tg.Album, allPaths *[]string) (bool, []pendingMedia) {
 
 		path, err := m.Download()
 		if err != nil {
-			a.Client.Log.Error(fmt.Sprintf("NSFW album download error for msg %d: %v", m.ID, err))
+			a.Client.Log.Error(
+				fmt.Sprintf(
+					"NSFW album download error for msg %d: %v",
+					m.ID,
+					err,
+				),
+			)
 			continue
 		}
 		*allPaths = append(*allPaths, path)
-		pending = append(pending, pendingMedia{msg: m, path: path, mediaType: mt})
+		pending = append(
+			pending,
+			pendingMedia{msg: m, path: path, mediaType: mt},
+		)
 	}
 
 	return isNsfwDetected, pending
