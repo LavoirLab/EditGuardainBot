@@ -162,15 +162,100 @@ func NsfwHandler(m *tg.NewMessage) error {
 	return nil
 }
 
-func AlbumNsfwHandler(a *tg.Album) error {
+type pendingMedia struct {
+	msg       *tg.NewMessage
+	path      string
+	mediaType nsfwMediaType
+}
+
+func shouldScanAlbum(a *tg.Album) bool {
 	if !config.NsfwApiEnabled || !database.IsNSFWEnabled(a.ChatID()) {
-		return nil
+		return false
 	}
 
 	if len(a.Messages) > 0 {
 		if isAdmin, _ := utils.IsAdmin(a.Client, a.ChatID(), a.Messages[0].SenderID()); isAdmin {
-			return nil
+			return false
 		}
+	}
+
+	return true
+}
+
+func checkVideoMediaNsfw(m *tg.NewMessage, mt nsfwMediaType) (bool, error) {
+	if config.NsfwOnLocalhost {
+		return false, nil
+	}
+
+	var isNsfw bool
+	var err error
+
+	if mt == mediaTypeStickerVideo {
+		isNsfw, err = checkStickerVideoNsfw(m)
+	} else if mt == mediaTypeVideo {
+		isNsfw, err = extractVideoFramesNsfw(m)
+	} else {
+		return false, nil
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	if m.File != nil {
+		nsfwFileCache.Set(m.File.FileID, isNsfw)
+	}
+	return isNsfw, nil
+}
+
+func processAlbumMedia(a *tg.Album, allPaths *[]string) (bool, []pendingMedia) {
+	var pending []pendingMedia
+	isNsfwDetected := false
+
+	for _, m := range a.Messages {
+		mt := resolveMediaType(m)
+		if mt == "" {
+			continue
+		}
+
+		if m.File != nil {
+			if cached, ok := nsfwFileCache.Get(m.File.FileID); ok {
+				if cached {
+					isNsfwDetected = true
+					break
+				}
+				continue
+			}
+		}
+
+		if mt == mediaTypeStickerVideo || mt == mediaTypeVideo {
+			isNsfw, err := checkVideoMediaNsfw(m, mt)
+			if err != nil {
+				a.Client.Log.Error(fmt.Sprintf("NSFW video error for msg %d: %v", m.ID, err))
+				continue
+			}
+			if isNsfw {
+				isNsfwDetected = true
+				break
+			}
+			continue
+		}
+
+		path, err := m.Download()
+		if err != nil {
+			a.Client.Log.Error(fmt.Sprintf("NSFW album download error for msg %d: %v", m.ID, err))
+			continue
+		}
+		*allPaths = append(*allPaths, path)
+		pending = append(pending, pendingMedia{msg: m, path: path, mediaType: mt})
+	}
+
+	return isNsfwDetected, pending
+}
+
+func AlbumNsfwHandler(a *tg.Album) error {
+	if !shouldScanAlbum(a) {
+		return nil
 	}
 
 	go func() {
@@ -180,151 +265,74 @@ func AlbumNsfwHandler(a *tg.Album) error {
 		nsfwSemaphore <- struct{}{}
 		defer func() { <-nsfwSemaphore }()
 
-		type pendingMedia struct {
-			msg       *tg.NewMessage
-			path      string
-			mediaType nsfwMediaType
-		}
-
-		var pending []pendingMedia
 		var allPaths []string
-
 		defer func() {
 			for _, p := range allPaths {
 				os.Remove(p)
 			}
 		}()
 
-		isNsfwDetected := false
-
-		for _, m := range a.Messages {
-			mt := resolveMediaType(m)
-			if mt == "" {
-				continue
-			}
-
-			if m.File != nil {
-				if cached, ok := nsfwFileCache.Get(m.File.FileID); ok {
-					if cached {
-						isNsfwDetected = true
-						break
-					}
-					continue
-				}
-			}
-
-			if !config.NsfwOnLocalhost && mt == mediaTypeStickerVideo {
-				isNsfw, err := checkStickerVideoNsfw(m)
-				if err != nil {
-					a.Client.Log.Error(
-						fmt.Sprintf(
-							"NSFW sticker video error for msg %d: %v",
-							m.ID,
-							err,
-						),
-					)
-					continue
-				}
-				if m.File != nil {
-					nsfwFileCache.Set(m.File.FileID, isNsfw)
-				}
-				if isNsfw {
-					isNsfwDetected = true
-					break
-				}
-				continue
-			}
-
-			if !config.NsfwOnLocalhost && mt == mediaTypeVideo {
-				isNsfw, err := extractVideoFramesNsfw(m)
-				if err != nil {
-					a.Client.Log.Error(
-						fmt.Sprintf(
-							"NSFW video frame extraction error for msg %d: %v",
-							m.ID,
-							err,
-						),
-					)
-					continue
-				}
-				if m.File != nil {
-					nsfwFileCache.Set(m.File.FileID, isNsfw)
-				}
-				if isNsfw {
-					isNsfwDetected = true
-					break
-				}
-				continue
-			}
-
-			path, err := m.Download()
-			if err != nil {
-				a.Client.Log.Error(
-					fmt.Sprintf(
-						"NSFW album download error for msg %d: %v",
-						m.ID,
-						err,
-					),
-				)
-				continue
-			}
-			allPaths = append(allPaths, path)
-			pending = append(
-				pending,
-				pendingMedia{msg: m, path: path, mediaType: mt},
-			)
-		}
+		isNsfwDetected, pending := processAlbumMedia(a, &allPaths)
 
 		if !isNsfwDetected && len(pending) > 0 {
-			var items []batchEntry
-			for _, p := range pending {
-				items = append(
-					items,
-					batchEntry{path: p.path, mediaType: p.mediaType},
-				)
-			}
-
-			var batchResults []NsfwApiResponse
-			var err error
-			if config.NsfwOnLocalhost {
-				batchResults, err = sendPathBatchToNsfwApi(items)
-			} else {
-				batchResults, err = sendBatchToNsfwApi(items)
-			}
-			if err != nil {
-				a.Client.Log.Error(
-					fmt.Sprintf("NSFW album batch API error: %v", err),
-				)
-			} else {
-				for i, res := range batchResults {
-					isNsfw := strings.ToLower(res.Label) == "nsfw"
-					if i < len(pending) && pending[i].msg.File != nil {
-						nsfwFileCache.Set(pending[i].msg.File.FileID, isNsfw)
-					}
-					if isNsfw {
-						isNsfwDetected = true
-					}
-				}
-			}
+			isNsfwDetected = performBatchScan(a, pending)
 		}
 
 		if isNsfwDetected {
-			if _, err := a.Delete(); err != nil {
-				return
-			}
-			chatID := a.Messages[0].ChatID()
-			userID := a.Messages[0].SenderID()
-			muted := trackViolationAndMute(a.Client, chatID, userID)
-			a.Messages[0].Respond(
-				buildNsfwWarnMsg(
-					utils.MentionHTML(a.Messages[0].Sender),
-					muted,
-				),
-			)
+			handleDetectedNsfwAlbum(a)
 		}
 	}()
 
 	return nil
+}
+
+func performBatchScan(a *tg.Album, pending []pendingMedia) bool {
+	var items []batchEntry
+	for _, p := range pending {
+		items = append(
+			items,
+			batchEntry{path: p.path, mediaType: p.mediaType},
+		)
+	}
+
+	var batchResults []NsfwApiResponse
+	var err error
+	if config.NsfwOnLocalhost {
+		batchResults, err = sendPathBatchToNsfwApi(items)
+	} else {
+		batchResults, err = sendBatchToNsfwApi(items)
+	}
+
+	isNsfwDetected := false
+	if err != nil {
+		a.Client.Log.Error(fmt.Sprintf("NSFW album batch API error: %v", err))
+	} else {
+		for i, res := range batchResults {
+			isNsfw := strings.ToLower(res.Label) == "nsfw"
+			if i < len(pending) && pending[i].msg.File != nil {
+				nsfwFileCache.Set(pending[i].msg.File.FileID, isNsfw)
+			}
+			if isNsfw {
+				isNsfwDetected = true
+			}
+		}
+	}
+	return isNsfwDetected
+}
+
+func handleDetectedNsfwAlbum(a *tg.Album) {
+	if _, err := a.Delete(); err != nil {
+		return
+	}
+	chatID := a.Messages[0].ChatID()
+	userID := a.Messages[0].SenderID()
+	muted := trackViolationAndMute(a.Client, chatID, userID)
+	a.Messages[0].Respond(
+		buildNsfwWarnMsg(
+			utils.MentionHTML(a.Messages[0].Sender),
+			muted,
+		),
+	)
 }
 
 func resolveMediaType(m *tg.NewMessage) nsfwMediaType {
