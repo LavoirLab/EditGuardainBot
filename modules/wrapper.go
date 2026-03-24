@@ -22,11 +22,17 @@ func RequirePermission(
 		}
 
 		if m.IsPrivate() {
+			btn := telegram.NewKeyboard().AddRow(
+				telegram.Button.Data("🏠 Back to Menu", "start_callback"),
+			).Build()
 			_, err := m.Reply(
 				"👋 <b>Group Only!</b>\n\n"+
 					"<i>This command is designed for group chats.</i>\n\n"+
 					"💡 <b>Tip:</b> Please use this command inside a group where I am an administrator.",
-				&telegram.SendOptions{ParseMode: "HTML"},
+				&telegram.SendOptions{
+					ReplyMarkup: btn,
+					ParseMode:   "HTML",
+				},
 			)
 			if err != nil {
 				return err

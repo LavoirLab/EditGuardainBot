@@ -34,8 +34,57 @@ func init() {
 				Pattern: "command:nostylish",
 				Handler: RequirePermission("delete_messages", NoStylishCmd),
 			},
+			{
+				Pattern: "callback:^nostylish_toggle:(on|off)$",
+				Handler: handleNoStylishToggle,
+			},
 		},
 	})
+}
+
+func getNoStylishDashboard(enabled bool) (string, telegram.ReplyMarkup) {
+	status := "Disabled ❌"
+	toggleLabel := "Enable ✅"
+	toggleVal := "on"
+	if enabled {
+		status = "Enabled ✅"
+		toggleLabel = "Disable ❌"
+		toggleVal = "off"
+	}
+
+	text := fmt.Sprintf("🔡 <b>Stylish Font Filter</b>\n"+
+		"━━━━━━━━━━━━━━━━━━━━\n"+
+		"<b>Status:</b> %s\n\n"+
+		"<blockquote expandable>"+
+		"When enabled, I scan for and remove messages sent with decorative or stylish fonts.\n\n"+
+		"<b>Why?</b> These fonts are often used to bypass filters and can be difficult for screen readers and some users to read."+
+		"</blockquote>\n\n"+
+		"💡 <b>Tip:</b> Detected messages and their warnings are automatically deleted after 30 seconds.", status)
+
+	keyboard := telegram.NewKeyboard().AddRow(
+		telegram.Button.Data(toggleLabel, "nostylish_toggle:"+toggleVal),
+		telegram.Button.Data("🗑️ Close", "close"),
+	).Build()
+
+	return text, keyboard.Build()
+}
+
+func handleNoStylishToggle(c *telegram.CallbackQuery) error {
+	parts := strings.Split(c.DataString(), ":")
+	enable := parts[1] == "on"
+
+	if err := database.SetNoStylishEnabled(c.ChatID, enable); err != nil {
+		c.Answer("⚠️ Update failed.", &telegram.CallbackOptions{Alert: true})
+		return err
+	}
+
+	text, keyboard := getNoStylishDashboard(enable)
+	c.Edit(text, &telegram.SendOptions{
+		ReplyMarkup: keyboard,
+		ParseMode:   "HTML",
+	})
+	c.Answer("✓ Settings Updated")
+	return nil
 }
 
 func NoStylishCmd(m *telegram.NewMessage) error {
@@ -48,14 +97,14 @@ func NoStylishCmd(m *telegram.NewMessage) error {
 				"⚠️ <b>Usage:</b>\n• <code>/nostylish on</code> — Block stylish fonts\n• <code>/nostylish off</code> — Allow stylish fonts",
 			)
 			return err
-		} else {
-			status := "Disabled 🔴"
-			if isEnabled {
-				status = "Enabled 🟢"
-			}
-			_, err = m.Reply(fmt.Sprintf("🔡 <b>Stylish Font Filter Status:</b> %s\n\n<i>When enabled, messages with decorative or stylish fonts will be removed to maintain readability.</i>\n\n<i>💡 Tip: Use <code>/nostylish on</code> to toggle.</i>", status))
-			return err
 		}
+
+		text, keyboard := getNoStylishDashboard(isEnabled)
+		_, err = m.Reply(text, &telegram.SendOptions{
+			ReplyMarkup: keyboard,
+			ParseMode:   "HTML",
+		})
+		return err
 	}
 
 	enable, err := utils.ParseBool(args[0])
@@ -73,15 +122,11 @@ func NoStylishCmd(m *telegram.NewMessage) error {
 		return err
 	}
 
-	status := "enabled 🟢"
-	next := "Use <code>/nostylish off</code> to allow stylish fonts again."
-	if !enable {
-		status = "disabled 🔴"
-		next = "Use <code>/nostylish on</code> to block stylish fonts."
-	}
-	_, err = m.Reply(
-		fmt.Sprintf("🔡 <b>Stylish Font Filter %s</b>\n\n%s", status, next),
-	)
+	text, keyboard := getNoStylishDashboard(enable)
+	_, err = m.Reply(text, &telegram.SendOptions{
+		ReplyMarkup: keyboard,
+		ParseMode:   "HTML",
+	})
 	return err
 }
 

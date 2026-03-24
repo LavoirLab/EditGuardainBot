@@ -16,3 +16,7 @@
 ## 2026-03-15 - Visual Identity vs Accessibility
 **Learning:** While standard HTML tags are preferred for accessibility, some stylized characters (like mini caps) may be desired for specific visual branding in high-traffic menus like Help.
 **Action:** Use mini caps font for primary headers and instructional text in the main Help menu to maintain visual consistency, but ensure it's paired with clear scannable structure and visual separators.
+
+## 2026-03-20 - Standardized Moderation Dashboards
+**Learning:** Inconsistent status messages across different moderation modules (Abuse, Fonts, NoPromo) make the bot feel disjointed and harder to use. Text-only instructions for toggling settings are less intuitive than interactive buttons.
+**Action:** Implement a standardized "Dashboard" layout: **Bold Header with Emoji**, a visual separator (e.g., `━━━━━━━━━━━━━━━━━━━━`), **Status** with clear ✅/❌ emojis, an **expandable blockquote** for detailed descriptions (keeping the message clean and scannable), and an actionable **💡 Tip**. Always pair these dashboards with inline toggle buttons to allow instant, manual-free configuration.

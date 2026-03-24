@@ -12,28 +12,6 @@ import (
 )
 
 const (
-	noAbuseStatusEnabled = `🛡️ <b>NoAbuse</b>
-<b>Status:</b> <i>Enabled</i>
-
-<i>Abusive messages are automatically removed.</i>
-
-<i>Use <code>/noabuse off</code> to turn it off.</i>`
-
-	noAbuseStatusDisabled = `🚫 <b>NoAbuse</b>
-<b>Status:</b> <i>Disabled</i>
-
-<i>Messages are not filtered.</i>
-
-<i>Use <code>/noabuse on</code> to turn it on.</i>`
-
-	noAbuseEnabledMsg = `🛡️ <b>NoAbuse Enabled</b>
-
-<i>Abusive messages will now be deleted automatically. Use <code>/noabuse off</code> to disable this filter.</i>`
-
-	noAbuseDisabledMsg = `🚫 <b>NoAbuse Disabled</b>
-
-<i>Messages will no longer be filtered for abusive language. Use <code>/noabuse on</code> to enable it again.</i>`
-
 	noAbuseInvalidMsg = `❌ <b>Invalid usage</b>
 
 Please use one of the following formats:
@@ -47,6 +25,33 @@ Please use one of the following formats:
 	noAbuseErrMsg = `❌ <b>Update failed</b>
 <i>Please try again later.</i>`
 )
+
+func getNoAbuseDashboard(enabled bool) (string, telegram.ReplyMarkup) {
+	status := "Disabled ❌"
+	toggleLabel := "Enable ✅"
+	toggleVal := "on"
+	if enabled {
+		status = "Enabled ✅"
+		toggleLabel = "Disable ❌"
+		toggleVal = "off"
+	}
+
+	text := fmt.Sprintf("🛡️ <b>NoAbuse Filter</b>\n"+
+		"━━━━━━━━━━━━━━━━━━━━\n"+
+		"<b>Status:</b> %s\n\n"+
+		"<blockquote expandable>"+
+		"When enabled, I automatically detect and filter abusive or offensive language in group messages.\n\n"+
+		"<b>Action:</b> Messages containing blacklisted words are deleted immediately to maintain a respectful environment."+
+		"</blockquote>\n\n"+
+		"💡 <b>Tip:</b> This feature is highly effective at keeping group chats clean and professional.", status)
+
+	keyboard := telegram.NewKeyboard().AddRow(
+		telegram.Button.Data(toggleLabel, "noabuse_toggle:"+toggleVal),
+		telegram.Button.Data("🗑️ Close", "close"),
+	).Build()
+
+	return text, keyboard.Build()
+}
 
 func init() {
 	RegisterModule(&ModuleInfo{
@@ -71,8 +76,30 @@ func init() {
 				Pattern: "command:noabuse",
 				Handler: RequirePermission("delete_messages", NoAbuseCmd),
 			},
+			{
+				Pattern: "callback:^noabuse_toggle:(on|off)$",
+				Handler: handleNoAbuseToggle,
+			},
 		},
 	})
+}
+
+func handleNoAbuseToggle(c *telegram.CallbackQuery) error {
+	parts := strings.Split(c.DataString(), ":")
+	enable := parts[1] == "on"
+
+	if err := database.SetNSFWFlag(c.ChatID, enable); err != nil {
+		c.Answer("⚠️ Update failed.", &telegram.CallbackOptions{Alert: true})
+		return err
+	}
+
+	text, keyboard := getNoAbuseDashboard(enable)
+	c.Edit(text, &telegram.SendOptions{
+		ReplyMarkup: keyboard,
+		ParseMode:   "HTML",
+	})
+	c.Answer("✓ Settings Updated")
+	return nil
 }
 
 func NoAbuseCmd(m *telegram.NewMessage) error {
@@ -85,11 +112,12 @@ func NoAbuseCmd(m *telegram.NewMessage) error {
 
 	// show status when no argument
 	if len(args) < 1 {
-		if database.IsNSFWEnabled(m.ChatID()) {
-			_, err = m.Reply(noAbuseStatusEnabled)
-			return err
-		}
-		_, err = m.Reply(noAbuseStatusDisabled)
+		enabled := database.IsNSFWEnabled(m.ChatID())
+		text, keyboard := getNoAbuseDashboard(enabled)
+		_, err = m.Reply(text, &telegram.SendOptions{
+			ReplyMarkup: keyboard,
+			ParseMode:   "HTML",
+		})
 		return err
 	}
 
@@ -105,12 +133,11 @@ func NoAbuseCmd(m *telegram.NewMessage) error {
 		return err
 	}
 
-	if enable {
-		_, err = m.Reply(noAbuseEnabledMsg)
-		return err
-	}
-
-	_, err = m.Reply(noAbuseDisabledMsg)
+	text, keyboard := getNoAbuseDashboard(enable)
+	_, err = m.Reply(text, &telegram.SendOptions{
+		ReplyMarkup: keyboard,
+		ParseMode:   "HTML",
+	})
 	return err
 }
 

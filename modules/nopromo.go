@@ -47,8 +47,60 @@ func init() {
 				Pattern: "command:nopromotion",
 				Handler: RequirePermission("delete_messages", NoPromoCmd),
 			},
+			{
+				Pattern: "callback:^nopromo_toggle:(on|off)$",
+				Handler: handleNoPromoToggle,
+			},
 		},
 	})
+}
+
+func getNoPromoDashboard(enabled bool) (string, telegram.ReplyMarkup) {
+	status := "Disabled ❌"
+	toggleLabel := "Enable ✅"
+	toggleVal := "on"
+	if enabled {
+		status = "Enabled ✅"
+		toggleLabel = "Disable ❌"
+		toggleVal = "off"
+	}
+
+	text := fmt.Sprintf("🚫 <b>Promo Filter</b>\n"+
+		"━━━━━━━━━━━━━━━━━━━━\n"+
+		"<b>Status:</b> %s\n\n"+
+		"<blockquote expandable>"+
+		"When enabled, I scan for promotional content such as:\n"+
+		"• Repeated links and spammy phrases\n"+
+		"• Excessive emoji usage\n"+
+		"• All-caps messages\n"+
+		"• Bot promotions and invitations"+
+		"</blockquote>\n\n"+
+		"💡 <b>Tip:</b> High-score promotional messages are deleted automatically, while medium-score ones receive a warning.", status)
+
+	keyboard := telegram.NewKeyboard().AddRow(
+		telegram.Button.Data(toggleLabel, "nopromo_toggle:"+toggleVal),
+		telegram.Button.Data("🗑️ Close", "close"),
+	).Build()
+
+	return text, keyboard.Build()
+}
+
+func handleNoPromoToggle(c *telegram.CallbackQuery) error {
+	parts := strings.Split(c.DataString(), ":")
+	enable := parts[1] == "on"
+
+	if err := database.SetNoPromoEnabled(c.ChatID, enable); err != nil {
+		c.Answer("⚠️ Update failed.", &telegram.CallbackOptions{Alert: true})
+		return err
+	}
+
+	text, keyboard := getNoPromoDashboard(enable)
+	c.Edit(text, &telegram.SendOptions{
+		ReplyMarkup: keyboard,
+		ParseMode:   "HTML",
+	})
+	c.Answer("✓ Settings Updated")
+	return nil
 }
 
 // Promo detection patterns
@@ -111,14 +163,14 @@ func NoPromoCmd(m *telegram.NewMessage) error {
 				"⚠️ <b>Usage:</b>\n• <code>/nopromo on</code> — Block promotional messages\n• <code>/nopromo off</code> — Allow promotional messages",
 			)
 			return err
-		} else {
-			status := "Disabled ❌"
-			if isEnabled {
-				status = "Enabled ✅"
-			}
-			_, err = m.Reply(fmt.Sprintf("🚫 <b>Promo Filter Status:</b> %s\n\n<i>When enabled, promotional content like spam links, excessive emojis, and bot promotions will be removed.</i>", status))
-			return err
 		}
+
+		text, keyboard := getNoPromoDashboard(isEnabled)
+		_, err = m.Reply(text, &telegram.SendOptions{
+			ReplyMarkup: keyboard,
+			ParseMode:   "HTML",
+		})
+		return err
 	}
 
 	enable, err := utils.ParseBool(args[0])
@@ -136,15 +188,11 @@ func NoPromoCmd(m *telegram.NewMessage) error {
 		return err
 	}
 
-	status := "enabled ✅"
-	next := "Use <code>/nopromo off</code> to allow promotional messages again."
-	if !enable {
-		status = "disabled ❌"
-		next = "Use <code>/nopromo on</code> to block promotional messages."
-	}
-	_, err = m.Reply(
-		fmt.Sprintf("🚫 <b>Promo Filter %s</b>\n\n%s", status, next),
-	)
+	text, keyboard := getNoPromoDashboard(enable)
+	_, err = m.Reply(text, &telegram.SendOptions{
+		ReplyMarkup: keyboard,
+		ParseMode:   "HTML",
+	})
 	return err
 }
 
