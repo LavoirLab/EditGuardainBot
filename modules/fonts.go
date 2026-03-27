@@ -66,7 +66,7 @@ func getNoStylishDashboard(enabled bool) (string, telegram.ReplyMarkup) {
 		telegram.Button.Data("🗑️ Close", "close"),
 	).Build()
 
-	return text, keyboard.Build()
+	return text, keyboard
 }
 
 func handleNoStylishToggle(c *telegram.CallbackQuery) error {

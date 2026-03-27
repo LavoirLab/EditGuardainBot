@@ -50,7 +50,7 @@ func getNoAbuseDashboard(enabled bool) (string, telegram.ReplyMarkup) {
 		telegram.Button.Data("🗑️ Close", "close"),
 	).Build()
 
-	return text, keyboard.Build()
+	return text, keyboard
 }
 
 func init() {

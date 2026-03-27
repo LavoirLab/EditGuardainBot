@@ -12,8 +12,6 @@ import (
 	"main/utils"
 )
 
-var bioCache = utils.NewCache[string, any](60 * time.Minute)
-
 func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "biolink",
@@ -103,10 +101,7 @@ func BioLinkHandler(m *telegram.NewMessage) error {
 	}
 
 	mode, err := database.GetBioMode(m.ChatID())
-	if err != nil {
-		return nil
-	}
-	if !mode {
+	if err != nil || !mode {
 		return nil
 	}
 
@@ -115,42 +110,31 @@ func BioLinkHandler(m *telegram.NewMessage) error {
 		return nil
 	}
 
-	if _, ok := m.Message.FromID.(*telegram.PeerUser); !ok {
+	if _, ok := m.Message.FromID.(*telegram.PeerUser); !ok || m.SenderID() == 0 {
 		return nil
 	}
 
-	var bio string
-	cacheKey := fmt.Sprintf("userfull_%d", m.SenderID())
+	resp, err := m.Client.UsersGetFullUser(&telegram.InputUserObj{
+		UserID:     m.Sender.ID,
+		AccessHash: m.Sender.AccessHash,
+	})
 
-	if val, ok := utils.LoadTyped[*telegram.UserFull](bioCache, cacheKey); ok {
-		bio = val.About
-	} else {
-		resp, err := m.Client.UsersGetFullUser(&telegram.InputUserObj{
-			UserID:     m.Sender.ID,
-			AccessHash: m.Sender.AccessHash,
-		})
-
-		if err != nil {
-			if wait := telegram.GetFloodWait(err); wait > 0 && wait < 15 {
-				time.Sleep(time.Duration(wait) * time.Second)
-				resp, err = m.Client.UsersGetFullUser(&telegram.InputUserObj{
-					UserID:     m.Sender.ID,
-					AccessHash: m.Sender.AccessHash,
-				})
-				if err != nil {
-					return nil
-				}
-				bio = resp.FullUser.About
-				bioCache.Set(cacheKey, resp.FullUser)
-			} else {
+	if err != nil {
+		if wait := telegram.GetFloodWait(err); wait > 0 && wait < 15 {
+			time.Sleep(time.Duration(wait) * time.Second)
+			resp, err = m.Client.UsersGetFullUser(&telegram.InputUserObj{
+				UserID:     m.Sender.ID,
+				AccessHash: m.Sender.AccessHash,
+			})
+			if err != nil {
 				return nil
 			}
 		} else {
-			bio = resp.FullUser.About
-			bioCache.Set(cacheKey, resp.FullUser)
+			return nil
 		}
 	}
 
+	bio := resp.FullUser.About
 	if bio == "" || !ShouldDeleteMsg(bio) {
 		return nil
 	}
