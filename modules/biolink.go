@@ -110,7 +110,8 @@ func BioLinkHandler(m *telegram.NewMessage) error {
 		return nil
 	}
 
-	if _, ok := m.Message.FromID.(*telegram.PeerUser); !ok || m.SenderID() == 0 {
+	if _, ok := m.Message.FromID.(*telegram.PeerUser); !ok ||
+		m.SenderID() == 0 {
 		return nil
 	}
 
@@ -118,7 +119,6 @@ func BioLinkHandler(m *telegram.NewMessage) error {
 		UserID:     m.Sender.ID,
 		AccessHash: m.Sender.AccessHash,
 	})
-
 	if err != nil {
 		if wait := telegram.GetFloodWait(err); wait > 0 && wait < 15 {
 			time.Sleep(time.Duration(wait) * time.Second)
