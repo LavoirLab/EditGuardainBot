@@ -39,3 +39,7 @@
 ## 2026-03-24 - Efficient Statistics Counting and Selective State Copying
 **Learning:** The `/stats` command was fetching and allocating large slices of thousands of IDs (served users/chats) from the global state just to call `len()`. Additionally, the `BotState.copy()` method was redundantly copying both users and chats slices even when only one was needed.
 **Action:** Implement dedicated `GetServedUsersCount()` and `GetServedChatsCount()` functions to return lengths in O(1) time and memory. Refactor slice getters to copy only the requested data under a read lock, significantly reducing heap pressure and O(N) overhead during statistics reporting.
+
+## 2026-03-25 - Caching and Single-Pass Processing for Link Filtering
+**Learning:** The `LinkFilterHandler` was rebuilding an allowed hostnames map from a database-fetched slice for every message containing a link. This caused excessive heap allocations and CPU overhead in busy groups. Additionally, links were being collected into a temporary slice before processing.
+**Action:** Implement a TTL cache for the pre-built allowed hostnames map per chat. Refactor the handler to use a fast-path entity check and process message entities in a single pass, eliminating the intermediate slice allocation and redundant map reconstruction.

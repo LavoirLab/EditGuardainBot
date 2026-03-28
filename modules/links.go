@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/amarnathcjd/gogram/telegram"
 
@@ -17,6 +18,10 @@ import (
 var hostnameRegex = regexp.MustCompile(
 	`(?i)(?:https?://)?(?:www\.)?([a-z0-9.-]+\.[a-z]{2,})`,
 )
+
+// allowedHostsCache stores the pre-built map of allowed hostnames per chat.
+// This eliminates the need to rebuild the map and query the DB for every message.
+var allowedHostsCache = utils.NewCache[int64, map[string]struct{}](time.Hour)
 
 func init() {
 	RegisterModule(&ModuleInfo{
@@ -77,7 +82,8 @@ func extractHostname(input string) string {
 }
 
 func LinkFilterHandler(m *telegram.NewMessage) error {
-	if m.IsAnonymous() || m.IsChannelPost() {
+	// Fast path: check for entities before any other processing
+	if len(m.Message.Entities) == 0 || m.IsAnonymous() || m.IsChannelPost() {
 		return nil
 	}
 
@@ -91,7 +97,23 @@ func LinkFilterHandler(m *telegram.NewMessage) error {
 		return nil
 	}
 
-	var rawLinks []string
+	// Optimization: Fetch the allowed map from cache.
+	// This reduces allocations by avoiding rebuilds of the same map.
+	allowed, ok := allowedHostsCache.Get(m.ChatID())
+	if !ok {
+		allowedHosts, err := database.GetAllowedHostnames(m.ChatID())
+		if err != nil {
+			return nil
+		}
+		allowed = make(map[string]struct{}, len(allowedHosts))
+		for _, h := range allowedHosts {
+			allowed[strings.ToLower(h)] = struct{}{}
+		}
+		allowedHostsCache.Set(m.ChatID(), allowed)
+	}
+
+	// Optimization: Iterate through entities once and process links directly,
+	// removing the need for an intermediate slice of link strings.
 	for _, p := range m.Message.Entities {
 		if entity, ok := p.(*telegram.MessageEntityURL); ok {
 			offset := int(entity.Offset)
@@ -99,46 +121,33 @@ func LinkFilterHandler(m *telegram.NewMessage) error {
 			if offset+length > len(m.Text()) {
 				continue
 			}
-			rawLinks = append(rawLinks, m.MessageText()[offset:offset+length])
-
-		}
-	}
-	if len(rawLinks) == 0 {
-		return nil
-	}
-	allowedHosts, err := database.GetAllowedHostnames(m.ChatID())
-	if err != nil {
-		return nil
-	}
-	allowed := make(map[string]struct{}, len(allowedHosts))
-	for _, h := range allowedHosts {
-		allowed[strings.ToLower(h)] = struct{}{}
-	}
-
-	for _, link := range rawLinks {
-		host := extractHostname(link)
-		if host == "" {
-			continue
-		}
-		if _, ok := allowed[host]; !ok {
-			if _, err := m.Delete(); err != nil {
-				return err
+			link := m.MessageText()[offset : offset+length]
+			host := extractHostname(link)
+			if host == "" {
+				continue
 			}
-			mention := utils.MentionHTML(m.Sender)
-			_, _ = m.Reply(
-				fmt.Sprintf(
-					"🚫 <b>Link Blocked!</b>\n\n%s, <i>unapproved link detected. Only allowed domains are permitted in this group.</i>\n\n💡 <b>Tip:</b> Contact an admin if you think this is a mistake.\n\n🔗 <a href='%s'>Learn how to format links</a>",
-					mention,
-					config.SupportChannel,
-				),
-				&telegram.SendOptions{
-					ParseMode:   "HTML",
-					LinkPreview: false,
-				},
-			)
-			return telegram.ErrEndGroup
+
+			if _, ok := allowed[host]; !ok {
+				if _, err := m.Delete(); err != nil {
+					return err
+				}
+				mention := utils.MentionHTML(m.Sender)
+				_, _ = m.Reply(
+					fmt.Sprintf(
+						"🚫 <b>Link Blocked!</b>\n\n%s, <i>unapproved link detected. Only allowed domains are permitted in this group.</i>\n\n💡 <b>Tip:</b> Contact an admin if you think this is a mistake.\n\n🔗 <a href='%s'>Learn how to format links</a>",
+						mention,
+						config.SupportChannel,
+					),
+					&telegram.SendOptions{
+						ParseMode:   "HTML",
+						LinkPreview: false,
+					},
+				)
+				return telegram.ErrEndGroup
+			}
 		}
 	}
+
 	return nil
 }
 
@@ -172,6 +181,7 @@ func NoLinksCmd(m *telegram.NewMessage) error {
 		)
 		return err
 	}
+	allowedHostsCache.Delete(m.ChatID())
 	if err := database.SetLinkFilterEnabled(m.ChatID(), enable); err != nil {
 		log.Println("Links.DB error:", err)
 		_, err = m.Reply(
@@ -179,6 +189,7 @@ func NoLinksCmd(m *telegram.NewMessage) error {
 		)
 		return err
 	}
+	allowedHostsCache.Delete(m.ChatID())
 	status := "enabled ✅"
 	next := "Use <code>/nolinks off</code> to disable it."
 	if !enable {
@@ -218,6 +229,7 @@ func AllowHostCmd(m *telegram.NewMessage) error {
 		)
 		return err
 	}
+	allowedHostsCache.Delete(m.ChatID())
 	_, err = m.Reply(
 		fmt.Sprintf(
 			"✅ <b>Domain Allowed:</b> <code>%s</code>\n\nLinks from this domain will no longer be blocked. Use <code>/removelink %s</code> to remove it.",
@@ -254,6 +266,7 @@ func RemoveHostCmd(m *telegram.NewMessage) error {
 		)
 		return err
 	}
+	allowedHostsCache.Delete(m.ChatID())
 	_, err = m.Reply(
 		fmt.Sprintf(
 			"🚫 <b>Domain Removed:</b> <code>%s</code>\n\nLinks from this domain will now be filtered again. Use <code>/allowlink %s</code> to add it back.",
