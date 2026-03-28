@@ -53,6 +53,33 @@ const (
 	mediaTypeVideo         nsfwMediaType = "video"
 )
 
+func getNsfwDashboard(enabled bool) (string, tg.ReplyMarkup) {
+	status := "Disabled ❌"
+	toggleLabel := "Enable ✅"
+	toggleVal := "on"
+	if enabled {
+		status = "Enabled ✅"
+		toggleLabel = "Disable ❌"
+		toggleVal = "off"
+	}
+
+	text := fmt.Sprintf("🔞 <b>NSFW Detection</b>\n"+
+		"━━━━━━━━━━━━━━━━━━━━\n"+
+		"<b>Status:</b> %s\n\n"+
+		"<blockquote expandable>"+
+		"When enabled, I scan photos, videos, and stickers (WebP, WebM) for adult content.\n\n"+
+		"<b>Action:</b> NSFW content is deleted immediately, and repeat offenders are muted for 1 hour after 5 violations."+
+		"</blockquote>\n\n"+
+		"💡 <b>Tip:</b> Keeping this enabled helps maintain a safe environment for all members.", status)
+
+	keyboard := tg.NewKeyboard().AddRow(
+		tg.Button.Data(toggleLabel, "nsfw_toggle:"+toggleVal),
+		tg.Button.Data("🗑️ Close", "close"),
+	).Build()
+
+	return text, keyboard
+}
+
 func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "nsfw",
@@ -66,8 +93,12 @@ func init() {
 • <code>/nonsfw off</code> — ᴅɪsᴀʙʟᴇ <emoji id='5465665476971471368'>❌</emoji></blockquote>`,
 		Handlers: []HandlerConfig{
 			{
-				Pattern: "/nonsfw",
+				Pattern: "command:nonsfw",
 				Handler: RequirePermission("delete_messages", NsfwCmdHandler),
+			},
+			{
+				Pattern: "callback:^nsfw_toggle:(on|off)$",
+				Handler: handleNsfwToggle,
 			},
 			{
 				Pattern: "album",
@@ -75,6 +106,29 @@ func init() {
 			},
 		},
 	})
+}
+
+func handleNsfwToggle(c *tg.CallbackQuery) error {
+	if isAdmin, _ := utils.IsAdmin(c.Client, c.ChatID, c.SenderID); !isAdmin {
+		c.Answer("👤 Admin Access Required", &tg.CallbackOptions{Alert: true})
+		return tg.ErrEndGroup
+	}
+
+	parts := strings.Split(c.DataString(), ":")
+	enable := parts[1] == "on"
+
+	if err := database.SetNSFWFlag(c.ChatID, enable); err != nil {
+		c.Answer("⚠️ Update failed.", &tg.CallbackOptions{Alert: true})
+		return err
+	}
+
+	text, keyboard := getNsfwDashboard(enable)
+	c.Answer("✓ Settings Updated")
+	_, err := c.Edit(text, &tg.SendOptions{
+		ReplyMarkup: keyboard,
+		ParseMode:   "HTML",
+	})
+	return err
 }
 
 func NsfwCmdHandler(m *tg.NewMessage) error {
@@ -86,14 +140,11 @@ func NsfwCmdHandler(m *tg.NewMessage) error {
 
 	if len(args) < 1 {
 		enabled := database.IsNSFWEnabled(m.ChatID())
-		status := "Disabled ❌"
-		if enabled {
-			status = "Enabled ✅"
-		}
-		_, err := m.Reply(fmt.Sprintf(
-			"🔞 <b>NSFW Detection Status:</b> %s\n\n<i>When enabled, I will scan photos, videos and stickers for adult content.</i>",
-			status,
-		))
+		text, keyboard := getNsfwDashboard(enabled)
+		_, err := m.Reply(text, &tg.SendOptions{
+			ReplyMarkup: keyboard,
+			ParseMode:   "HTML",
+		})
 		return err
 	}
 
@@ -112,15 +163,11 @@ func NsfwCmdHandler(m *tg.NewMessage) error {
 		return err
 	}
 
-	status := "disabled ❌"
-	next := "Use <code>/nonsfw on</code> to enable it again."
-	if enable {
-		status = "enabled ✅"
-		next = "Use <code>/nonsfw off</code> to disable it."
-	}
-	_, err = m.Reply(
-		fmt.Sprintf("🔞 <b>NSFW Detection %s</b>\n\n%s", status, next),
-	)
+	text, keyboard := getNsfwDashboard(enable)
+	_, err = m.Reply(text, &tg.SendOptions{
+		ReplyMarkup: keyboard,
+		ParseMode:   "HTML",
+	})
 	return err
 }
 
