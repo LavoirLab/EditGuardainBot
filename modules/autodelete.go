@@ -11,7 +11,10 @@ import (
 	"main/utils"
 )
 
-func getMsgDeleteDashboard(enabled bool, delay time.Duration) (string, telegram.ReplyMarkup) {
+func getMsgDeleteDashboard(
+	enabled bool,
+	delay time.Duration,
+) (string, telegram.ReplyMarkup) {
 	status := "Disabled ❌"
 	toggleLabel := "Enable ✅"
 	toggleVal := "on"
@@ -83,7 +86,10 @@ func init() {
 
 func handleMsgDeleteToggle(c *telegram.CallbackQuery) error {
 	if isAdmin, _ := utils.IsAdmin(c.Client, c.ChatID, c.SenderID); !isAdmin {
-		c.Answer("👤 Admin Access Required", &telegram.CallbackOptions{Alert: true})
+		c.Answer(
+			"👤 Admin Access Required",
+			&telegram.CallbackOptions{Alert: true},
+		)
 		return telegram.ErrEndGroup
 	}
 
@@ -114,7 +120,10 @@ func MsgDeleteCmd(m *telegram.NewMessage) error {
 
 	if len(args) < 1 {
 		settings, _ := database.GetMsgDeleteSettings(m.ChatID())
-		text, keyboard := getMsgDeleteDashboard(settings.Enabled, settings.Delay)
+		text, keyboard := getMsgDeleteDashboard(
+			settings.Enabled,
+			settings.Delay,
+		)
 		_, err = m.Reply(text, &telegram.SendOptions{
 			ReplyMarkup: keyboard,
 			ParseMode:   "HTML",

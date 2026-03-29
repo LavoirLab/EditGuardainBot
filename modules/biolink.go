@@ -66,7 +66,10 @@ func init() {
 
 func handleBioLinkToggle(c *telegram.CallbackQuery) error {
 	if isAdmin, _ := utils.IsAdmin(c.Client, c.ChatID, c.SenderID); !isAdmin {
-		c.Answer("👤 Admin Access Required", &telegram.CallbackOptions{Alert: true})
+		c.Answer(
+			"👤 Admin Access Required",
+			&telegram.CallbackOptions{Alert: true},
+		)
 		return telegram.ErrEndGroup
 	}
 
