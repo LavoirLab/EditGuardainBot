@@ -89,16 +89,27 @@ func NoPhoneCmd(m *telegram.NewMessage) error {
 }
 
 func NoPhoneHandler(m *telegram.NewMessage) error {
-	if m.IsAnonymous() {
+	// Fast path: check for entities before any other processing
+	if len(m.Message.Entities) == 0 || m.IsAnonymous() || m.IsChannelPost() {
+		return nil
+	}
+
+	// Optimization: Fast path check for phone entities before any expensive operations.
+	// This avoids redundant database lookups and admin checks for messages without phone numbers.
+	hasPhone := false
+	for _, entity := range m.Message.Entities {
+		if _, ok := entity.(*telegram.MessageEntityPhone); ok {
+			hasPhone = true
+			break
+		}
+	}
+
+	if !hasPhone {
 		return nil
 	}
 
 	isEnabled, err := database.IsNoPhoneEnabled(m.ChatID())
 	if err != nil || !isEnabled {
-		return nil
-	}
-
-	if m.Text() == "" {
 		return nil
 	}
 

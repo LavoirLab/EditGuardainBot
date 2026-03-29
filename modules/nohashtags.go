@@ -2,7 +2,6 @@ package modules
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/amarnathcjd/gogram/telegram"
@@ -32,8 +31,6 @@ func init() {
 		},
 	})
 }
-
-var hashtagRegex = regexp.MustCompile(`#\w+`)
 
 func NoHashtagsCmd(m *telegram.NewMessage) error {
 	var err error
@@ -87,25 +84,32 @@ func NoHashtagsCmd(m *telegram.NewMessage) error {
 }
 
 func NoHashtagsHandler(m *telegram.NewMessage) error {
-	if m.IsAnonymous() {
+	// Fast path: check for entities before any other processing
+	if len(m.Message.Entities) == 0 || m.IsAnonymous() || m.IsChannelPost() {
 		return nil
 	}
+
+	// Optimization: Fast path check for hashtag entities before any expensive operations.
+	// This avoids redundant database lookups and admin checks for messages without hashtags.
+	hasHashtag := false
+	for _, entity := range m.Message.Entities {
+		if _, ok := entity.(*telegram.MessageEntityHashtag); ok {
+			hasHashtag = true
+			break
+		}
+	}
+
+	if !hasHashtag {
+		return nil
+	}
+
 	isEnabled, err := database.IsNoHashtagsEnabled(m.ChatID())
 	if err != nil || !isEnabled {
 		return nil
 	}
 
-	if m.Text() == "" {
-		return nil
-	}
-
 	isadmin, _ := utils.IsAdmin(m.Client, m.ChatID(), m.SenderID())
 	if isadmin {
-		return nil
-	}
-
-	// Check for hashtags
-	if !hashtagRegex.MatchString(m.Text()) {
 		return nil
 	}
 
