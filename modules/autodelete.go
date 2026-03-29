@@ -11,6 +11,34 @@ import (
 	"main/utils"
 )
 
+func getMsgDeleteDashboard(enabled bool, delay time.Duration) (string, telegram.ReplyMarkup) {
+	status := "Disabled ❌"
+	toggleLabel := "Enable ✅"
+	toggleVal := "on"
+	if enabled {
+		status = "Enabled ✅"
+		toggleLabel = "Disable ❌"
+		toggleVal = "off"
+	}
+
+	text := fmt.Sprintf("💬 <b>Message Auto-Delete</b>\n"+
+		"━━━━━━━━━━━━━━━━━━━━\n"+
+		"<b>Status:</b> %s\n"+
+		"<b>Delay:</b> <code>%s</code>\n\n"+
+		"<blockquote expandable>"+
+		"When enabled, I automatically remove all group messages after a configured delay. This keeps your chat clean and lightweight by removing old clutter.\n\n"+
+		"<b>Action:</b> All text and media messages from regular users are scheduled for deletion after the set time."+
+		"</blockquote>\n\n"+
+		"💡 <b>Tip:</b> Use <code>/setmsgdelay &lt;time&gt;</code> (e.g., <code>/setmsgdelay 10m</code>) to change the deletion interval.", status, utils.FormatDuration(delay))
+
+	keyboard := telegram.NewKeyboard().AddRow(
+		telegram.Button.Data(toggleLabel, "autodelete_toggle:"+toggleVal),
+		telegram.Button.Data("🗑️ Close", "close"),
+	).Build()
+
+	return text, keyboard
+}
+
 func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "autodelete",
@@ -42,11 +70,39 @@ func init() {
 				Handler: RequirePermission("delete_messages", SetMsgDelayCmd),
 			},
 			{
+				Pattern: "callback:^autodelete_toggle:(on|off)$",
+				Handler: handleMsgDeleteToggle,
+			},
+			{
 				Pattern: "*",
 				Handler: updateReadChannelOutboxHandler,
 			},
 		},
 	})
+}
+
+func handleMsgDeleteToggle(c *telegram.CallbackQuery) error {
+	if isAdmin, _ := utils.IsAdmin(c.Client, c.ChatID, c.SenderID); !isAdmin {
+		c.Answer("👤 Admin Access Required", &telegram.CallbackOptions{Alert: true})
+		return telegram.ErrEndGroup
+	}
+
+	parts := strings.Split(c.DataString(), ":")
+	enable := parts[1] == "on"
+
+	if err := database.SetMsgDeleteEnabled(c.ChatID, enable); err != nil {
+		c.Answer("⚠️ Update failed.", &telegram.CallbackOptions{Alert: true})
+		return err
+	}
+
+	settings, _ := database.GetMsgDeleteSettings(c.ChatID)
+	text, keyboard := getMsgDeleteDashboard(enable, settings.Delay)
+	c.Answer("✓ Settings Updated")
+	_, err := c.Edit(text, &telegram.SendOptions{
+		ReplyMarkup: keyboard,
+		ParseMode:   "HTML",
+	})
+	return err
 }
 
 func MsgDeleteCmd(m *telegram.NewMessage) error {
@@ -57,20 +113,13 @@ func MsgDeleteCmd(m *telegram.NewMessage) error {
 	}
 
 	if len(args) < 1 {
-		settings, err := database.GetMsgDeleteSettings(m.ChatID())
-		if err != nil {
-			_, err = m.Reply(
-				"⚠️ <b>Usage:</b>\n• <code>/msgdelete on</code> — Enable auto-delete\n• <code>/msgdelete off</code> — Disable auto-delete",
-			)
-			return err
-		} else {
-			status := "Disabled ❌"
-			if settings.Enabled {
-				status = "Enabled ✅"
-			}
-			_, err = m.Reply(fmt.Sprintf("💬 <b>Message Auto-Delete Status:</b> %s\n⏱ <b>Delay:</b> %s\n\n<i>When enabled, messages will be automatically removed after the set delay. Admins are exempt.</i>", status, utils.FormatDuration(settings.Delay)))
-			return err
-		}
+		settings, _ := database.GetMsgDeleteSettings(m.ChatID())
+		text, keyboard := getMsgDeleteDashboard(settings.Enabled, settings.Delay)
+		_, err = m.Reply(text, &telegram.SendOptions{
+			ReplyMarkup: keyboard,
+			ParseMode:   "HTML",
+		})
+		return err
 	}
 
 	enable, err := utils.ParseBool(args[0])
@@ -88,15 +137,12 @@ func MsgDeleteCmd(m *telegram.NewMessage) error {
 		return err
 	}
 
-	status := "enabled ✅"
-	next := "Use <code>/msgdelete off</code> to disable it."
-	if !enable {
-		status = "disabled ❌"
-		next = "Use <code>/msgdelete on</code> to enable it again."
-	}
-	_, err = m.Reply(
-		fmt.Sprintf("💬 <b>Message auto-delete %s</b>\n\n%s", status, next),
-	)
+	settings, _ := database.GetMsgDeleteSettings(m.ChatID())
+	text, keyboard := getMsgDeleteDashboard(enable, settings.Delay)
+	_, err = m.Reply(text, &telegram.SendOptions{
+		ReplyMarkup: keyboard,
+		ParseMode:   "HTML",
+	})
 	return err
 }
 

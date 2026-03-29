@@ -12,6 +12,33 @@ import (
 	"main/utils"
 )
 
+func getBioLinkDashboard(enabled bool) (string, telegram.ReplyMarkup) {
+	status := "Disabled ❌"
+	toggleLabel := "Enable ✅"
+	toggleVal := "on"
+	if enabled {
+		status = "Enabled ✅"
+		toggleLabel = "Disable ❌"
+		toggleVal = "off"
+	}
+
+	text := fmt.Sprintf("🛡️ <b>BioLink Protection</b>\n"+
+		"━━━━━━━━━━━━━━━━━━━━\n"+
+		"<b>Status:</b> %s\n\n"+
+		"<blockquote expandable>"+
+		"When enabled, I monitor user bios for any URLs or links. If a user tries to send a message while having a link in their bio, the message will be removed immediately.\n\n"+
+		"<b>Action:</b> Messages from flagged users are deleted to prevent potential spam or promotion."+
+		"</blockquote>\n\n"+
+		"💡 <b>Tip:</b> This is an effective way to stop 'bio-spammers' before they even start.", status)
+
+	keyboard := telegram.NewKeyboard().AddRow(
+		telegram.Button.Data(toggleLabel, "biolink_toggle:"+toggleVal),
+		telegram.Button.Data("🗑️ Close", "close"),
+	).Build()
+
+	return text, keyboard
+}
+
 func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "biolink",
@@ -29,8 +56,42 @@ func init() {
 				Pattern: "command:biolink",
 				Handler: RequirePermission("delete_messages", setBioMode),
 			},
+			{
+				Pattern: "callback:^biolink_toggle:(on|off)$",
+				Handler: handleBioLinkToggle,
+			},
 		},
 	})
+}
+
+func handleBioLinkToggle(c *telegram.CallbackQuery) error {
+	if isAdmin, _ := utils.IsAdmin(c.Client, c.ChatID, c.SenderID); !isAdmin {
+		c.Answer("👤 Admin Access Required", &telegram.CallbackOptions{Alert: true})
+		return telegram.ErrEndGroup
+	}
+
+	parts := strings.Split(c.DataString(), ":")
+	enable := parts[1] == "on"
+
+	var err error
+	if enable {
+		err = database.SetBioMode(c.ChatID)
+	} else {
+		err = database.DelBioMode(c.ChatID)
+	}
+
+	if err != nil {
+		c.Answer("⚠️ Update failed.", &telegram.CallbackOptions{Alert: true})
+		return err
+	}
+
+	text, keyboard := getBioLinkDashboard(enable)
+	c.Answer("✓ Settings Updated")
+	_, err = c.Edit(text, &telegram.SendOptions{
+		ReplyMarkup: keyboard,
+		ParseMode:   "HTML",
+	})
+	return err
 }
 
 var bioLinkRegex = regexp.MustCompile(
@@ -50,20 +111,13 @@ func setBioMode(m *telegram.NewMessage) error {
 	args := strings.Fields(m.Args())
 
 	if len(args) < 1 {
-		isEn, err := database.GetBioMode(m.ChatID())
-		if err != nil {
-			_, err = m.Reply(
-				"📚 <b>Usage:</b>\n• <code>/biolink on</code> — Enable BioMode\n• <code>/biolink off</code> — Disable BioMode",
-			)
-			return err
-		} else {
-			status := "Disabled ❌"
-			if isEn {
-				status = "Enabled ✅"
-			}
-			_, err = m.Reply("🛡️ <b>BioLink Mode Status:</b> " + status + "\n\n<i>When enabled, messages from users with links in their bios will be removed.</i>")
-			return err
-		}
+		isEn, _ := database.GetBioMode(m.ChatID())
+		text, keyboard := getBioLinkDashboard(isEn)
+		_, err = m.Reply(text, &telegram.SendOptions{
+			ReplyMarkup: keyboard,
+			ParseMode:   "HTML",
+		})
+		return err
 	}
 
 	enable, err := utils.ParseBool(args[0])
@@ -74,24 +128,24 @@ func setBioMode(m *telegram.NewMessage) error {
 		return err
 	}
 
-	var msg string
 	if enable {
-		err := database.SetBioMode(m.ChatID())
-		if err != nil {
-			msg = "⚠️ <b>Oops! Failed to update BioMode.</b>\n\nSomething went wrong while trying to enable the protection. Please try again in a few moments."
-		} else {
-			msg = "✅ <b>BioMode enabled successfully!</b>\n\n🔍 I will now monitor bios for any links and automatically delete messages if found. Use <code>/biolink off</code> to disable this."
-		}
+		err = database.SetBioMode(m.ChatID())
 	} else {
-		err := database.DelBioMode(m.ChatID())
-		if err != nil {
-			msg = "⚠️ <b>Oops! Failed to update BioMode.</b>\n\nSomething went wrong while trying to disable the protection. Please try again in a few moments."
-		} else {
-			msg = "🛑 <b>BioMode disabled successfully!</b>\n\n🔓 I'm no longer monitoring user bios for links. Use <code>/biolink on</code> if you want to enable it again."
-		}
+		err = database.DelBioMode(m.ChatID())
 	}
 
-	_, err = m.Reply(msg)
+	if err != nil {
+		_, err = m.Reply(
+			"⚠️ <b>Oops! Failed to update BioMode.</b>\n\nSomething went wrong while trying to update the protection. Please try again in a few moments.",
+		)
+		return err
+	}
+
+	text, keyboard := getBioLinkDashboard(enable)
+	_, err = m.Reply(text, &telegram.SendOptions{
+		ReplyMarkup: keyboard,
+		ParseMode:   "HTML",
+	})
 	return err
 }
 
