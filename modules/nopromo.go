@@ -260,17 +260,26 @@ func NoPromoHandler(m *telegram.NewMessage) error {
 }
 
 func calculatePromoScore(m *telegram.NewMessage) int {
-	score := 0
 	text := m.Text()
+	score := getPatternScore(text)
+	urlScore, urlCount := getURLScore(m)
+	score += urlScore
+	meta := scanTextMetadata(text)
+	score += calculateHeuristicScore(text, urlCount, meta)
+	return score
+}
 
-	// Check against all patterns
+func getPatternScore(text string) int {
+	score := 0
 	for _, pattern := range promoPatterns {
 		if pattern.regex.MatchString(text) {
 			score += pattern.score
 		}
 	}
+	return score
+}
 
-	// URL count using entities (already efficient)
+func getURLScore(m *telegram.NewMessage) (int, int) {
 	urlCount := 0
 	if m.Message.Entities != nil {
 		for _, entity := range m.Message.Entities {
@@ -281,88 +290,94 @@ func calculatePromoScore(m *telegram.NewMessage) int {
 		}
 	}
 
+	score := 0
 	if urlCount >= 5 {
-		score += 20
+		score = 20
 	} else if urlCount >= 3 {
-		score += 12
+		score = 12
 	} else if urlCount >= 2 {
-		score += 6
+		score = 6
 	}
+	return score, urlCount
+}
 
-	// Single-pass scanner for lines, emojis, caps, and bullets
+type textMetadata struct {
+	lineCount   int
+	emojiCount  int
+	upperCount  int
+	letterCount int
+	bulletCount int
+}
+
+func scanTextMetadata(text string) textMetadata {
 	var (
-		lineCount   = 1
-		emojiCount  = 0
-		inEmoji     = false
-		upperCount  = 0
-		lowerCount  = 0
-		letterCount = 0
-		bulletCount = 0
+		meta    textMetadata
+		inEmoji bool
 	)
+	meta.lineCount = 1
 
 	for _, r := range text {
-		// Line counting
 		if r == '\n' {
-			lineCount++
+			meta.lineCount++
 		}
 
-		// Emoji counting
 		isEmoji := isEmojiRune(r)
 		if isEmoji && !inEmoji {
-			emojiCount++
+			meta.emojiCount++
 			inEmoji = true
 		} else if !isEmoji {
 			inEmoji = false
 		}
 
-		// Caps detection
 		if unicode.IsLetter(r) {
-			letterCount++
+			meta.letterCount++
 			if unicode.IsUpper(r) {
-				upperCount++
-			} else if unicode.IsLower(r) {
-				lowerCount++
+				meta.upperCount++
 			}
 		}
 
-		// Bullet points and special characters
 		if r == '•' || r == '✨' || r == '✅' {
-			bulletCount++
+			meta.bulletCount++
 		}
 	}
+	return meta
+}
+
+func calculateHeuristicScore(text string, urlCount int, meta textMetadata) int {
+	score := 0
 
 	// Line count score
-	if lineCount > 10 && len(text) > 500 && urlCount > 0 {
+	if meta.lineCount > 10 && len(text) > 500 && urlCount > 0 {
 		score += 10
-	} else if lineCount > 7 && len(text) > 300 && urlCount > 0 {
+	} else if meta.lineCount > 7 && len(text) > 300 && urlCount > 0 {
 		score += 6
 	}
 
 	// Emoji score
-	if emojiCount > 20 {
+	if meta.emojiCount > 20 {
 		score += 15
-	} else if emojiCount > 15 {
+	} else if meta.emojiCount > 15 {
 		score += 10
-	} else if emojiCount > 10 {
+	} else if meta.emojiCount > 10 {
 		score += 5
 	}
 
 	// Caps score
-	if len(text) >= 50 && letterCount > 0 {
-		capsRatio := float64(upperCount) / float64(letterCount)
-		if capsRatio > 0.7 && letterCount > 50 {
+	if len(text) >= 50 && meta.letterCount > 0 {
+		capsRatio := float64(meta.upperCount) / float64(meta.letterCount)
+		if capsRatio > 0.7 && meta.letterCount > 50 {
 			score += 12
-		} else if capsRatio > 0.6 && letterCount > 30 {
+		} else if capsRatio > 0.6 && meta.letterCount > 30 {
 			score += 8
-		} else if capsRatio > 0.5 && letterCount > 50 {
+		} else if capsRatio > 0.5 && meta.letterCount > 50 {
 			score += 5
 		}
 	}
 
 	// Bullet point score
-	if bulletCount > 8 {
+	if meta.bulletCount > 8 {
 		score += 10
-	} else if bulletCount > 5 {
+	} else if meta.bulletCount > 5 {
 		score += 6
 	}
 
