@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
@@ -41,7 +40,6 @@ var (
 	nsfwViolations   = utils.NewCache[string, int](24 * time.Hour)
 	nsfwViolationsMu sync.Map
 	nsfwSemaphore    = make(chan struct{}, nsfwMaxConcurrent)
-	nsfwInflight     int64
 )
 
 type nsfwMediaType string
@@ -190,9 +188,6 @@ func NsfwHandler(m *tg.NewMessage) error {
 	}
 
 	go func() {
-		atomic.AddInt64(&nsfwInflight, 1)
-		defer atomic.AddInt64(&nsfwInflight, -1)
-
 		nsfwSemaphore <- struct{}{}
 		defer func() { <-nsfwSemaphore }()
 
@@ -317,9 +312,6 @@ func AlbumNsfwHandler(a *tg.Album) error {
 	}
 
 	go func() {
-		atomic.AddInt64(&nsfwInflight, 1)
-		defer atomic.AddInt64(&nsfwInflight, -1)
-
 		nsfwSemaphore <- struct{}{}
 		defer func() { <-nsfwSemaphore }()
 
