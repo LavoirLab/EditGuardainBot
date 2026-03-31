@@ -202,8 +202,11 @@ func NsfwHandler(m *tg.NewMessage) error {
 			return
 		}
 		if isNsfw {
-			if err := handleNsfwDetected(m); err != nil && err != tg.ErrEndGroup {
-				m.Client.Log.Error(fmt.Sprintf("NSFW detection handler error: %v", err))
+			if err := handleNsfwDetected(m); err != nil &&
+				err != tg.ErrEndGroup {
+				m.Client.Log.Error(
+					fmt.Sprintf("NSFW detection handler error: %v", err),
+				)
 			}
 		}
 	}()
