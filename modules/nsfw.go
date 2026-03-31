@@ -37,10 +37,15 @@ const (
 
 var (
 	nsfwFileCache    = utils.NewCache[string, bool](48 * time.Hour)
-	nsfwViolations   = utils.NewCache[string, int](24 * time.Hour)
-	nsfwViolationsMu sync.Map
+	nsfwViolations   = utils.NewCache[nsfwViolationKey, int](24 * time.Hour)
+	nsfwViolationsMu sync.Mutex
 	nsfwSemaphore    = make(chan struct{}, nsfwMaxConcurrent)
 )
+
+type nsfwViolationKey struct {
+	ChatID int64
+	UserID int64
+}
 
 type nsfwMediaType string
 
@@ -197,7 +202,9 @@ func NsfwHandler(m *tg.NewMessage) error {
 			return
 		}
 		if isNsfw {
-			handleNsfwDetected(m)
+			if err := handleNsfwDetected(m); err != nil && err != tg.ErrEndGroup {
+				m.Client.Log.Error(fmt.Sprintf("NSFW detection handler error: %v", err))
+			}
 		}
 	}()
 
@@ -797,22 +804,20 @@ func sendPathBatchToNsfwApi(items []batchEntry) ([]NsfwApiResponse, error) {
 }
 
 func trackViolationAndMute(client *tg.Client, chatID, userID int64) bool {
-	key := fmt.Sprintf("%d_%d", chatID, userID)
+	key := nsfwViolationKey{ChatID: chatID, UserID: userID}
 
-	muI, _ := nsfwViolationsMu.LoadOrStore(key, &sync.Mutex{})
-	mu := muI.(*sync.Mutex)
-	mu.Lock()
-	defer mu.Unlock()
-
-	count := 0
-	if cached, ok := nsfwViolations.Get(key); ok {
-		count = cached
-	}
+	nsfwViolationsMu.Lock()
+	count, _ := nsfwViolations.Get(key)
 	count++
 	nsfwViolations.Set(key, count)
+	shouldMute := count >= nsfwViolationThreshold
+	if shouldMute {
+		nsfwViolations.Set(key, 0)
+	}
+	nsfwViolationsMu.Unlock()
 
-	if count >= nsfwViolationThreshold {
-		muteUntil := int32(time.Now().Add(1 * time.Hour).Unix())
+	if shouldMute {
+		muteUntil := int32(time.Now().Add(time.Hour).Unix())
 		_, err := client.EditBanned(chatID, userID, &tg.BannedOptions{
 			Mute:     true,
 			TillDate: muteUntil,
@@ -828,7 +833,6 @@ func trackViolationAndMute(client *tg.Client, chatID, userID int64) bool {
 			)
 			return false
 		}
-		nsfwViolations.Set(key, 0)
 		return true
 	}
 
