@@ -10,6 +10,33 @@ import (
 	"main/utils"
 )
 
+func getNoHashtagsDashboard(enabled bool) (string, telegram.ReplyMarkup) {
+	status := "Disabled ❌"
+	toggleLabel := "Enable ✅"
+	toggleVal := "on"
+	if enabled {
+		status = "Enabled ✅"
+		toggleLabel = "Disable ❌"
+		toggleVal = "off"
+	}
+
+	text := fmt.Sprintf("🏷️ <b>Hashtag Filter</b>\n"+
+		"━━━━━━━━━━━━━━━━━━━━\n"+
+		"<b>Status:</b> %s\n\n"+
+		"<blockquote expandable>"+
+		"When enabled, I automatically detect and remove messages containing hashtags (#example).\n\n"+
+		"<b>Action:</b> Hashtags are often used for spam or to bypass keyword filters. This protection ensures your chat remains focused and clutter-free."+
+		"</blockquote>\n\n"+
+		"💡 <b>Tip:</b> Use <code>/nohashtags on</code> or <code>/nohashtags off</code> to quickly toggle this setting.", status)
+
+	keyboard := telegram.NewKeyboard().AddRow(
+		telegram.Button.Data(toggleLabel, "nohashtags_toggle:"+toggleVal),
+		telegram.Button.Data("🗑️ Close", "close"),
+	).Build()
+
+	return text, keyboard
+}
+
 func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "nohashtags",
@@ -28,8 +55,38 @@ func init() {
 				Pattern: "command:nohashtag",
 				Handler: RequirePermission("delete_messages", NoHashtagsCmd),
 			},
+			{
+				Pattern: "callback:^nohashtags_toggle:(on|off)$",
+				Handler: handleNoHashtagsToggle,
+			},
 		},
 	})
+}
+
+func handleNoHashtagsToggle(c *telegram.CallbackQuery) error {
+	if isAdmin, _ := utils.IsAdmin(c.Client, c.ChatID, c.SenderID); !isAdmin {
+		c.Answer(
+			"👤 Admin Access Required",
+			&telegram.CallbackOptions{Alert: true},
+		)
+		return telegram.ErrEndGroup
+	}
+
+	parts := strings.Split(c.DataString(), ":")
+	enable := parts[1] == "on"
+
+	if err := database.SetNoHashtagsEnabled(c.ChatID, enable); err != nil {
+		c.Answer("⚠️ Update failed.", &telegram.CallbackOptions{Alert: true})
+		return err
+	}
+
+	text, keyboard := getNoHashtagsDashboard(enable)
+	c.Answer("✓ Settings Updated")
+	_, err := c.Edit(text, &telegram.SendOptions{
+		ReplyMarkup: keyboard,
+		ParseMode:   "HTML",
+	})
+	return err
 }
 
 func NoHashtagsCmd(m *telegram.NewMessage) error {
@@ -40,26 +97,20 @@ func NoHashtagsCmd(m *telegram.NewMessage) error {
 	}
 
 	if len(args) < 1 {
-		isEnabled, err := database.IsNoHashtagsEnabled(m.ChatID())
-		if err != nil {
-			_, err = m.Reply(
-				"⚠️ <b>Usage:</b>\n• <code>/nohashtags on</code> — Block hashtags\n• <code>/nohashtags off</code> — Allow hashtags",
-			)
-			return err
-		} else {
-			status := "Disabled ❌"
-			if isEnabled {
-				status = "Enabled ✅"
-			}
-			_, err = m.Reply(fmt.Sprintf("🏷️ <b>Hashtag Filter Status:</b> %s\n\n<i>When enabled, messages containing hashtags (#example) will be automatically removed.</i>", status))
-			return err
-		}
+		isEnabled, _ := database.IsNoHashtagsEnabled(m.ChatID())
+		text, keyboard := getNoHashtagsDashboard(isEnabled)
+		_, err = m.Reply(text, &telegram.SendOptions{
+			ReplyMarkup: keyboard,
+			ParseMode:   "HTML",
+		})
+		return err
 	}
 
 	enable, err := utils.ParseBool(args[0])
 	if err != nil {
 		_, err = m.Reply(
 			"❌ <b>Invalid option.</b>\n\nPlease use <code>/nohashtags on</code> or <code>/nohashtags off</code>.",
+			&telegram.SendOptions{ParseMode: "HTML"},
 		)
 		return err
 	}
@@ -67,19 +118,16 @@ func NoHashtagsCmd(m *telegram.NewMessage) error {
 	if err := database.SetNoHashtagsEnabled(m.ChatID(), enable); err != nil {
 		_, err = m.Reply(
 			"⚠️ <b>Update failed.</b>\n\nSomething went wrong while updating the setting. Please try again.",
+			&telegram.SendOptions{ParseMode: "HTML"},
 		)
 		return err
 	}
 
-	status := "enabled ✅"
-	next := "Use <code>/nohashtags off</code> to allow hashtags again."
-	if !enable {
-		status = "disabled ❌"
-		next = "Use <code>/nohashtags on</code> to block hashtags."
-	}
-	_, err = m.Reply(
-		fmt.Sprintf("🏷️ <b>Hashtag filter %s</b>\n\n%s", status, next),
-	)
+	text, keyboard := getNoHashtagsDashboard(enable)
+	_, err = m.Reply(text, &telegram.SendOptions{
+		ReplyMarkup: keyboard,
+		ParseMode:   "HTML",
+	})
 	return err
 }
 

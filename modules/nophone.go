@@ -11,6 +11,33 @@ import (
 	"main/utils"
 )
 
+func getNoPhoneDashboard(enabled bool) (string, telegram.ReplyMarkup) {
+	status := "Disabled ❌"
+	toggleLabel := "Enable ✅"
+	toggleVal := "on"
+	if enabled {
+		status = "Enabled ✅"
+		toggleLabel = "Disable ❌"
+		toggleVal = "off"
+	}
+
+	text := fmt.Sprintf("📞 <b>Phone Protection</b>\n"+
+		"━━━━━━━━━━━━━━━━━━━━\n"+
+		"<b>Status:</b> %s\n\n"+
+		"<blockquote expandable>"+
+		"When enabled, I automatically detect and remove messages containing phone numbers to protect user privacy and prevent unwanted solicitations.\n\n"+
+		"<b>Action:</b> Phone numbers are detected using advanced pattern matching and removed instantly to maintain a secure environment."+
+		"</blockquote>\n\n"+
+		"💡 <b>Tip:</b> Use <code>/nophone on</code> or <code>/nophone off</code> to quickly toggle this setting.", status)
+
+	keyboard := telegram.NewKeyboard().AddRow(
+		telegram.Button.Data(toggleLabel, "nophone_toggle:"+toggleVal),
+		telegram.Button.Data("🗑️ Close", "close"),
+	).Build()
+
+	return text, keyboard
+}
+
 func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "nophone",
@@ -29,8 +56,38 @@ func init() {
 				Pattern: "command:nophone",
 				Handler: RequirePermission("delete_messages", NoPhoneCmd),
 			},
+			{
+				Pattern: "callback:^nophone_toggle:(on|off)$",
+				Handler: handleNoPhoneToggle,
+			},
 		},
 	})
+}
+
+func handleNoPhoneToggle(c *telegram.CallbackQuery) error {
+	if isAdmin, _ := utils.IsAdmin(c.Client, c.ChatID, c.SenderID); !isAdmin {
+		c.Answer(
+			"👤 Admin Access Required",
+			&telegram.CallbackOptions{Alert: true},
+		)
+		return telegram.ErrEndGroup
+	}
+
+	parts := strings.Split(c.DataString(), ":")
+	enable := parts[1] == "on"
+
+	if err := database.SetNoPhoneEnabled(c.ChatID, enable); err != nil {
+		c.Answer("⚠️ Update failed.", &telegram.CallbackOptions{Alert: true})
+		return err
+	}
+
+	text, keyboard := getNoPhoneDashboard(enable)
+	c.Answer("✓ Settings Updated")
+	_, err := c.Edit(text, &telegram.SendOptions{
+		ReplyMarkup: keyboard,
+		ParseMode:   "HTML",
+	})
+	return err
 }
 
 var phoneRegex = regexp.MustCompile(
@@ -45,26 +102,20 @@ func NoPhoneCmd(m *telegram.NewMessage) error {
 	}
 
 	if len(args) < 1 {
-		isEnabled, err := database.IsNoPhoneEnabled(m.ChatID())
-		if err != nil {
-			_, err = m.Reply(
-				"⚠️ <b>Usage:</b>\n• <code>/nophone on</code> — Block phone numbers\n• <code>/nophone off</code> — Allow phone numbers",
-			)
-			return err
-		} else {
-			status := "Disabled ❌"
-			if isEnabled {
-				status = "Enabled ✅"
-			}
-			_, err = m.Reply(fmt.Sprintf("📞 <b>Phone Number Protection Status:</b> %s\n\n<i>When enabled, messages containing phone numbers will be automatically removed for privacy.</i>", status))
-			return err
-		}
+		isEnabled, _ := database.IsNoPhoneEnabled(m.ChatID())
+		text, keyboard := getNoPhoneDashboard(isEnabled)
+		_, err = m.Reply(text, &telegram.SendOptions{
+			ReplyMarkup: keyboard,
+			ParseMode:   "HTML",
+		})
+		return err
 	}
 
 	enable, err := utils.ParseBool(args[0])
 	if err != nil {
 		_, err = m.Reply(
 			"❌ <b>Invalid option.</b>\n\nPlease use <code>/nophone on</code> or <code>/nophone off</code>.",
+			&telegram.SendOptions{ParseMode: "HTML"},
 		)
 		return err
 	}
@@ -72,19 +123,16 @@ func NoPhoneCmd(m *telegram.NewMessage) error {
 	if err := database.SetNoPhoneEnabled(m.ChatID(), enable); err != nil {
 		_, err = m.Reply(
 			"⚠️ <b>Update failed.</b>\n\nSomething went wrong while updating the setting. Please try again.",
+			&telegram.SendOptions{ParseMode: "HTML"},
 		)
 		return err
 	}
 
-	status := "enabled ✅"
-	next := "Use <code>/nophone off</code> to allow phone numbers again."
-	if !enable {
-		status = "disabled ❌"
-		next = "Use <code>/nophone on</code> to block phone numbers."
-	}
-	_, err = m.Reply(
-		fmt.Sprintf("📞 <b>Phone number protection %s</b>\n\n%s", status, next),
-	)
+	text, keyboard := getNoPhoneDashboard(enable)
+	_, err = m.Reply(text, &telegram.SendOptions{
+		ReplyMarkup: keyboard,
+		ParseMode:   "HTML",
+	})
 	return err
 }
 
