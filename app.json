@@ -12,26 +12,37 @@
   ],
   "stack": "container",
   "env": {
-    "BOT_TOKEN": {
-      "description": "A Bot's token. Get it from BotFather",
-      "value": "",
-      "required": false
+    "TOKEN": {
+      "description": "Bot token from BotFather",
+      "required": true
     },
-    "START_IMG_URL": {
-      "description": "URL for the bot's start image",
-      "value": "https://telegra.ph/file/ba238ec5e542d8754cea7-dc1786aa23ae1224f2.jpg",
+    "START_IMG_GIF": {
+      "description": "Start image/gif URL",
+      "value": "https://raw.githubusercontent.com/Vivekkumar-IN/assets/refs/heads/master/ezgif-408f355da640ed.gif",
       "required": false
     },
     "LOGGER_ID": {
-      "description": "Telegram ID of the logger group",
+      "description": "Telegram logger group ID",
+      "value": "6119285647",
       "required": false
     },
     "MONGO_DB_URI": {
-      "description": "MongoDB URI for the database connection",
+      "description": "MongoDB connection URI",
       "required": false
     },
     "OWNER_ID": {
-      "description": "Owner's Telegram ID",
+      "description": "Owner ID (space separated if multiple)",
+      "value": "6119285647",
+      "required": false
+    },
+    "API_ID": {
+      "description": "Telegram API ID",
+      "value": "25021578",
+      "required": false
+    },
+    "API_HASH": {
+      "description": "Telegram API Hash",
+      "value": "dd92e0a3f0aa00f49ea0c26f441587b9",
       "required": false
     }
   },
