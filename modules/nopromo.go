@@ -395,4 +395,3 @@ func isEmojiRune(r rune) bool {
 		(r >= 0x1F900 && r <= 0x1F9FF) || // Supplemental Symbols and Pictographs
 		(r >= 0x1FA70 && r <= 0x1FAFF) // Symbols and Pictographs Extended-A
 }
-

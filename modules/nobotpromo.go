@@ -3,8 +3,8 @@ package modules
 import (
 	"fmt"
 	"strings"
-	"unicode"
 	"time"
+	"unicode"
 
 	"github.com/amarnathcjd/gogram/telegram"
 
@@ -69,7 +69,10 @@ func getNoBotPromoDashboard(enabled bool) (string, telegram.ReplyMarkup) {
 
 func handleNoBotPromoToggle(c *telegram.CallbackQuery) error {
 	if isAdmin, _ := utils.IsAdmin(c.Client, c.ChatID, c.SenderID); !isAdmin {
-		c.Answer("👤 Admin Access Required", &telegram.CallbackOptions{Alert: true})
+		c.Answer(
+			"👤 Admin Access Required",
+			&telegram.CallbackOptions{Alert: true},
+		)
 		return telegram.ErrEndGroup
 	}
 
