@@ -387,12 +387,15 @@ func handleDetectedNsfwAlbum(a *tg.Album) {
 	chatID := a.Messages[0].ChatID()
 	userID := a.Messages[0].SenderID()
 	muted := trackViolationAndMute(a.Client, chatID, userID)
-	a.Messages[0].Respond(
+	mm, _ := a.Messages[0].Respond(
 		buildNsfwWarnMsg(
 			utils.MentionHTML(a.Messages[0].Sender),
 			muted,
 		),
 	)
+	if mm != nil {
+		ScheduleDeletion(mm, 30*time.Second)
+	}
 }
 
 func resolveMediaType(m *tg.NewMessage) nsfwMediaType {
@@ -858,8 +861,9 @@ func handleNsfwDetected(m *tg.NewMessage) error {
 		return err
 	}
 	muted := trackViolationAndMute(m.Client, m.ChatID(), m.SenderID())
-	if _, err := m.Respond(buildNsfwWarnMsg(utils.MentionHTML(m.Sender), muted)); err != nil {
-		return err
+	mm, _ := m.Respond(buildNsfwWarnMsg(utils.MentionHTML(m.Sender), muted))
+	if mm != nil {
+		ScheduleDeletion(mm, 30*time.Second)
 	}
 	return tg.ErrEndGroup
 }

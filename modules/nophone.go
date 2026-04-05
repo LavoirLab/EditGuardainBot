@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/amarnathcjd/gogram/telegram"
 
@@ -177,12 +178,15 @@ func NoPhoneHandler(m *telegram.NewMessage) error {
 	}
 
 	mention := utils.MentionHTML(m.Sender)
-	_, _ = m.Reply(
+	mm, _ := m.Reply(
 		fmt.Sprintf(
 			"📞 <b>Privacy Protection!</b>\n\n%s, <i>sharing phone numbers is not allowed here for safety and privacy reasons.</i> 🚫",
 			mention,
 		),
 	)
+	if mm != nil {
+		ScheduleDeletion(mm, 30*time.Second)
+	}
 	return telegram.ErrEndGroup
 }
 

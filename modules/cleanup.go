@@ -169,3 +169,11 @@ func ScheduleMessageDeletion(
 func CancelMessageDeletion(chatID int64, messageID int32) {
 	globalScheduler.Cancel(chatID, messageID)
 }
+
+// ScheduleDeletion schedules a message for deletion
+func ScheduleDeletion(m *telegram.NewMessage, delay time.Duration) {
+	if m == nil {
+		return
+	}
+	ScheduleMessageDeletion(m.Client, m.ChatID(), int32(m.ID), delay)
+}

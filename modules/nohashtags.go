@@ -3,6 +3,7 @@ package modules
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/amarnathcjd/gogram/telegram"
 
@@ -167,11 +168,14 @@ func NoHashtagsHandler(m *telegram.NewMessage) error {
 	}
 
 	mention := utils.MentionHTML(m.Sender)
-	_, _ = m.Reply(
+	mm, _ := m.Reply(
 		fmt.Sprintf(
 			"🏷️ <b>No Hashtags!</b>\n\n%s, <i>hashtags are not permitted in this group to prevent spamming and maintain clarity.</i> 🚫",
 			mention,
 		),
 	)
+	if mm != nil {
+		ScheduleDeletion(mm, 30*time.Second)
+	}
 	return telegram.ErrEndGroup
 }

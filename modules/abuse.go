@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/amarnathcjd/gogram/telegram"
 
@@ -164,6 +165,9 @@ func AbuseHandler(m *telegram.NewMessage) error {
 	}
 
 	user := utils.MentionHTML(m.Sender)
-	_, _ = m.Reply(fmt.Sprintf(noAbuseRemovedMsg, user))
+	mm, _ := m.Reply(fmt.Sprintf(noAbuseRemovedMsg, user))
+	if mm != nil {
+		ScheduleDeletion(mm, 30*time.Second)
+	}
 	return telegram.ErrEndGroup
 }

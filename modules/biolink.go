@@ -205,6 +205,9 @@ func BioLinkHandler(m *telegram.NewMessage) error {
 		"🛡️ <b>BioLink Protected!</b>\n\n%s, <i>your message was removed because your profile bio contains a link.</i>\n\n💡 <b>Tip:</b> Remove the link from your bio to be able to send messages in this group.",
 		mention,
 	)
-	_, _ = m.Reply(msg)
+	mm, _ := m.Reply(msg)
+	if mm != nil {
+		ScheduleDeletion(mm, 30*time.Second)
+	}
 	return telegram.ErrEndGroup
 }

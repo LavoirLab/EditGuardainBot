@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/amarnathcjd/gogram/telegram"
@@ -215,19 +216,6 @@ func NoPromoHandler(m *telegram.NewMessage) error {
 		return nil
 	}
 
-	if containsBotUsername(m.Text()) {
-		if _, err := m.Delete(); err != nil {
-			return err
-		}
-
-		mention := utils.MentionHTML(m.Sender)
-		_, _ = m.Reply(fmt.Sprintf(
-			"🤖 <b>No Bot Promo!</b>\n\n%s, <i>promoting other bots is not allowed in this group.</i> 🚫",
-			mention,
-		))
-
-		return telegram.ErrEndGroup
-	}
 	// Calculate promo score
 	score := calculatePromoScore(m)
 
@@ -243,17 +231,23 @@ func NoPromoHandler(m *telegram.NewMessage) error {
 		if _, err := m.Delete(); err != nil {
 			return err
 		}
-		_, _ = m.Reply(
+		mm, _ := m.Reply(
 			fmt.Sprintf(
 				"🚫 <b>Promotion Detected!</b>\n\n%s, <i>your message was removed because it appears to be promotional content.</i>\n\n📊 <b>Promo Score:</b> <code>%d</code>",
 				mention,
 				score,
 			),
 		)
+		if mm != nil {
+			ScheduleDeletion(mm, 30*time.Second)
+		}
 		return telegram.ErrEndGroup
 	} else {
 		// Medium score - Warning only
-		_, _ = m.Reply(fmt.Sprintf("⚠️ <b>Warning: Promo Content!</b>\n\n%s, <i>your message looks highly promotional. Please avoid excessive promotions to stay in the group.</i>\n\n📊 <b>Promo Score:</b> <code>%d</code>", mention, score))
+		mm, _ := m.Reply(fmt.Sprintf("⚠️ <b>Warning: Promo Content!</b>\n\n%s, <i>your message looks highly promotional. Please avoid excessive promotions to stay in the group.</i>\n\n📊 <b>Promo Score:</b> <code>%d</code>", mention, score))
+		if mm != nil {
+			ScheduleDeletion(mm, 30*time.Second)
+		}
 	}
 
 	return nil
@@ -402,40 +396,3 @@ func isEmojiRune(r rune) bool {
 		(r >= 0x1FA70 && r <= 0x1FAFF) // Symbols and Pictographs Extended-A
 }
 
-func containsBotUsername(text string) bool {
-	// A zero-allocation word scanner to replace strings.Fields and strings.ToLower
-	n := len(text)
-	for i := 0; i < n; {
-		// Skip whitespace
-		for i < n && unicode.IsSpace(rune(text[i])) {
-			i++
-		}
-		if i >= n {
-			break
-		}
-
-		// Start of a word
-		if text[i] == '@' {
-			start := i
-			for i < n && !unicode.IsSpace(rune(text[i])) {
-				i++
-			}
-			word := text[start:i]
-			// Check for 'bot' suffix case-insensitively
-			if len(word) >= 4 { // @ + at least one char + bot
-				l := len(word)
-				if (word[l-3] == 'b' || word[l-3] == 'B') &&
-					(word[l-2] == 'o' || word[l-2] == 'O') &&
-					(word[l-1] == 't' || word[l-1] == 'T') {
-					return true
-				}
-			}
-		} else {
-			// Skip the word
-			for i < n && !unicode.IsSpace(rune(text[i])) {
-				i++
-			}
-		}
-	}
-	return false
-}

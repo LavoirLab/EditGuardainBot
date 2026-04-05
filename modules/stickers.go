@@ -167,7 +167,7 @@ func StickerBlockHandler(m *telegram.NewMessage) error {
 	}
 
 	mention := utils.MentionHTML(m.Sender)
-	m, _ = m.Client.SendMessage(
+	mm, _ := m.Client.SendMessage(
 		m.ChatID(),
 		fmt.Sprintf(
 			"⚠️ %s, that sticker is not allowed in this group.",
@@ -176,13 +176,8 @@ func StickerBlockHandler(m *telegram.NewMessage) error {
 		&telegram.SendOptions{ParseMode: "HTML"},
 	)
 
-	if m != nil {
-		ScheduleMessageDeletion(
-			m.Client,
-			m.ChatID(),
-			int32(m.ID),
-			20*time.Second,
-		)
+	if mm != nil {
+		ScheduleDeletion(mm, 30*time.Second)
 	}
 	return telegram.ErrEndGroup
 }

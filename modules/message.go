@@ -28,6 +28,7 @@ var messageProtectionHandlers = []func(*telegram.NewMessage) error{
 	NoPhoneHandler,
 	LinkFilterHandler,
 	NoPromoHandler,
+	NoBotPromoHandler,
 	NoStylishHandler,
 	StickerBlockHandler,
 	LongMessageHandler,

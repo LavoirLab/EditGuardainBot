@@ -132,7 +132,7 @@ func LinkFilterHandler(m *telegram.NewMessage) error {
 					return err
 				}
 				mention := utils.MentionHTML(m.Sender)
-				_, _ = m.Reply(
+				mm, _ := m.Reply(
 					fmt.Sprintf(
 						"🚫 <b>Link Blocked!</b>\n\n%s, <i>unapproved link detected. Only allowed domains are permitted in this group.</i>\n\n💡 <b>Tip:</b> Contact an admin if you think this is a mistake.\n\n🔗 <a href='%s'>Learn how to format links</a>",
 						mention,
@@ -143,6 +143,9 @@ func LinkFilterHandler(m *telegram.NewMessage) error {
 						LinkPreview: false,
 					},
 				)
+				if mm != nil {
+					ScheduleDeletion(mm, 30*time.Second)
+				}
 				return telegram.ErrEndGroup
 			}
 		}
