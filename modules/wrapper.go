@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/amarnathcjd/gogram/telegram"
@@ -148,8 +147,7 @@ func RequirePermission(
 }
 
 var (
-	anonVerifyCache   = make(map[string]*AnonVerification)
-	anonVerifyCacheMu sync.RWMutex
+	anonVerifyCache = utils.NewCache[string, *AnonVerification](5 * time.Minute)
 )
 
 type AnonVerification struct {
@@ -198,21 +196,12 @@ func handleAnonAdmin(
 		return err
 	}
 
-	anonVerifyCacheMu.Lock()
-	anonVerifyCache[verifyKey] = &AnonVerification{
+	anonVerifyCache.Set(verifyKey, &AnonVerification{
 		OriginalMessage: m,
 		Permission:      permission,
 		Handler:         handler,
 		CreatedAt:       time.Now(),
-	}
-	anonVerifyCacheMu.Unlock()
-
-	go func() {
-		time.Sleep(5 * time.Minute)
-		anonVerifyCacheMu.Lock()
-		delete(anonVerifyCache, verifyKey)
-		anonVerifyCacheMu.Unlock()
-	}()
+	})
 
 	return telegram.ErrEndGroup
 }
@@ -229,9 +218,7 @@ func HandleAnonVerification(cb *telegram.CallbackQuery) error {
 
 	key := parts[1]
 
-	anonVerifyCacheMu.RLock()
-	verify, ok := anonVerifyCache[key]
-	anonVerifyCacheMu.RUnlock()
+	verify, ok := anonVerifyCache.Get(key)
 
 	if !ok {
 		cb.Answer("")
@@ -262,9 +249,7 @@ func HandleAnonVerification(cb *telegram.CallbackQuery) error {
 	}
 
 	if !botIsAdmin {
-		anonVerifyCacheMu.Lock()
-		delete(anonVerifyCache, key)
-		anonVerifyCacheMu.Unlock()
+		anonVerifyCache.Delete(key)
 
 		cb.Answer("I am not an admin!", &telegram.CallbackOptions{Alert: true})
 		_, err := cb.Edit(fmt.Sprintf(
@@ -323,15 +308,11 @@ func HandleAnonVerification(cb *telegram.CallbackQuery) error {
 		if err != nil {
 			return err
 		}
-		anonVerifyCacheMu.Lock()
-		delete(anonVerifyCache, key)
-		anonVerifyCacheMu.Unlock()
+		anonVerifyCache.Delete(key)
 		return telegram.ErrEndGroup
 	}
 
-	anonVerifyCacheMu.Lock()
-	delete(anonVerifyCache, key)
-	anonVerifyCacheMu.Unlock()
+	anonVerifyCache.Delete(key)
 
 	cb.Answer("✓ Verified")
 	cb.Delete()
