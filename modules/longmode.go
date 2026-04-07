@@ -182,7 +182,10 @@ func LongMessageHandler(m *telegram.NewMessage) error {
 
 ⚠️ <a href="tg://user?id=%d">%s</a>, <i>your message exceeds the %d-character limit allowed in this group.</i> 🚫`, id, name, settings.Limit)
 
-		_, _ = m.Reply(text)
+		mm, _ := m.Reply(text)
+        if mm != nil {
+                ScheduleDeletion(mm, 30*time.Second)
+        }
 		longModeWarningCache.Set(cacheKey, true)
 	}
 
