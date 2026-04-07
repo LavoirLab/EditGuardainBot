@@ -146,9 +146,7 @@ func RequirePermission(
 	}
 }
 
-var (
-	anonVerifyCache = utils.NewCache[string, *AnonVerification](5 * time.Minute)
-)
+var anonVerifyCache = utils.NewCache[string, *AnonVerification](5 * time.Minute)
 
 type AnonVerification struct {
 	OriginalMessage *telegram.NewMessage
