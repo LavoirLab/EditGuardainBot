@@ -109,11 +109,14 @@ func NoForwardHandler(m *telegram.NewMessage) error {
 	}
 
 	mention := utils.MentionHTML(m.Sender)
-	_, _ = m.Reply(
+	mm, _ = m.Reply(
 		fmt.Sprintf(
 			"📤 <b>NoForward Enabled!</b>\n\n%s, <i>forwarding messages is restricted in this group to maintain original conversations.</i> 🚫",
 			mention,
 		),
 	)
+        if mm != nil {
+                ScheduleDeletion(mm, 30*time.Second)
+        }
 	return telegram.ErrEndGroup
 }
