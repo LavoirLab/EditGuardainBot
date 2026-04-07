@@ -36,8 +36,7 @@ func stats(msg *telegram.NewMessage) error {
 
 	if !slices.Contains(config.OwnerId, msg.SenderID()) {
 		text := "❌ <b>Access Denied</b>\n\n" +
-			"<i>This command is reserved for the bot owner only.</i>\n\n" +
-			"💡 <b>Tip:</b> If you are the owner, ensure your ID is correctly configured in the bot's environment variables."
+			"<i>This command is reserved for the bot owner only.</i>"
 
 		opts := &telegram.SendOptions{
 			ParseMode: "HTML",
