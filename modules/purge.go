@@ -61,7 +61,12 @@ func PurgeCmd(m *telegram.NewMessage) error {
 		),
 	)
 
-	ScheduleMessageDeletion(m.Client, m.ChatID(), int32(notification.ID), 5*time.Second)
+	ScheduleMessageDeletion(
+		m.Client,
+		m.ChatID(),
+		int32(notification.ID),
+		5*time.Second,
+	)
 	return nil
 }
 
@@ -104,7 +109,11 @@ func validatePurgeRange(m *telegram.NewMessage) (int32, int32, error) {
 	return startMsgID, endMsgID, nil
 }
 
-func runPurgeLoop(m *telegram.NewMessage, startID, endID int32, notification *telegram.NewMessage) (int, error) {
+func runPurgeLoop(
+	m *telegram.NewMessage,
+	startID, endID int32,
+	notification *telegram.NewMessage,
+) (int, error) {
 	var messagesToDelete []int32
 	for i := startID; i <= endID; i++ {
 		messagesToDelete = append(messagesToDelete, i)
