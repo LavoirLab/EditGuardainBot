@@ -3,6 +3,7 @@ package modules
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/amarnathcjd/gogram/telegram"
 
@@ -115,8 +116,8 @@ func NoForwardHandler(m *telegram.NewMessage) error {
 			mention,
 		),
 	)
-        if mm != nil {
-                ScheduleDeletion(mm, 30*time.Second)
-        }
+	if mm != nil {
+		ScheduleDeletion(mm, 30*time.Second)
+	}
 	return telegram.ErrEndGroup
 }
