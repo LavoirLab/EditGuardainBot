@@ -172,7 +172,9 @@ func NoLinksCmd(m *telegram.NewMessage) error {
 		if isEn {
 			status = "Enabled ✅"
 		}
-		_, err = m.Reply("🔗 <b>Link Filtering Status:</b> " + status + "\n\n<i>When enabled, only links from approved domains will be allowed. Use <code>/nolinks on</code> to enable.</i>")
+		_, err = m.Reply(
+			"🔗 <b>Link Filtering Status:</b> " + status + "\n\n<i>When enabled, only links from approved domains will be allowed. Use <code>/nolinks on</code> to enable.</i>",
+		)
 		return err
 	}
 
