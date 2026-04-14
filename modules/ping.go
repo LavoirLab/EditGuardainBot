@@ -48,8 +48,16 @@ func pingHandler(m *telegram.NewMessage) error {
 			telegram.Button.Data("🏠 Back to Menu", "start_callback"),
 		).Build()
 		opts.ReplyMarkup = btn
+	} else {
+		btn := telegram.NewKeyboard().AddRow(
+			telegram.Button.Data("🗑️ Close", "close"),
+		).Build()
+		opts.ReplyMarkup = btn
 	}
 
-	_, err := m.Reply(text, opts)
+	res, err := m.Reply(text, opts)
+	if err == nil && !m.IsPrivate() {
+		ScheduleDeletion(res, 30*time.Second)
+	}
 	return err
 }
