@@ -7,19 +7,6 @@ import (
 	"time"
 )
 
-func LoadTyped[T any](cache interface {
-	Get(string) (any, bool)
-}, key string,
-) (T, bool) {
-	var zero T
-	if val, ok := cache.Get(key); ok {
-		if typed, ok := val.(T); ok {
-			return typed, true
-		}
-	}
-	return zero, false
-}
-
 const digitMap = "adefjtghkz" // 0=a, 1=d, 2=e, 3=f, 4=j, 5=t, 6=g, 7=h, 8=k, 9=z
 func EncodeDigits(num int64) string {
 	s := strconv.FormatInt(num, 10)
