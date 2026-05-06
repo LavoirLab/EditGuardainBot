@@ -15,10 +15,22 @@ func init() {
 		ModName: "✅ Approvals",
 		Help:    "<b>Approval commands:</b>\n<blockquote>• <code>/approve</code> (reply/mention/id)\n• <code>/unapprove</code> or <code>/disapprove</code>\n• <code>/approved</code> to check status</blockquote>\n\nApproved users are ignored by automated moderation actions.",
 		Handlers: []HandlerConfig{
-			{Pattern: "command:approve", Handler: RequirePermission("delete_messages", approveCmd)},
-			{Pattern: "command:unapprove", Handler: RequirePermission("delete_messages", unapproveCmd)},
-			{Pattern: "command:disapprove", Handler: RequirePermission("delete_messages", unapproveCmd)},
-			{Pattern: "command:approved", Handler: RequirePermission("delete_messages", approvedCmd)},
+			{
+				Pattern: "command:approve",
+				Handler: RequirePermission("delete_messages", approveCmd),
+			},
+			{
+				Pattern: "command:unapprove",
+				Handler: RequirePermission("delete_messages", unapproveCmd),
+			},
+			{
+				Pattern: "command:disapprove",
+				Handler: RequirePermission("delete_messages", unapproveCmd),
+			},
+			{
+				Pattern: "command:approved",
+				Handler: RequirePermission("delete_messages", approvedCmd),
+			},
 		},
 	})
 }
@@ -35,7 +47,13 @@ func approveCmd(m *telegram.NewMessage) error {
 		}
 		return err
 	}
-	_, err := m.Reply(fmt.Sprintf("✅ User <code>%d</code> is now approved and exempt from automated actions.", userID), &telegram.SendOptions{ParseMode: "HTML"})
+	_, err := m.Reply(
+		fmt.Sprintf(
+			"✅ User <code>%d</code> is now approved and exempt from automated actions.",
+			userID,
+		),
+		&telegram.SendOptions{ParseMode: "HTML"},
+	)
 	return err
 }
 
@@ -51,7 +69,10 @@ func unapproveCmd(m *telegram.NewMessage) error {
 		}
 		return err
 	}
-	_, err := m.Reply(fmt.Sprintf("🚫 User <code>%d</code> has been unapproved.", userID), &telegram.SendOptions{ParseMode: "HTML"})
+	_, err := m.Reply(
+		fmt.Sprintf("🚫 User <code>%d</code> has been unapproved.", userID),
+		&telegram.SendOptions{ParseMode: "HTML"},
+	)
 	return err
 }
 
@@ -72,6 +93,9 @@ func approvedCmd(m *telegram.NewMessage) error {
 	if approved {
 		status = "approved ✅"
 	}
-	_, err = m.Reply(fmt.Sprintf("👤 User <code>%d</code> is %s.", userID, status), &telegram.SendOptions{ParseMode: "HTML"})
+	_, err = m.Reply(
+		fmt.Sprintf("👤 User <code>%d</code> is %s.", userID, status),
+		&telegram.SendOptions{ParseMode: "HTML"},
+	)
 	return err
 }

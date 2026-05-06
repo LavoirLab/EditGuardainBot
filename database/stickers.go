@@ -24,7 +24,8 @@ func UnblockSticker(chatID int64, fileID string) (bool, error) {
 		if id == fileID {
 			settings.BlockedStickers = append(
 				settings.BlockedStickers[:i],
-				settings.BlockedStickers[i+1:]...)
+				settings.BlockedStickers[i+1:]...,
+			)
 			err = updateChatSettings(settings)
 			return err == nil, err
 		}

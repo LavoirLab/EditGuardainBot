@@ -78,7 +78,8 @@ func DeleteServedChat(chatID int64) error {
 		if id == chatID {
 			state.ServedChats = append(
 				state.ServedChats[:i],
-				state.ServedChats[i+1:]...)
+				state.ServedChats[i+1:]...,
+			)
 			if err := updateBotState(state); err != nil {
 				return err
 			}

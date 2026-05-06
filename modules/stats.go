@@ -97,7 +97,8 @@ func stats(msg *telegram.NewMessage) error {
 		cpuInfo = "<code>N/A</code>"
 	}
 
-	text := fmt.Sprintf(`📊 <b>Bot Statistics</b>
+	text := fmt.Sprintf(
+		`📊 <b>Bot Statistics</b>
 ━━━━━━━━━━━━━━━━━━━━
 💬 <b>Total Chats:</b> <code>%d</code>
 👤 <b>Total Users:</b> <code>%d</code>

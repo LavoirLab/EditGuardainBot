@@ -41,7 +41,8 @@ func ReloadHandler(m *telegram.NewMessage) error {
 			"⚠️ <b>Cache Refresh Failed</b>\n\n"+
 				"<i>I encountered an error while updating the administrator list.</i>\n\n"+
 				"<blockquote><code>%s</code></blockquote>\n\n"+
-				"💡 <b>Tip:</b> Please try again. If it fails repeatedly, ensure I have the <i>Add Admins</i> or <i>Manage Chat</i> permission.", html.EscapeString(err.Error())),
+				"💡 <b>Tip:</b> Please try again. If it fails repeatedly, ensure I have the <i>Add Admins</i> or <i>Manage Chat</i> permission.", html.EscapeString(err.Error()),
+		),
 			&telegram.SendOptions{ParseMode: "HTML"})
 		return err
 	}

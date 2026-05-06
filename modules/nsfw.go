@@ -115,10 +115,25 @@ func init() {
 				Pattern: "album",
 				Handler: AlbumNsfwHandler,
 			},
-			{Pattern: "command:(nsfwsafe|nsfwsfw)", Handler: RequirePermission("delete_messages", NsfwMarkSafeCmd)},
-			{Pattern: "command:(nsfwunsafe|nsfwmark)", Handler: RequirePermission("delete_messages", NsfwMarkUnsafeCmd)},
-			{Pattern: "command:(nsfwreset|nsfwrevert)", Handler: RequirePermission("delete_messages", NsfwResetCmd)},
-			{Pattern: "command:(nsfwlist|nsfwmanual)", Handler: NsfwManualListCmd},
+			{
+				Pattern: "command:(nsfwsafe|nsfwsfw)",
+				Handler: RequirePermission("delete_messages", NsfwMarkSafeCmd),
+			},
+			{
+				Pattern: "command:(nsfwunsafe|nsfwmark)",
+				Handler: RequirePermission(
+					"delete_messages",
+					NsfwMarkUnsafeCmd,
+				),
+			},
+			{
+				Pattern: "command:(nsfwreset|nsfwrevert)",
+				Handler: RequirePermission("delete_messages", NsfwResetCmd),
+			},
+			{
+				Pattern: "command:(nsfwlist|nsfwmanual)",
+				Handler: NsfwManualListCmd,
+			},
 		},
 	})
 }
@@ -247,7 +262,6 @@ func shouldScanAlbum(a *tg.Album) bool {
 }
 
 func checkVideoMediaNsfw(m *tg.NewMessage, mt nsfwMediaType) (bool, error) {
-
 	var isNsfw bool
 	var err error
 
@@ -986,8 +1000,13 @@ func NsfwResetCmd(m *tg.NewMessage) error {
 
 func NsfwManualListCmd(m *tg.NewMessage) error {
 	if m.IsGroup() {
-		btn := tg.NewKeyboard().AddRow(tg.Button.URL("📋 View NSFW Manual List", fmt.Sprintf("https://t.me/%s?start=nsfwlist_%d", m.Client.Me().Username, m.ChatID()))).Build()
-		_, err := m.Reply("Open in PM to view SAFE/UNSAFE manual media list.", &tg.SendOptions{ReplyMarkup: btn})
+		btn := tg.NewKeyboard().
+			AddRow(tg.Button.URL("📋 View NSFW Manual List", fmt.Sprintf("https://t.me/%s?start=nsfwlist_%d", m.Client.Me().Username, m.ChatID()))).
+			Build()
+		_, err := m.Reply(
+			"Open in PM to view SAFE/UNSAFE manual media list.",
+			&tg.SendOptions{ReplyMarkup: btn},
+		)
 		return err
 	}
 	if m.IsPrivate() {
@@ -1014,7 +1033,11 @@ func HandleNsfwListDeepLink(m *tg.NewMessage, chatID int64) error {
 		_, e := m.Reply("No manual NSFW overrides saved for this chat.")
 		return e
 	}
-	text := fmt.Sprintf("<b>NSFW Manual Overrides</b>\n\n✅ SAFE: <code>%d</code>\n🚫 UNSAFE: <code>%d</code>", len(safe), len(unsafe))
+	text := fmt.Sprintf(
+		"<b>NSFW Manual Overrides</b>\n\n✅ SAFE: <code>%d</code>\n🚫 UNSAFE: <code>%d</code>",
+		len(safe),
+		len(unsafe),
+	)
 	_, err = m.Reply(text, &tg.SendOptions{ParseMode: "HTML"})
 	for _, fid := range safe {
 		if media, e := tg.ResolveBotFileID(fid); e == nil {
@@ -1039,7 +1062,11 @@ func sendFileToFallbackApis(filePath string) (bool, error) {
 	a4Nsfw, a4Err := scanUsingAPI4AI(filePath)
 
 	if hfErr != nil && a4Err != nil {
-		return false, fmt.Errorf("fallback scanners failed: hf=%v api4ai=%v", hfErr, a4Err)
+		return false, fmt.Errorf(
+			"fallback scanners failed: hf=%v api4ai=%v",
+			hfErr,
+			a4Err,
+		)
 	}
 
 	return hfNsfw || a4Nsfw, nil

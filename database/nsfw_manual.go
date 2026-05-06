@@ -13,7 +13,9 @@ func MarkNsfwForceSafe(chatID int64, fileID string) (bool, error) {
 	settings.NsfwForceSafe = append(settings.NsfwForceSafe, fileID)
 	for i, id := range settings.NsfwForceUnsafe {
 		if id == fileID {
-			settings.NsfwForceUnsafe = append(settings.NsfwForceUnsafe[:i], settings.NsfwForceUnsafe[i+1:]...)
+			settings.NsfwForceUnsafe = append(
+				settings.NsfwForceUnsafe[:i],
+				settings.NsfwForceUnsafe[i+1:]...)
 			break
 		}
 	}
@@ -32,7 +34,9 @@ func MarkNsfwForceUnsafe(chatID int64, fileID string) (bool, error) {
 	settings.NsfwForceUnsafe = append(settings.NsfwForceUnsafe, fileID)
 	for i, id := range settings.NsfwForceSafe {
 		if id == fileID {
-			settings.NsfwForceSafe = append(settings.NsfwForceSafe[:i], settings.NsfwForceSafe[i+1:]...)
+			settings.NsfwForceSafe = append(
+				settings.NsfwForceSafe[:i],
+				settings.NsfwForceSafe[i+1:]...)
 			break
 		}
 	}
@@ -48,14 +52,18 @@ func UnsetNsfwManual(chatID int64, fileID string) (bool, error) {
 	changed := false
 	for i, id := range settings.NsfwForceSafe {
 		if id == fileID {
-			settings.NsfwForceSafe = append(settings.NsfwForceSafe[:i], settings.NsfwForceSafe[i+1:]...)
+			settings.NsfwForceSafe = append(
+				settings.NsfwForceSafe[:i],
+				settings.NsfwForceSafe[i+1:]...)
 			changed = true
 			break
 		}
 	}
 	for i, id := range settings.NsfwForceUnsafe {
 		if id == fileID {
-			settings.NsfwForceUnsafe = append(settings.NsfwForceUnsafe[:i], settings.NsfwForceUnsafe[i+1:]...)
+			settings.NsfwForceUnsafe = append(
+				settings.NsfwForceUnsafe[:i],
+				settings.NsfwForceUnsafe[i+1:]...)
 			changed = true
 			break
 		}

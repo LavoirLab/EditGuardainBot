@@ -149,7 +149,8 @@ func safeAlbumHandler(
 ) func(*tg.Album) error {
 	return func(a *tg.Album) (err error) {
 		a.Client.Log.Info(
-			fmt.Sprintf("Handling album from %d in chat %d",
+			fmt.Sprintf(
+				"Handling album from %d in chat %d",
 				a.Messages[0].SenderID(),
 				a.Messages[0].ChannelID(),
 			),
@@ -185,7 +186,8 @@ func safeMessageHandler(
 		}
 
 		m.Client.Log.Info(
-			fmt.Sprintf("Handling message from %d in chat %d",
+			fmt.Sprintf(
+				"Handling message from %d in chat %d",
 				m.SenderID(),
 				m.ChannelID(),
 			),

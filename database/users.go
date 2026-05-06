@@ -78,7 +78,8 @@ func DeleteServedUser(userID int64) error {
 		if id == userID {
 			state.ServedUsers = append(
 				state.ServedUsers[:i],
-				state.ServedUsers[i+1:]...)
+				state.ServedUsers[i+1:]...,
+			)
 			if err := updateBotState(state); err != nil {
 				return err
 			}
