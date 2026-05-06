@@ -86,10 +86,6 @@ func LoadAllHandlers(client *tg.Client) {
 	for _, name := range names {
 		module := registeredModules[name]
 
-		if module.Name == "nsfw" && !config.NsfwApiEnabled {
-			continue
-		}
-
 		for _, hConfig := range module.Handlers {
 			group := hConfig.Group
 			if group == 0 {

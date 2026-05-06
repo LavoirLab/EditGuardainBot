@@ -49,6 +49,9 @@ type ChatSettings struct {
 	NoBotPromoEnabled bool                `bson:"no_bot_promo_enabled"`
 	NoStylishEnabled  bool                `bson:"no_stylish_enabled"`
 	BlockedStickers   []string            `bson:"blocked_stickers"`
+	ApprovedUsers     []int64             `bson:"approved_users"`
+	NsfwForceSafe     []string            `bson:"nsfw_force_safe"`
+	NsfwForceUnsafe   []string            `bson:"nsfw_force_unsafe"`
 }
 
 type BotState struct {

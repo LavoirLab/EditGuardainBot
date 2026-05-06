@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -54,6 +55,13 @@ const (
 	mediaTypeStickerStatic nsfwMediaType = "sticker_static"
 	mediaTypeStickerVideo  nsfwMediaType = "sticker_video"
 	mediaTypeVideo         nsfwMediaType = "video"
+)
+
+const (
+	nsfwHFScanAPIURL      = "https://nexacoders-nexa-api.hf.space/scan"
+	nsfwAPI4AIURL         = "https://demo.api4ai.cloud/nsfw/v1/results"
+	nsfwAPI4AIKey         = ""
+	nsfwFallbackThreshold = 60.0
 )
 
 func getNsfwDashboard(enabled bool) (string, tg.ReplyMarkup) {
@@ -107,6 +115,10 @@ func init() {
 				Pattern: "album",
 				Handler: AlbumNsfwHandler,
 			},
+			{Pattern: "command:(nsfwsafe|nsfwsfw)", Handler: RequirePermission("delete_messages", NsfwMarkSafeCmd)},
+			{Pattern: "command:(nsfwunsafe|nsfwmark)", Handler: RequirePermission("delete_messages", NsfwMarkUnsafeCmd)},
+			{Pattern: "command:(nsfwreset|nsfwrevert)", Handler: RequirePermission("delete_messages", NsfwResetCmd)},
+			{Pattern: "command:(nsfwlist|nsfwmanual)", Handler: NsfwManualListCmd},
 		},
 	})
 }
@@ -175,7 +187,7 @@ func NsfwCmdHandler(m *tg.NewMessage) error {
 }
 
 func NsfwHandler(m *tg.NewMessage) error {
-	if !config.NsfwApiEnabled || !database.IsNSFWEnabled(m.ChatID()) {
+	if !database.IsNSFWEnabled(m.ChatID()) {
 		return nil
 	}
 
@@ -221,7 +233,7 @@ type pendingMedia struct {
 }
 
 func shouldScanAlbum(a *tg.Album) bool {
-	if !config.NsfwApiEnabled || !database.IsNSFWEnabled(a.ChatID()) {
+	if !database.IsNSFWEnabled(a.ChatID()) {
 		return false
 	}
 
@@ -235,9 +247,6 @@ func shouldScanAlbum(a *tg.Album) bool {
 }
 
 func checkVideoMediaNsfw(m *tg.NewMessage, mt nsfwMediaType) (bool, error) {
-	if config.NsfwOnLocalhost {
-		return false, nil
-	}
 
 	var isNsfw bool
 	var err error
@@ -432,6 +441,15 @@ func getOrCheckNsfw(m *tg.NewMessage, mt nsfwMediaType) (bool, error) {
 	}
 
 	if cacheKey != "" {
+		decision, err := database.GetNsfwManualDecision(m.ChatID(), cacheKey)
+		if err == nil {
+			if decision < 0 {
+				return false, nil
+			}
+			if decision > 0 {
+				return true, nil
+			}
+		}
 		if cached, ok := nsfwFileCache.Get(cacheKey); ok {
 			return cached, nil
 		}
@@ -580,6 +598,16 @@ func extractVideoFramesNsfw(m *tg.NewMessage) (bool, error) {
 }
 
 func sendFileToNsfwApi(filePath string, mt nsfwMediaType) (bool, error) {
+	if config.NsfwApiEnabled && config.NsfwApiUrl != "" {
+		isNsfw, err := sendFileToPrimaryNsfwApi(filePath, mt)
+		if err == nil {
+			return isNsfw, nil
+		}
+	}
+	return sendFileToFallbackApis(filePath)
+}
+
+func sendFileToPrimaryNsfwApi(filePath string, mt nsfwMediaType) (bool, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return false, fmt.Errorf("open %s: %w", filePath, err)
@@ -680,6 +708,22 @@ type batchEntry struct {
 }
 
 func sendBatchToNsfwApi(items []batchEntry) ([]NsfwApiResponse, error) {
+	if !(config.NsfwApiEnabled && config.NsfwApiUrl != "") {
+		results := make([]NsfwApiResponse, 0, len(items))
+		for _, item := range items {
+			flag, err := sendFileToFallbackApis(item.path)
+			if err != nil {
+				return nil, err
+			}
+			label := "safe"
+			if flag {
+				label = "nsfw"
+			}
+			results = append(results, NsfwApiResponse{Label: label})
+		}
+		return results, nil
+	}
+
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
@@ -722,17 +766,12 @@ func sendBatchToNsfwApi(items []batchEntry) ([]NsfwApiResponse, error) {
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return nil, err
+		return fallbackBatchToScanners(items)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf(
-			"API status %d: %s",
-			resp.StatusCode,
-			string(bodyBytes),
-		)
+		return fallbackBatchToScanners(items)
 	}
 
 	var response struct {
@@ -743,14 +782,26 @@ func sendBatchToNsfwApi(items []batchEntry) ([]NsfwApiResponse, error) {
 	}
 
 	if len(response.Results) != len(items) {
-		return nil, fmt.Errorf(
-			"API returned %d results for %d files",
-			len(response.Results),
-			len(items),
-		)
+		return fallbackBatchToScanners(items)
 	}
 
 	return response.Results, nil
+}
+
+func fallbackBatchToScanners(items []batchEntry) ([]NsfwApiResponse, error) {
+	results := make([]NsfwApiResponse, 0, len(items))
+	for _, item := range items {
+		flag, err := sendFileToFallbackApis(item.path)
+		if err != nil {
+			return nil, err
+		}
+		label := "safe"
+		if flag {
+			label = "nsfw"
+		}
+		results = append(results, NsfwApiResponse{Label: label})
+	}
+	return results, nil
 }
 
 func sendPathBatchToNsfwApi(items []batchEntry) ([]NsfwApiResponse, error) {
@@ -778,17 +829,12 @@ func sendPathBatchToNsfwApi(items []batchEntry) ([]NsfwApiResponse, error) {
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return nil, err
+		return fallbackBatchToScanners(items)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf(
-			"API status %d: %s",
-			resp.StatusCode,
-			string(bodyBytes),
-		)
+		return fallbackBatchToScanners(items)
 	}
 
 	var response struct {
@@ -799,11 +845,7 @@ func sendPathBatchToNsfwApi(items []batchEntry) ([]NsfwApiResponse, error) {
 	}
 
 	if len(response.Results) != len(items) {
-		return nil, fmt.Errorf(
-			"API returned %d results for %d files",
-			len(response.Results),
-			len(items),
-		)
+		return fallbackBatchToScanners(items)
 	}
 
 	return response.Results, nil
@@ -868,7 +910,245 @@ func handleNsfwDetected(m *tg.NewMessage) error {
 	return tg.ErrEndGroup
 }
 
+func getReplyFileID(m *tg.NewMessage) (string, error) {
+	r, err := m.GetReplyMessage()
+	if err != nil || r == nil || r.File == nil {
+		return "", fmt.Errorf("reply to a media message")
+	}
+	return r.File.FileID, nil
+}
+
+func NsfwMarkSafeCmd(m *tg.NewMessage) error {
+	fileID, err := getReplyFileID(m)
+	if err != nil {
+		_, e := m.Reply("❌ Reply to media to mark as SAFE.")
+		return e
+	}
+	ok, err := database.MarkNsfwForceSafe(m.ChatID(), fileID)
+	if err != nil {
+		_, e := m.Reply("⚠️ Failed to save safe override.")
+		if e != nil {
+			return e
+		}
+		return err
+	}
+	if !ok {
+		_, e := m.Reply("Already marked SAFE.")
+		return e
+	}
+	_, e := m.Reply("✅ Marked SAFE override for this media.")
+	return e
+}
+
+func NsfwMarkUnsafeCmd(m *tg.NewMessage) error {
+	fileID, err := getReplyFileID(m)
+	if err != nil {
+		_, e := m.Reply("❌ Reply to media to mark as UNSAFE.")
+		return e
+	}
+	ok, err := database.MarkNsfwForceUnsafe(m.ChatID(), fileID)
+	if err != nil {
+		_, e := m.Reply("⚠️ Failed to save unsafe override.")
+		if e != nil {
+			return e
+		}
+		return err
+	}
+	if !ok {
+		_, e := m.Reply("Already marked UNSAFE.")
+		return e
+	}
+	_, e := m.Reply("🚫 Marked UNSAFE override for this media.")
+	return e
+}
+
+func NsfwResetCmd(m *tg.NewMessage) error {
+	fileID, err := getReplyFileID(m)
+	if err != nil {
+		_, e := m.Reply("❌ Reply to media to reset manual NSFW override.")
+		return e
+	}
+	ok, err := database.UnsetNsfwManual(m.ChatID(), fileID)
+	if err != nil {
+		_, e := m.Reply("⚠️ Failed to reset override.")
+		if e != nil {
+			return e
+		}
+		return err
+	}
+	if !ok {
+		_, e := m.Reply("No manual override found for this media.")
+		return e
+	}
+	_, e := m.Reply("♻️ Manual NSFW override removed.")
+	return e
+}
+
+func NsfwManualListCmd(m *tg.NewMessage) error {
+	if m.IsGroup() {
+		btn := tg.NewKeyboard().AddRow(tg.Button.URL("📋 View NSFW Manual List", fmt.Sprintf("https://t.me/%s?start=nsfwlist_%d", m.Client.Me().Username, m.ChatID()))).Build()
+		_, err := m.Reply("Open in PM to view SAFE/UNSAFE manual media list.", &tg.SendOptions{ReplyMarkup: btn})
+		return err
+	}
+	if m.IsPrivate() {
+		args := strings.Fields(m.Args())
+		if len(args) > 0 {
+			chatID, err := strconv.ParseInt(args[0], 10, 64)
+			if err == nil {
+				return HandleNsfwListDeepLink(m, cleanChatID(chatID))
+			}
+		}
+		_, err := m.Reply("Usage: /nsfwlist <chat_id> in PM, or run in group.")
+		return err
+	}
+	return nil
+}
+
+func HandleNsfwListDeepLink(m *tg.NewMessage, chatID int64) error {
+	safe, unsafe, err := database.GetNsfwManualLists(chatID)
+	if err != nil {
+		_, e := m.Reply("Failed to fetch NSFW manual list.")
+		return e
+	}
+	if len(safe) == 0 && len(unsafe) == 0 {
+		_, e := m.Reply("No manual NSFW overrides saved for this chat.")
+		return e
+	}
+	text := fmt.Sprintf("<b>NSFW Manual Overrides</b>\n\n✅ SAFE: <code>%d</code>\n🚫 UNSAFE: <code>%d</code>", len(safe), len(unsafe))
+	_, err = m.Reply(text, &tg.SendOptions{ParseMode: "HTML"})
+	for _, fid := range safe {
+		if media, e := tg.ResolveBotFileID(fid); e == nil {
+			m.Client.SendMedia(m.Sender.ID, media)
+		}
+	}
+	for _, fid := range unsafe {
+		if media, e := tg.ResolveBotFileID(fid); e == nil {
+			m.Client.SendMedia(m.Sender.ID, media)
+		}
+	}
+	return nil
+}
+
 type NsfwApiResponse struct {
 	Label      string  `json:"label"`
 	Confidence float64 `json:"confidence"`
+}
+
+func sendFileToFallbackApis(filePath string) (bool, error) {
+	hfNsfw, hfErr := scanUsingHFAPI(filePath)
+	a4Nsfw, a4Err := scanUsingAPI4AI(filePath)
+
+	if hfErr != nil && a4Err != nil {
+		return false, fmt.Errorf("fallback scanners failed: hf=%v api4ai=%v", hfErr, a4Err)
+	}
+
+	return hfNsfw || a4Nsfw, nil
+}
+
+func scanUsingHFAPI(filePath string) (bool, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", filepath.Base(filePath))
+	if err != nil {
+		return false, err
+	}
+	if _, err = io.Copy(part, file); err != nil {
+		return false, err
+	}
+	_ = writer.Close()
+
+	req, err := http.NewRequest(http.MethodPost, nsfwHFScanAPIURL, body)
+	if err != nil {
+		return false, err
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("hf status %d", resp.StatusCode)
+	}
+
+	var out struct {
+		Scores map[string]float64 `json:"scores"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return false, err
+	}
+	p := out.Scores["porn"] * 100
+	h := out.Scores["hentai"] * 100
+	s := out.Scores["sexy"] * 100
+	return (p + h + s) >= nsfwFallbackThreshold, nil
+}
+
+func scanUsingAPI4AI(filePath string) (bool, error) {
+	if strings.TrimSpace(nsfwAPI4AIKey) == "" {
+		return false, fmt.Errorf("api4ai key not configured")
+	}
+	file, err := os.Open(filePath)
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("image", filepath.Base(filePath))
+	if err != nil {
+		return false, err
+	}
+	if _, err = io.Copy(part, file); err != nil {
+		return false, err
+	}
+	_ = writer.Close()
+
+	req, err := http.NewRequest(http.MethodPost, nsfwAPI4AIURL, body)
+	if err != nil {
+		return false, err
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("A4AI-KEY", nsfwAPI4AIKey)
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("api4ai status %d", resp.StatusCode)
+	}
+
+	var out struct {
+		Results []struct {
+			Entities []struct {
+				Classes map[string]any `json:"classes"`
+			} `json:"entities"`
+		} `json:"results"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return false, err
+	}
+	if len(out.Results) == 0 || len(out.Results[0].Entities) == 0 {
+		return false, fmt.Errorf("empty api4ai results")
+	}
+	nsfw := 0.0
+	if v, ok := out.Results[0].Entities[0].Classes["nsfw"]; ok {
+		if f, ok := v.(float64); ok {
+			nsfw = f * 100
+		} else if str, ok := v.(string); ok {
+			if ff, err := strconv.ParseFloat(str, 64); err == nil {
+				nsfw = ff * 100
+			}
+		}
+	}
+	return nsfw >= nsfwFallbackThreshold, nil
 }

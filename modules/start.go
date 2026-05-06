@@ -107,6 +107,14 @@ func handleDeepLink(m *telegram.NewMessage) (bool, error) {
 		return true, err
 	}
 
+	if strings.HasPrefix(modName, "nsfwlist_") {
+		chatIDStr := strings.TrimPrefix(modName, "nsfwlist_")
+		chatID, err := strconv.ParseInt(chatIDStr, 10, 64)
+		if err == nil {
+			return true, HandleNsfwListDeepLink(m, chatID)
+		}
+	}
+
 	if strings.HasPrefix(modName, "blockedlist_") {
 		chatIDStr := strings.TrimPrefix(modName, "blockedlist_")
 		chatID, err := strconv.ParseInt(chatIDStr, 10, 64)

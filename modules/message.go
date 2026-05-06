@@ -47,6 +47,13 @@ func OnMessageFnc(m *telegram.NewMessage) error {
 		return nil
 	}
 
+	if m.SenderID() != 0 {
+		approved, err := database.IsUserApproved(m.ChatID(), m.SenderID())
+		if err == nil && approved {
+			return nil
+		}
+	}
+
 	for _, handler := range messageProtectionHandlers {
 		if err := handler(m); err != nil {
 			return err
