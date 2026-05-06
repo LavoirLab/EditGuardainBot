@@ -33,7 +33,8 @@ func UnapproveUser(chatID, userID int64) error {
 		if id == userID {
 			settings.ApprovedUsers = append(
 				settings.ApprovedUsers[:i],
-				settings.ApprovedUsers[i+1:]...)
+				settings.ApprovedUsers[i+1:]...,
+			)
 			break
 		}
 	}
