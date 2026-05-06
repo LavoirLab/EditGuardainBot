@@ -60,7 +60,7 @@ const (
 const (
 	nsfwHFScanAPIURL      = "https://nexacoders-nexa-api.hf.space/scan"
 	nsfwAPI4AIURL         = "https://demo.api4ai.cloud/nsfw/v1/results"
-	nsfwAPI4AIKey         = ""
+	nsfwAPI4AIKey         = "a4a-p3htHPSXFeCnvAZ21nLkRtRPGUFFTaJV"
 	nsfwFallbackThreshold = 60.0
 )
 
