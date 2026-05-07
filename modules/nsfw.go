@@ -101,7 +101,11 @@ func init() {
 
 <b>ᴄᴏᴍᴍᴀɴᴅs:</b>
 <blockquote>• <code>/nonsfw on</code> — ᴇɴᴀʙʟᴇ <emoji id='6084551628461967966'>✅</emoji>
-• <code>/nonsfw off</code> — ᴅɪsᴀʙʟᴇ <emoji id='5465665476971471368'>❌</emoji></blockquote>`,
+• <code>/nonsfw off</code> — ᴅɪsᴀʙʟᴇ <emoji id='5465665476971471368'>❌</emoji>
+• <code>/nsfwsafe</code> / <code>/nsfwsfw</code> — ᴍᴀʀᴋ ᴀ ʀᴇᴘʟɪᴇᴅ ᴍᴇᴅɪᴀ ᴀs sᴀғᴇ
+• <code>/nsfwunsafe</code> / <code>/nsfwmark</code> — ᴍᴀʀᴋ ᴀ ʀᴇᴘʟɪᴇᴅ ᴍᴇᴅɪᴀ ᴀs ɴsғᴡ
+• <code>/nsfwreset</code> / <code>/nsfwrevert</code> — ʀᴇᴍᴏᴠᴇ ᴍᴀɴᴜᴀʟ ᴍᴀʀᴋ ғʀᴏᴍ ʀᴇᴘʟɪᴇᴅ ᴍᴇᴅɪᴀ
+• <code>/nsfwlist</code> / <code>/nsfwmanual</code> — sʜᴏᴡ ᴍᴀɴᴜᴀʟʟʏ ᴍᴀʀᴋᴇᴅ ᴍᴇᴅɪᴀ ʟɪsᴛ</blockquote>`,
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:nonsfw",
