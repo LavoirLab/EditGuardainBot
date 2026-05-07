@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/amarnathcjd/gogram v1.7.2
 	github.com/joho/godotenv v1.5.1
-	github.com/shirou/gopsutil/v4 v4.26.3
+	github.com/shirou/gopsutil/v4 v4.26.4
 	go.mongodb.org/mongo-driver/v2 v2.5.1
 )
 
