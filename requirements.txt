@@ -8,6 +8,6 @@ torch==2.5.1
 torchvision==0.20.1
 transformers==4.53.0
 accelerate==1.2.1
-pillow==12.1.1
+pillow==12.2.0
 opencv-python-headless==4.10.0.84
 uvloop==0.22.1
