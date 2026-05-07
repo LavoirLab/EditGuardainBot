@@ -120,10 +120,6 @@ func getHelpKeyboard(page int) telegram.ReplyMarkup {
 			continue
 		}
 
-		if mod.Name == "nsfw" && !config.NsfwApiEnabled {
-			continue
-		}
-
 		modules = append(modules, mod)
 	}
 
@@ -196,13 +192,8 @@ func handleHelpModuleCallback(c *telegram.CallbackQuery) error {
 	}
 
 	moduleName := parts[1]
-
-	if moduleName == "nsfw" && !config.NsfwApiEnabled {
-		c.Answer("This module is not available.")
-		return telegram.ErrEndGroup
-	}
-
 	page := 0
+
 	if len(parts) > 2 {
 		page, _ = strconv.Atoi(parts[2])
 	}
