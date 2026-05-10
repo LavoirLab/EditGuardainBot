@@ -72,8 +72,7 @@ func RequirePermission(
 		if !userIsAdmin {
 			_, err = m.Reply(
 				"👤 <b>Admin Access Required</b>\n\n"+
-					"<i>Sorry, only group administrators can use this command.</i>\n\n"+
-					"💡 <b>Tip:</b> Contact a group admin if you believe this is an error.",
+					"<i>Sorry, only group administrators can use this command.</i>\n\n",
 				&telegram.SendOptions{ParseMode: "HTML"},
 			)
 			if err != nil {
