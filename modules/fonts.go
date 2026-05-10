@@ -11,6 +11,8 @@ import (
 	"main/utils"
 )
 
+const noStylishDeletionDelay = 5 * time.Second
+
 func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "nostylish",
@@ -24,8 +26,8 @@ func init() {
 • <code>/nostylish off</code> — ᴅɪsᴀʙʟᴇ sᴛʏʟɪsʜ ғᴏɴᴛ ғɪʟᴛᴇʀ <emoji id='5465665476971471368'>❌</emoji></blockquote>
 
 <b><emoji id='5447644880824181073'>⚠️</emoji> ᴀᴄᴛɪᴏɴ:</b>
-<blockquote>– ᴍᴇssᴀɢᴇs ᴡɪᴛʜ sᴛʏʟɪsʜ ᴛᴇxᴛ ᴡɪʟʟ ʙᴇ ᴅᴇʟᴇᴛᴇᴅ ᴀғᴛᴇʀ 30 sᴇᴄᴏɴᴅs.
-– ᴀ ᴡᴀʀɴɪɴɢ ᴡɪʟʟ ʙᴇ sᴇɴᴛ ᴀɴᴅ ᴀʟsᴏ ᴅᴇʟᴇᴛᴇᴅ ᴀғᴛᴇʀ 30 sᴇᴄᴏɴᴅs.</blockquote>
+<blockquote>– ᴍᴇssᴀɢᴇs ᴡɪᴛʜ sᴛʏʟɪsʜ ᴛᴇxᴛ ᴡɪʟʟ ʙᴇ ᴅᴇʟᴇᴛᴇᴅ ᴀғᴛᴇʀ 5 sᴇᴄᴏɴᴅs.
+– ᴀ ᴡᴀʀɴɪɴɢ ᴡɪʟʟ ʙᴇ sᴇɴᴛ ᴀɴᴅ ᴀʟsᴏ ᴅᴇʟᴇᴛᴇᴅ ᴀғᴛᴇʀ 5 sᴇᴄᴏɴᴅs.</blockquote>
 
 <b><emoji id='5420323339723881652'>ℹ️</emoji> ɴᴏᴛᴇ:</b>
 <blockquote>– ᴏɴʟʏ ɢʀᴏᴜᴘ ᴀᴅᴍɪɴs ᴄᴀɴ ᴄᴏɴғɪɢᴜʀᴇ ᴛʜɪs sᴇᴛᴛɪɴɢ.</blockquote>`,
@@ -58,7 +60,7 @@ func getNoStylishDashboard(enabled bool) (string, telegram.ReplyMarkup) {
 		"When enabled, I scan for and remove messages sent with decorative or stylish fonts.\n\n"+
 		"<b>Why?</b> These fonts are often used to bypass filters and can be difficult for screen readers and some users to read."+
 		"</blockquote>\n\n"+
-		"💡 <b>Tip:</b> Detected messages and their warnings are automatically deleted after 30 seconds.", status)
+		"💡 <b>Tip:</b> Detected messages and their warnings are automatically deleted after 5 seconds.", status)
 
 	keyboard := telegram.NewKeyboard().AddRow(
 		telegram.Button.Data(toggleLabel, "nostylish_toggle:"+toggleVal),
@@ -154,7 +156,7 @@ func NoStylishHandler(m *telegram.NewMessage) error {
 		warnMsg, err := m.Reply(fmt.Sprintf(
 			"⚠️ <b>Stylish Font Detected</b>\n\n"+
 				"<i>%s, please use a standard normal font. Decorative or stylish text is not allowed here to maintain readability.</i>\n\n"+
-				"💡 <b>Tip:</b> This message and yours will be automatically deleted in 30 seconds.",
+				"💡 <b>Tip:</b> This message and yours will be automatically deleted in 5 seconds.",
 			mention,
 		), &telegram.SendOptions{ParseMode: "HTML"})
 
@@ -163,7 +165,7 @@ func NoStylishHandler(m *telegram.NewMessage) error {
 			m.Client,
 			m.ChatID(),
 			int32(m.ID),
-			30*time.Second,
+			noStylishDeletionDelay,
 		)
 
 		// Schedule warning message deletion
@@ -172,7 +174,7 @@ func NoStylishHandler(m *telegram.NewMessage) error {
 				m.Client,
 				m.ChatID(),
 				int32(warnMsg.ID),
-				30*time.Second,
+				noStylishDeletionDelay,
 			)
 		}
 
