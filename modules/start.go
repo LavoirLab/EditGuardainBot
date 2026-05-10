@@ -199,14 +199,20 @@ func handleGroupStart(m *telegram.NewMessage) error {
 	).
 		Build()
 
+x := ""
+
+if m.Channel != nil {
+x = m.Channel.Title
+} else if m.Chat != nil {
+x = m.Chat.Title
+}
+
+if x == "" {
+x = "this chat"
+}
 	caption := fmt.Sprintf(`<b>🛡️ Bot Activated!</b>
 
-I am now active and ready to protect <b>%s</b>.
-
-💡 <b>Next Steps:</b>
-• Ensure I am an <b>Admin</b> with <i>Delete Messages</i> permissions.
-• Check the available commands by tapping the button below.
-• Visit <a href="%s">Support Channel</a> for updates.`, html.EscapeString(m.Chat.Title), config.SupportChannel)
+I am now active and ready to protect <b>%s</b>.`, html.EscapeString(x))
 
 	_, err := m.Reply(caption, &telegram.SendOptions{ReplyMarkup: btn})
 	return err
