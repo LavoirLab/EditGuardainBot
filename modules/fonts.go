@@ -53,7 +53,6 @@ func getNoStylishDashboard(enabled bool) (string, telegram.ReplyMarkup) {
 	}
 
 	text := fmt.Sprintf("🔡 <b>Stylish Font Filter</b>\n"+
-		"━━━━━━━━━━━━━━━━━━━━\n"+
 		"<b>Status:</b> %s\n\n"+
 		"<blockquote expandable>"+
 		"When enabled, I scan for and remove messages sent with decorative or stylish fonts.\n\n"+
