@@ -210,10 +210,6 @@ func NsfwHandler(m *tg.NewMessage) error {
 		return nil
 	}
 
-	if m.Message.GroupedID != 0 {
-		return nil
-	}
-
 	mt := resolveMediaType(m)
 	if mt == "" {
 		return nil
