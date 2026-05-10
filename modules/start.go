@@ -199,17 +199,17 @@ func handleGroupStart(m *telegram.NewMessage) error {
 	).
 		Build()
 
-x := ""
+	x := ""
 
-if m.Channel != nil {
-x = m.Channel.Title
-} else if m.Chat != nil {
-x = m.Chat.Title
-}
+	if m.Channel != nil {
+		x = m.Channel.Title
+	} else if m.Chat != nil {
+		x = m.Chat.Title
+	}
 
-if x == "" {
-x = "this chat"
-}
+	if x == "" {
+		x = "this chat"
+	}
 	caption := fmt.Sprintf(`<b>🛡️ Bot Activated!</b>
 
 I am now active and ready to protect <b>%s</b>.`, html.EscapeString(x))
