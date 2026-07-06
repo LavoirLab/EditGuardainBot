@@ -6,7 +6,7 @@ require (
 	github.com/amarnathcjd/gogram v1.7.2
 	github.com/joho/godotenv v1.5.1
 	github.com/shirou/gopsutil/v4 v4.26.6
-	go.mongodb.org/mongo-driver/v2 v2.6.0
+	go.mongodb.org/mongo-driver/v2 v2.7.0
 )
 
 require (
