@@ -183,7 +183,13 @@ func containsForeignScript(text string) bool {
 		if unicode.IsSpace(r) {
 			continue
 		}
-		if unicode.In(r, unicode.Latin, unicode.Devanagari, unicode.Common, unicode.Inherited) {
+		if unicode.In(
+			r,
+			unicode.Latin,
+			unicode.Devanagari,
+			unicode.Common,
+			unicode.Inherited,
+		) {
 			continue
 		}
 		return true
