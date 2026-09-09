@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"strings"
 
@@ -57,6 +59,17 @@ func main() {
 	}
 
 	modules.LoadAllHandlers(client)
+
+	go func() {
+		pprofPort := os.Getenv("PPROF_PORT")
+		if pprofPort == "" {
+			pprofPort = "6060"
+		}
+		log.Printf("🔍 pprof server listening on :%s", pprofPort)
+		if err := http.ListenAndServe(":"+pprofPort, nil); err != nil {
+			log.Printf("⚠️ pprof server error: %v", err)
+		}
+	}()
 
 	client.SendMessage(config.LoggerId, "Started...")
 	log.Println("✅ Bot Started")

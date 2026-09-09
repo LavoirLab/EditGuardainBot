@@ -167,21 +167,25 @@ func BioLinkHandler(m *telegram.NewMessage) error {
 		return nil
 	}
 
-	if _, ok := m.Message.FromID.(*telegram.PeerUser); !ok ||
-		m.SenderID() == 0 {
+	sender, err := m.GetSender()
+	if err != nil || sender == nil {
+		return nil
+	}
+
+	if sender.Bot {
 		return nil
 	}
 
 	resp, err := m.Client.UsersGetFullUser(&telegram.InputUserObj{
-		UserID:     m.Sender.ID,
-		AccessHash: m.Sender.AccessHash,
+		UserID:     sender.ID,
+		AccessHash: sender.AccessHash,
 	})
 	if err != nil {
 		if wait := telegram.GetFloodWait(err); wait > 0 && wait < 15 {
 			time.Sleep(time.Duration(wait) * time.Second)
 			resp, err = m.Client.UsersGetFullUser(&telegram.InputUserObj{
-				UserID:     m.Sender.ID,
-				AccessHash: m.Sender.AccessHash,
+				UserID:     sender.ID,
+				AccessHash: sender.AccessHash,
 			})
 			if err != nil {
 				return nil
@@ -200,7 +204,7 @@ func BioLinkHandler(m *telegram.NewMessage) error {
 		return err
 	}
 
-	mention := utils.MentionHTML(m.Sender)
+	mention := utils.MentionHTML(sender)
 	msg := fmt.Sprintf(
 		"🛡️ <b>BioLink Protected!</b>\n\n%s, <i>your message was removed because your profile bio contains a link.</i>\n\n💡 <b>Tip:</b> Remove the link from your bio to be able to send messages in this group.",
 		mention,
