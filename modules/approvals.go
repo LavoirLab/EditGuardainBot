@@ -13,7 +13,19 @@ func init() {
 	RegisterModule(&ModuleInfo{
 		Name:    "approvals",
 		ModName: "✅ Approvals",
-		Help:    "<b>Approval commands:</b>\n<blockquote>• <code>/approve</code> (reply/mention/id)\n• <code>/unapprove</code> or <code>/disapprove</code>\n• <code>/approved</code> to check status</blockquote>\n\nApproved users are ignored by automated moderation actions.",
+		Help: `<emoji id='5443232278963982555'>✅</emoji> <b>Usᴇʀ Aᴘᴘʀᴏᴠᴀʟs</b>
+
+<i>ᴀᴘᴘʀᴏᴠᴇs ᴛʀᴜsᴛᴇᴅ ᴜsᴇʀs sᴏ ᴛʜᴇʏ ᴀʀᴇ ᴇxᴇᴍᴘᴛ ғʀᴏᴍ ᴀʟʟ ᴀᴜᴛᴏᴍᴀᴛᴇᴅ ᴍᴏᴅᴇʀᴀᴛɪᴏɴ ᴀᴄᴛɪᴏɴs ʟɪᴋᴇ ʟɪɴᴋ, ᴘʀᴏᴍᴏ, ʙɪᴏʟɪɴᴋ ᴀɴᴅ ʟᴀɴɢᴜᴀɢᴇ ғɪʟᴛᴇʀs.</i>
+
+<b><emoji id='5341715473882955310'>🔧</emoji> ᴄᴏᴍᴍᴀɴᴅs:</b>
+<blockquote>• <code>/approve</code> — ᴀᴘᴘʀᴏᴠᴇ ᴀ ᴜsᴇʀ (ʀᴇᴘʟʏ / ᴍᴇɴᴛɪᴏɴ / ɪᴅ) <emoji id='6084551628461967966'>✅</emoji>
+• <code>/unapprove</code> ᴏʀ <code>/disapprove</code> — ʀᴇᴠᴏᴋᴇ ᴀᴘᴘʀᴏᴠᴀʟ <emoji id='5465665476971471368'>🚫</emoji>
+• <code>/approved</code> — ᴄʜᴇᴄᴋ ᴡʜᴇᴛʜᴇʀ ᴀ ᴜsᴇʀ ɪs ᴀᴘᴘʀᴏᴠᴇᴅ <emoji id='5447067204298713202'>🔍</emoji></blockquote>
+
+<b><emoji id='5443038326535759644'>ℹ️</emoji> ɴᴏᴛᴇs:</b>
+<blockquote>– ᴀᴘᴘʀᴏᴠᴇᴅ ᴜsᴇʀs ʙʏᴘᴀss ᴀʟʟ ᴀᴜᴛᴏᴍᴀᴛɪᴄ ᴘʀᴏᴛᴇᴄᴛɪᴏɴs.
+– ᴛʜᴇʏ ᴄᴀɴ sᴛɪʟʟ ʙᴇ ᴘᴜɴɪsʜᴇᴅ ᴍᴀɴᴜᴀʟʟʏ ʙʏ ᴀᴅᴍɪɴs.
+– <emoji id='5370872220149099318'>👮</emoji> ᴏɴʟʏ ɢʀᴏᴜᴘ ᴀᴅᴍɪɴs ᴄᴀɴ ᴀᴘᴘʀᴏᴠᴇ ᴏʀ ʀᴇᴠᴏᴋᴇ ᴀᴘᴘʀᴏᴠᴀʟs.</blockquote>`,
 		Handlers: []HandlerConfig{
 			{
 				Pattern: "command:approve",
