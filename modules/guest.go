@@ -34,11 +34,19 @@ func handleGuestChatQuery(guest *telegram.GuestChatQuery) error {
 
 	if guest.Message != nil {
 		queryText := strings.TrimSpace(guest.Message.Text())
-		queryText = strings.TrimSpace(
-			strings.TrimPrefix(queryText, "@"+botUsername),
-		)
 		if queryText != "" {
-			return nil
+			mention := "@" + botUsername
+			if !strings.HasPrefix(
+				strings.ToLower(queryText),
+				strings.ToLower(mention),
+			) {
+				return nil
+			}
+
+			rest := strings.TrimSpace(queryText[len(mention):])
+			if rest != "" {
+				return nil
+			}
 		}
 	}
 
