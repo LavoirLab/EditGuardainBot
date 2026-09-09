@@ -21,7 +21,6 @@ func init() {
 			{
 				Pattern: "joinrequest",
 				Handler: handleJoinRequest,
-				Group:   1,
 			},
 		},
 	})
@@ -87,7 +86,7 @@ func handleJoinRequest(jr *telegram.JoinRequestUpdate) error {
 		keyboard := telegram.NewKeyboard().
 			AddRow(
 				telegram.Button.URL(
-					"➕ Add Me In Your Group",
+					"🛡️ Add Me & Protect Your Group",
 					fmt.Sprintf("https://t.me/%s?startgroup=true", botUsername),
 				),
 			).

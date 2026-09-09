@@ -78,7 +78,6 @@ func fetchAndCacheAdmins(
 
 	adminCache.Set(chatID, &AdminListCache{Admins: admins})
 
-	log.Printf("Cached %d admins for chat %d", len(admins), chatID)
 	return admins, nil
 }
 
@@ -216,8 +215,6 @@ func UpdateAdminFromParticipant(
 		cached.Admins[userID] = adminInfo
 		adminCache.Set(chatID, cached)
 	}
-
-	log.Printf("Updated admin cache for user %d in chat %d", userID, chatID)
 }
 
 func RemoveAdmin(chatID, userID int64) {
@@ -228,8 +225,6 @@ func RemoveAdmin(chatID, userID int64) {
 		delete(cached.Admins, userID)
 		adminCache.Set(chatID, cached)
 	}
-
-	log.Printf("Removed user %d from admin cache in chat %d", userID, chatID)
 }
 
 func ClearChatAdminCache(chatID int64) {

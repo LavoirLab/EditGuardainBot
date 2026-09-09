@@ -3,7 +3,6 @@ package modules
 import (
 	"fmt"
 	"html"
-	"log"
 	"time"
 
 	"github.com/amarnathcjd/gogram/telegram"
@@ -39,19 +38,11 @@ func handleParticipantUpdate(pu *telegram.ParticipantUpdate) error {
 	self := pu.Client.Me()
 	chatID := pu.ChannelID()
 	userID := pu.UserID()
-	oldStatus := getParticipantStatus(pu.Old)
 	newStatus := getParticipantStatus(pu.New)
 
 	// bot itself
 
 	if userID == self.ID {
-		log.Printf(
-			"MyChatMember | chat_id=%d %s -> %s",
-			chatID,
-			oldStatus,
-			newStatus,
-		)
-
 		// bot promoted to admin
 		if newStatus == "administrator" {
 			utils.UpdateAdminFromParticipant(
@@ -80,14 +71,6 @@ func handleParticipantUpdate(pu *telegram.ParticipantUpdate) error {
 	if pu.User == nil {
 		return nil
 	}
-
-	log.Printf(
-		"ChatMember | user=%d chat=%d %s -> %s",
-		userID,
-		chatID,
-		oldStatus,
-		newStatus,
-	)
 
 	// promoted / rights changed
 	if newStatus == "administrator" || newStatus == "creator" {
