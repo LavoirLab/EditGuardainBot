@@ -61,12 +61,12 @@ func main() {
 	modules.LoadAllHandlers(client)
 
 	go func() {
-		pprofPort := os.Getenv("PPROF_PORT")
-		if pprofPort == "" {
-			pprofPort = "6060"
+		port := os.Getenv("PORT")
+		if port == "" {
+			port = "6060"
 		}
-		log.Printf("🔍 pprof server listening on :%s", pprofPort)
-		if err := http.ListenAndServe(":"+pprofPort, nil); err != nil {
+		log.Printf("🔍 pprof server listening on :%s", port)
+		if err := http.ListenAndServe(":"+port, nil); err != nil {
 			log.Printf("⚠️ pprof server error: %v", err)
 		}
 	}()
