@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/amarnathcjd/gogram/telegram"
@@ -16,6 +17,7 @@ type AdminInfo struct {
 }
 
 type AdminListCache struct {
+	mu     sync.RWMutex
 	Admins map[int64]*AdminInfo
 }
 
@@ -34,7 +36,13 @@ func GetChatAdmins(
 	chatID int64,
 ) (map[int64]*AdminInfo, error) {
 	if cached, ok := adminCache.Get(chatID); ok {
-		return cached.Admins, nil
+		cached.mu.RLock()
+		admins := make(map[int64]*AdminInfo, len(cached.Admins))
+		for id, info := range cached.Admins {
+			admins[id] = info
+		}
+		cached.mu.RUnlock()
+		return admins, nil
 	}
 
 	return fetchAndCacheAdmins(client, chatID)
@@ -212,7 +220,9 @@ func UpdateAdminFromParticipant(
 	individualAdminCache.Set(cacheKey, adminInfo)
 
 	if cached, ok := adminCache.Get(chatID); ok {
+		cached.mu.Lock()
 		cached.Admins[userID] = adminInfo
+		cached.mu.Unlock()
 		adminCache.Set(chatID, cached)
 	}
 }
@@ -222,7 +232,9 @@ func RemoveAdmin(chatID, userID int64) {
 	individualAdminCache.Delete(cacheKey)
 
 	if cached, ok := adminCache.Get(chatID); ok {
+		cached.mu.Lock()
 		delete(cached.Admins, userID)
+		cached.mu.Unlock()
 		adminCache.Set(chatID, cached)
 	}
 }
