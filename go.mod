@@ -5,12 +5,12 @@ go 1.26.0
 require (
 	github.com/amarnathcjd/gogram v1.7.71
 	github.com/joho/godotenv v1.5.1
-	github.com/shirou/gopsutil/v4 v4.26.8
+	github.com/shirou/gopsutil/v4 v4.26.9
 	go.mongodb.org/mongo-driver/v2 v2.9.0
 )
 
 require (
-	github.com/ebitengine/purego v0.11.0 // indirect
+	github.com/ebitengine/purego v0.11.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/klauspost/compress v1.20.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20260802145828-341c2f0c90b5 // indirect
